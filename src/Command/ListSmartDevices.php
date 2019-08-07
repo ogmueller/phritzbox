@@ -11,19 +11,17 @@
 
 namespace App\Command;
 
+use App\Client\AhaApi;
 use App\Client\Helper;
-use App\Entity\User;
-use App\Repository\UserRepository;
-use App\Utils\Validator;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Device;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Exception\RuntimeException;
-use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Helper\ProgressIndicator;
+use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Helper\TableCell;
+use Symfony\Component\Console\Helper\TableStyle;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
@@ -64,13 +62,16 @@ class ListSmartDevices extends Command
         $this
             ->setDescription('List all available SmartHome devices')
             ->setHelp($this->getCommandHelp());
-            // commands can optionally define arguments and/or options (mandatory and optional)
-            // see https://symfony.com/doc/current/components/console/console_arguments.html
+        // commands can optionally define arguments and/or options (mandatory and optional)
+        // see https://symfony.com/doc/current/components/console/console_arguments.html
     }
 
     /**
      * This optional method is the first one executed for a command after configure()
      * and is useful to initialize properties based on the input arguments and options.
+     *
+     * @param  InputInterface   $input
+     * @param  OutputInterface  $output
      */
     protected function initialize(InputInterface $input, OutputInterface $output): void
     {
@@ -103,21 +104,76 @@ class ListSmartDevices extends Command
         $stopwatch = new Stopwatch();
         $stopwatch->start(self::$defaultName);
 
-        Helper::getSid();
+        $progress = new ProgressIndicator($output);
+        $progress->start('Fetching data...');
 
+        $sid     = Helper::getSid();
+        $api     = new AhaApi($sid);
+        $devices = $api->getDeviceListInfos();
 
+        $progress->finish('Done');
 
+        $table = new Table($output);
+        $table->setHeaders(['Identifier', 'Name', 'Temp / Offset', 'Switch', 'Voltage', 'Power', 'Energy']);
+
+        $rightAligned = new TableStyle();
+        $rightAligned->setPadType(STR_PAD_LEFT);
+
+        $table->setColumnStyle(5, $rightAligned);
+        $table->setColumnStyle(6, $rightAligned);
+        $table->setColumnStyle(7, $rightAligned);
+
+        /** @var Device $device */
+        foreach ($devices as $device) {
+            $row = [
+                $device->getIdentifier(),
+                $device->getName(),
+            ];
+
+            if ($device->hasTemperature()) {
+                $offset      = $device->getTemperatureOffset();
+                $temperature = $device->getTemperatureCelsius() + $offset;
+                $row[]       = sprintf('%02.1fC / %02.1fC', $temperature, $offset);
+            } else {
+                $row[] = '-';
+            }
+
+            if ($device->hasSwitch()) {
+                $status = $device->isSwitchState();
+                $row[]  = $status ? 'On' : 'Off';
+            } else {
+                $row[] = '-';
+            }
+
+            if ($device->hasPowerMeter()) {
+                $row[] = sprintf('%03.1fV', $device->getPowerMeterVoltage());
+                $row[] = sprintf('%03.1fV', $device->getPowerMeterPower());
+                $row[] = sprintf('%03.1fV', $device->getPowerMeterEnergy());
+            } else {
+                $row[] = new TableCell('-', ['colspan' => 3]);
+            }
+
+            $table->addRow($row);
+        }
+
+        $table->setFooterTitle(count($devices).' Devices found');
+        // $table->setStyle('box');
+        $table->render();
 
         $this->io->success(sprintf('%s was successfully created: %s (%s)', 'a', 1, 2));
 
         $event = $stopwatch->stop(self::$defaultName);
         if ($output->isVerbose()) {
-            $this->io->comment(sprintf('SmartHome List: %d / Elapsed time: %.2f ms / Consumed memory: %.2f MB', 1234, $event->getDuration(), $event->getMemory() / (1024 ** 2)));
+            $this->io->comment(
+                sprintf(
+                    'SmartHome List: %d / Elapsed time: %.2f ms / Consumed memory: %.2f MB',
+                    1234,
+                    $event->getDuration(),
+                    $event->getMemory() / (1024 ** 2)
+                )
+            );
         }
     }
-
-
-
 
     /**
      * The command help is usually included in the configure() method, but when
