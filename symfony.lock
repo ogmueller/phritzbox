@@ -138,8 +138,14 @@
     "paragonie/random_compat": {
         "version": "v9.99.99.x-dev"
     },
+    "pdepend/pdepend": {
+        "version": "2.5.2"
+    },
     "php-cs-fixer/diff": {
         "version": "v1.3.0"
+    },
+    "phpmd/phpmd": {
+        "version": "2.7.0"
     },
     "psr/cache": {
         "version": "1.0.x-dev"
@@ -170,6 +176,18 @@
             "version": "4.0",
             "ref": "421933bf8f0e75546ac8e00cb3eb12904fa2ac1a"
         }
+    },
+    "squizlabs/php_codesniffer": {
+        "version": "3.0",
+        "recipe": {
+            "repo": "github.com/symfony/recipes-contrib",
+            "branch": "master",
+            "version": "3.0",
+            "ref": "0dc9cceda799fd3a08b96987e176a261028a3709"
+        },
+        "files": [
+            "phpcs.xml.dist"
+        ]
     },
     "swiftmailer/swiftmailer": {
         "version": "6.1-dev"
