@@ -20,6 +20,7 @@ use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableCell;
 use Symfony\Component\Console\Helper\TableStyle;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
@@ -61,9 +62,13 @@ class ListSmartDevices extends Command
     {
         $this
             ->setDescription('List all available SmartHome devices')
-            ->setHelp($this->getCommandHelp());
-        // commands can optionally define arguments and/or options (mandatory and optional)
-        // see https://symfony.com/doc/current/components/console/console_arguments.html
+            ->setHelp($this->getCommandHelp())
+            ->addOption(
+                'simple',
+                's',
+                InputOption::VALUE_NONE,
+                'No header output'
+            );
     }
 
     /**
@@ -104,24 +109,21 @@ class ListSmartDevices extends Command
         $stopwatch = new Stopwatch();
         $stopwatch->start(self::$defaultName);
 
-        $progress = new ProgressIndicator($output);
-        $progress->start('Fetching data...');
+        if ($output->isVerbose()) {
+            $progress = new ProgressIndicator($output);
+            $progress->start('Fetching data...');
+        }
+
+        $simpleOutput = $input->getOption('simple');
 
         $sid     = Helper::getSid();
         $api     = new AhaApi($sid);
         $devices = $api->getDeviceListInfos();
 
-        $progress->finish('Done');
+        $output->isVerbose() && $progress->finish('Done');
 
         $table = new Table($output);
-        $table->setHeaders(['Identifier', 'Name', 'Temp / Offset', 'Switch', 'Voltage', 'Power', 'Energy']);
-
-        $rightAligned = new TableStyle();
-        $rightAligned->setPadType(STR_PAD_LEFT);
-
-        $table->setColumnStyle(5, $rightAligned);
-        $table->setColumnStyle(6, $rightAligned);
-        $table->setColumnStyle(7, $rightAligned);
+        $rows  = [];
 
         /** @var Device $device */
         foreach ($devices as $device) {
@@ -153,21 +155,41 @@ class ListSmartDevices extends Command
                 $row[] = new TableCell('-', ['colspan' => 3]);
             }
 
-            $table->addRow($row);
+            $rows[] = $row;
         }
 
+        if (!$simpleOutput) {
+            $table->setHeaders(['Identifier', 'Name', 'Temp / Offset', 'Switch', 'Voltage', 'Power', 'Energy']);
+//            $table->set
+        } else {
+            $borderless = new TableStyle();
+            $borderless
+                ->setHorizontalBorderChars('')
+                ->setVerticalBorderChars('')
+                ->setDefaultCrossingChar('')
+                ->setBorderFormat('')
+            ;
+
+            $table->setStyle($borderless);
+        }
+
+        $rightAligned = new TableStyle();
+        $rightAligned->setPadType(STR_PAD_LEFT);
+
+        $table->setColumnStyle(5, $rightAligned);
+        $table->setColumnStyle(6, $rightAligned);
+        $table->setColumnStyle(7, $rightAligned);
+
         $table->setFooterTitle(count($devices).' Devices found');
-        // $table->setStyle('box');
+        $table->addRows($rows);
         $table->render();
 
-        $this->io->success(sprintf('%s was successfully created: %s (%s)', 'a', 1, 2));
-
         $event = $stopwatch->stop(self::$defaultName);
-        if ($output->isVerbose()) {
+
+        if ($output->isVeryVerbose()) {
             $this->io->comment(
                 sprintf(
-                    'SmartHome List: %d / Elapsed time: %.2f ms / Consumed memory: %.2f MB',
-                    1234,
+                    'SmartHome List: Elapsed time: %.2f ms / Consumed memory: %.2f MB',
                     $event->getDuration(),
                     $event->getMemory() / (1024 ** 2)
                 )
