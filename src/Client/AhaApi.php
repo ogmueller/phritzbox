@@ -4,6 +4,7 @@ namespace App\Client;
 
 use App\Device;
 use SensioLabs\Security\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Class AhaApi
@@ -19,18 +20,32 @@ class AhaApi
     protected $sid;
 
     /**
+     * @var Helper
+     */
+    private $helper;
+
+    /**
      * AhaApi constructor.
      *
-     * @param  string  $sid
+     * @param  Helper  $helper
      */
-    public function __construct(string $sid)
+    public function __construct(Helper $helper)
     {
-        $this->sid = $sid;
+        $this->helper = $helper;
     }
 
     protected function commandUrl(string $command): \SimpleXMLElement
     {
-        $response = Helper::requestUrl($_ENV['APP_API_URL_AHA'].'?sid='.$this->sid.'&switchcmd='.$command);
+        $sid = $this->helper->getSid();
+        try {
+            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'].'?sid='.$sid.'&switchcmd='.$command);
+        } catch (AccessDeniedHttpException $e) {
+            // get new SID and retry request
+            $this->helper->deleteSid();
+            var_dump('retry with new SID');
+            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'].'?sid='.$sid.'&switchcmd='.$command);
+        }
+
 //        var_dump($response);
         try {
             $xml = simplexml_load_string($response);
@@ -42,8 +57,11 @@ class AhaApi
         if ($xml === false) {
             Helper::deleteSid();
 
+            var_dump($response);
+
             throw new HttpException('Unknown response for '.$command);
         }
+
 //        var_dump($xml);
 
         return $xml;

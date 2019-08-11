@@ -3,6 +3,7 @@
 namespace App\Client;
 
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\Cache\ItemInterface;
 
 class Helper
@@ -10,14 +11,18 @@ class Helper
     const session_cache_name = 'sid';
 
     /**
+     * @var string
+     */
+    protected $sid;
+
+    /**
      * Make HTTP request
      *
      * @param  string  $url
-     *
      * @return bool|string
-     * @throws HttpRequestException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
-    static public function requestUrl(string $url)
+    public function requestUrl(string $url)
     {
         $curl = curl_init();
         curl_setopt_array(
@@ -31,11 +36,18 @@ class Helper
                 CURLOPT_USERAGENT      => 'phritzbox',
             ]
         );
-        $response = curl_exec($curl);
+        $response     = curl_exec($curl);
+        dump($response);
+        $responseCode = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
 
         if (curl_errno($curl)) {
 //            var_dump($response);
             throw new HttpRequestException($curl, $url);
+        }
+
+        if ($responseCode === 403) {
+            $this->deleteSid();
+            throw new AccessDeniedHttpException('Access denied.');
         }
 
         curl_close($curl);
@@ -48,7 +60,7 @@ class Helper
      *
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    static public function deleteSid()
+    public function deleteSid()
     {
         // if something went wrong, we delete the session ID, just in case
         $cache = new FilesystemAdapter();
@@ -62,8 +74,9 @@ class Helper
      * @throws HttpRequestException         Basic connection problems
      * @throws InvalidResponseException     Response is not as expected
      * @throws InvalidResponseException     Login is blocked for x seconds
+     * @throws \Psr\Cache\InvalidArgumentException
      */
-    static public function getSid(): ?string
+    public function getSid(): ?string
     {
         $cache = new FilesystemAdapter();
         $sid   = $cache->get(
@@ -73,7 +86,7 @@ class Helper
                 $item->expiresAfter(3300);
 
                 // send initial request
-                $response = self::requestUrl($_ENV['APP_API_URL_LOGIN']);
+                $response = $this->requestUrl($_ENV['APP_API_URL_LOGIN']);
                 $xml      = simplexml_load_string($response);
                 if (!$xml || !isset($xml->Challenge)) {
                     throw new InvalidResponseException('Unexpected HTTP response');
@@ -91,7 +104,7 @@ class Helper
                     $challengeResponse = $challenge.'-'.$pass;
                     // send response to fritzbox
                     $url      = $_ENV['APP_API_URL_LOGIN'].'?username='.$_ENV['APP_API_USERNAME'].'&response='.$challengeResponse;
-                    $response = self::requestUrl($url);
+                    $response = $this->requestUrl($url);
 
                     $xml = simplexml_load_string($response);
                     if (!$xml || !isset($xml->SID)) {
@@ -120,5 +133,16 @@ class Helper
         );
 
         return $sid;
+    }
+
+    /**
+     * Invalidate and set SID
+     *
+     * @param  string  $sid
+     */
+    public function setSid(string $sid): void
+    {
+        $this->deleteSid();
+        $this->sid = $sid;
     }
 }

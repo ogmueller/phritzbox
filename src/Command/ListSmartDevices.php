@@ -50,10 +50,17 @@ class ListSmartDevices extends Command
      */
     private $io;
 
-//    public function __construct()
-//    {
-//        parent::__construct();
-//    }
+    /**
+     * @var AhaApi
+     */
+    private $ahaApi;
+
+    public function __construct(AhaApi $ahaApi)
+    {
+        parent::__construct();
+
+        $this->ahaApi = $ahaApi;
+    }
 
     /**
      * {@inheritdoc}
@@ -116,9 +123,8 @@ class ListSmartDevices extends Command
 
         $simpleOutput = $input->getOption('simple');
 
-        $sid     = Helper::getSid();
-        $api     = new AhaApi($sid);
-        $devices = $api->getDeviceListInfos();
+//        $sid     = Helper::getSid();
+        $devices = $this->ahaApi->getDeviceListInfos();
 
         $output->isVerbose() && $progress->finish('Done');
 
