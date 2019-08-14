@@ -3,10 +3,6 @@
 namespace App\Device;
 
 use App\Device;
-use App\Device\PowerMeterInterface;
-use App\Device\SwitchInterface;
-use App\Device\TemperatureInterface;
-use http\Exception\UnexpectedValueException;
 
 trait TemperatureTrait
 {
@@ -20,6 +16,17 @@ trait TemperatureTrait
      */
     protected $temperatureOffset;
 
+    protected function setXmlForTemperature(\SimpleXMLElement $xml)
+    {
+        if ($node = $xml->temperature) {
+            if (isset($node->celsius)) {
+                $this->setTemperatureCelsius((float)$node->celsius / 10);
+            }
+            if (isset($node->offset)) {
+                $this->setTemperatureOffset((float)$node->offset / 10);
+            }
+        }
+    }
 
     public function temperature()
     {
@@ -31,7 +38,7 @@ trait TemperatureTrait
      */
     public function getTemperatureCelsius(): float
     {
-        return $this->temperatureCelsius;
+        return (float)$this->temperatureCelsius;
     }
 
     /**
@@ -50,7 +57,7 @@ trait TemperatureTrait
      */
     public function getTemperatureOffset(): float
     {
-        return $this->temperatureOffset;
+        return (float)$this->temperatureOffset;
     }
 
     /**

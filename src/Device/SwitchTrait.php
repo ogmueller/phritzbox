@@ -42,6 +42,26 @@ trait SwitchTrait
     }
 
     /**
+     * @param  \SimpleXMLElement  $xml
+     */
+    protected function setXmlForSwitch(\SimpleXMLElement $xml) {
+        if ($node = $xml->switch) {
+            if (isset($node->state)) {
+                $this->setSwitchState((bool)$node->state);
+            }
+            if (isset($node->mode)) {
+                $this->setSwitchMode((string)$node->mode);
+            }
+            if (isset($node->lock)) {
+                $this->setSwitchLock((bool)$node->lock);
+            }
+            if (isset($node->devicelock)) {
+                $this->setSwitchDeviceLock((bool)$node->devicelock);
+            }
+        }
+    }
+
+    /**
      * @return bool
      */
     public function isSwitchState(): bool

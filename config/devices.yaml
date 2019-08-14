@@ -8,4 +8,4 @@
 
 'avm':
     'fritz!dect 200':           '\App\Device\Avm\FritzDect200'
-    'fritz!powerline 546e':     '\App\Device\Avm\FritzDect200'
+    'fritz!powerline 546e':     '\App\Device\Avm\FritzPowerline546E'

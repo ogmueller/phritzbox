@@ -7,13 +7,21 @@ use Symfony\Component\Yaml\Parser;
 class Device
 {
     const FUNCTION_BIT_HANFUN_DEVICE = 1 << 0;
+
     const FUNCTION_BIT_ALARM = 1 << 4;
+
     const FUNCTION_BIT_THERMOSTAT = 1 << 6;
+
     const FUNCTION_BIT_POWER_METER = 1 << 7;
+
     const FUNCTION_BIT_TEMPERATURE_SENSOR = 1 << 8;
+
     const FUNCTION_BIT_OUTLET = 1 << 9;
+
     const FUNCTION_BIT_DECT_REPEATER = 1 << 10;
+
     const FUNCTION_BIT_MICROFON = 1 << 11;
+
     const FUNCTION_BIT_HANFUN_UNIT = 1 << 13;
 
     /**
@@ -66,6 +74,25 @@ class Device
     }
 
     /**
+     * Return all important values in array
+     *
+     * @return array
+     */
+    public function toArray(): array
+    {
+        return [
+            'firmwareVersion' => $this->getFirmwareVersion(),
+            'functionBitMask' => $this->getFunctionBitMask(),
+            'id'              => $this->getId(),
+            'identifier'      => $this->getIdentifier(),
+            'manufacturer'    => $this->getManufacturer(),
+            'name'            => $this->getName(),
+            'present'         => $this->isPresent(),
+            'productName'     => $this->getProductName(),
+        ];
+    }
+
+    /**
      * Setup device using fritzbox XML response
      *
      * @param  \SimpleXMLElement  $xml
@@ -93,11 +120,11 @@ class Device
             }
         }
 
-        if($xml->present) {
+        if ($xml->present) {
             $this->setPresent((bool)$xml->present);
         }
 
-        if($xml->name) {
+        if ($xml->name) {
             $this->setName((string)$xml->name);
         }
     }
@@ -286,19 +313,23 @@ class Device
         return $this;
     }
 
-    public function hasAlarm() {
-        return ($this->functionBitMask & (self::FUNCTION_BIT_ALARM)) > 0;
+    public function hasAlarm()
+    {
+        return ($this->functionBitMask & self::FUNCTION_BIT_ALARM) > 0;
     }
 
-    public function hasTemperature() {
-        return ($this->functionBitMask & (self::FUNCTION_BIT_TEMPERATURE_SENSOR)) > 0;
+    public function hasTemperature()
+    {
+        return ($this->functionBitMask & self::FUNCTION_BIT_TEMPERATURE_SENSOR) > 0;
     }
 
-    public function hasSwitch() {
-        return ($this->functionBitMask & (self::FUNCTION_BIT_OUTLET)) > 0;
+    public function hasSwitch()
+    {
+        return ($this->functionBitMask & self::FUNCTION_BIT_OUTLET) > 0;
     }
 
-    public function hasPowerMeter() {
-        return ($this->functionBitMask & (self::FUNCTION_BIT_POWER_METER)) > 0;
+    public function hasPowerMeter()
+    {
+        return ($this->functionBitMask & self::FUNCTION_BIT_POWER_METER) > 0;
     }
 }

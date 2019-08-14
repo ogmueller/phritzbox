@@ -3,10 +3,6 @@
 namespace App\Device;
 
 use App\Device;
-use App\Device\PowerMeterInterface;
-use App\Device\SwitchInterface;
-use App\Device\TemperatureInterface;
-use http\Exception\UnexpectedValueException;
 
 trait PowerMeterTrait
 {
@@ -25,6 +21,20 @@ trait PowerMeterTrait
      */
     protected $powerMeterEnergy;
 
+    protected function setXmlForPowerMeter(\SimpleXMLElement $xml)
+    {
+        if ($node = $xml->powermeter) {
+            if (isset($node->voltage)) {
+                $this->setPowerMeterVoltage((float)$node->voltage / 1000);
+            }
+            if (isset($node->power)) {
+                $this->setPowerMeterPower((float)$node->power / 1000);
+            }
+            if (isset($node->energy)) {
+                $this->setPowerMeterEnergy((float)$node->energy / 1000);
+            }
+        }
+    }
 
     public function voltage()
     {
