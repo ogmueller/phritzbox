@@ -3,7 +3,7 @@
   "type": "project",
   "minimum-stability": "stable",
   "require": {
-    "php": "^7.2.0",
+    "php": "^7.2 || ^7.3",
     "ext-curl": "*",
     "ext-pdo_sqlite": "*",
     "ext-simplexml": "*",
@@ -13,24 +13,25 @@
     "erusev/parsedown": "^1.6",
     "sensio/framework-extra-bundle": "^5.1",
     "sensiolabs/security-checker": "^5.0",
-    "symfony/asset": "4.3.*",
-    "symfony/cache": "4.3.*",
-    "symfony/console": "4.3.*",
-    "symfony/dotenv": "4.3.*",
-    "symfony/expression-language": "4.3.*",
+    "symfony/asset": "^4",
+    "symfony/http-client": "^4",
+    "symfony/cache": "^4",
+    "symfony/console": "^4",
+    "symfony/dotenv": "^4",
+    "symfony/expression-language": "^4",
     "symfony/flex": "^1.1",
-    "symfony/form": "4.3.*",
-    "symfony/framework-bundle": "4.3.*",
-    "symfony/intl": "4.3.*",
+    "symfony/form": "^4",
+    "symfony/framework-bundle": "^4",
+    "symfony/intl": "^4",
     "symfony/monolog-bundle": "^3.1",
     "symfony/polyfill-php72": "^1.8",
-    "symfony/security-bundle": "4.3.*",
+    "symfony/security-bundle": "^4",
     "symfony/swiftmailer-bundle": "^3.1",
-    "symfony/translation": "4.3.*",
-    "symfony/twig-bundle": "4.3.*",
-    "symfony/validator": "4.3.*",
+    "symfony/translation": "^4",
+    "symfony/twig-bundle": "^4",
+    "symfony/validator": "^4",
     "symfony/webpack-encore-bundle": "^1.4",
-    "symfony/yaml": "4.3.*",
+    "symfony/yaml": "^4",
     "tgalopin/html-sanitizer-bundle": "^1.1",
     "twig/extensions": "^1.5",
     "twig/twig": "^2.6"
@@ -43,14 +44,14 @@
     "dama/doctrine-test-bundle": "^5.0",
     "doctrine/doctrine-fixtures-bundle": "^3.0",
     "friendsofphp/php-cs-fixer": "^2.12",
-    "symfony/browser-kit": "4.3.*",
-    "symfony/css-selector": "4.3.*",
-    "symfony/debug-bundle": "4.3.*",
+    "symfony/browser-kit": "^4",
+    "symfony/css-selector": "^4",
+    "symfony/debug-bundle": "^4",
     "symfony/maker-bundle": "^1.11",
     "symfony/phpunit-bridge": "*",
-    "symfony/stopwatch": "4.3.*",
-    "symfony/web-profiler-bundle": "4.3.*",
-    "symfony/web-server-bundle": "4.3.*"
+    "symfony/stopwatch": "^4",
+    "symfony/web-profiler-bundle": "^4",
+    "symfony/web-server-bundle": "^4"
   },
   "config": {
     "platform": {
@@ -90,7 +91,7 @@
   "extra": {
     "symfony": {
       "allow-contrib": true,
-      "require": "4.3.*"
+      "require": "^4"
     }
   }
 }
