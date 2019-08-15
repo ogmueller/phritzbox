@@ -12,38 +12,32 @@
 namespace App\Command;
 
 use App\Client\AhaApi;
-use App\Device;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressIndicator;
-use Symfony\Component\Console\Helper\Table;
-use Symfony\Component\Console\Helper\TableCell;
-use Symfony\Component\Console\Helper\TableStyle;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
- * A console command to read out the temperature of a smart home device
+ * A console command to list all know outlets
  *
  * To use this command, open a terminal window, enter into your project
  * directory and execute the following:
  *
- *     $ php bin/console smart:device:temperature
+ *     $ php bin/console smart:device:switchlist
  *
  * To output detailed information, increase the command verbosity:
  *
- *     $ php bin/console smart:device:temperature -vv
+ *     $ php bin/console smart:device:switchlist -vv
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-class SmartDeviceTemperature extends Command
+class SmartDeviceSwitchList extends Command
 {
     // to make your command lazily loaded, configure the $defaultName static property,
     // so it will be instantiated only when the command is actually called.
-    protected static $defaultName = 'smart:device:temperature';
+    protected static $defaultName = 'smart:device:switchlist';
 
     /**
      * @var SymfonyStyle
@@ -68,15 +62,8 @@ class SmartDeviceTemperature extends Command
     protected function configure(): void
     {
         $this
-            ->setDescription('Read temperature of a SmartHome device')
-            ->setHelp($this->getCommandHelp())
-            ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
-            ->addOption(
-                'simple',
-                's',
-                InputOption::VALUE_NONE,
-                'No header output'
-            );
+            ->setDescription('List all known SmartHome outlets')
+            ->setHelp($this->getCommandHelp());
     }
 
     /**
@@ -125,15 +112,16 @@ class SmartDeviceTemperature extends Command
             $progress->start('Fetching data...');
         }
 
-        $ain = $input->getArgument('ain');
-        $temperature = $this->ahaApi->getTemperature($ain);
+        $list = $this->ahaApi->getSwitchList();
 
         $output->isVerbose() && $progress->finish('Done');
 
-        if(!empty($temperature)) {
-            $this->io->writeln($temperature);
+        if (count($list)) {
+            foreach ($list as $ain) {
+                $this->io->writeln($ain);
+            }
         } else {
-            $errOutput->writeln('No temperature available on that device');
+            $errOutput->writeln('No switches available');
             $returnCode = 1;
         }
 
@@ -142,7 +130,7 @@ class SmartDeviceTemperature extends Command
         if ($output->isVeryVerbose()) {
             $this->io->comment(
                 sprintf(
-                    'SmartHome List: Elapsed time: %.2f ms / Consumed memory: %.2f MB',
+                    'SmartHome SwitchList: Elapsed time: %.2f ms / Consumed memory: %.2f MB',
                     $event->getDuration(),
                     $event->getMemory() / (1024 ** 2)
                 )

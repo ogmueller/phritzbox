@@ -3,8 +3,14 @@
 namespace App\Client;
 
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class Helper
 {
@@ -19,38 +25,44 @@ class Helper
      * Make HTTP request
      *
      * @param  string  $url
+     * @param  array   $options
      * @return bool|string
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
      */
-    public function requestUrl(string $url)
+    public function requestUrl(string $url, array $options = []): ?ResponseInterface
     {
-        $curl = curl_init();
-        curl_setopt_array(
-            $curl,
+        $httpClient = HttpClient::create(
             [
-                CURLOPT_URL            => $url,
-                CURLOPT_RETURNTRANSFER => 1,
-                CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_2_0,
-                CURLOPT_CONNECTTIMEOUT => 5,
-                CURLOPT_TIMEOUT        => 30,
-                CURLOPT_USERAGENT      => 'phritzbox',
+                'http_version' => '2.0',
+                'timeout'      => 30,
+                'headers'      => [
+                    'User-Agent' => 'phritzbox',
+                ],
             ]
         );
-        $response = curl_exec($curl);
-//        dump($response);
-        $responseCode = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
 
-        if (curl_errno($curl)) {
-//            var_dump($response);
-            throw new HttpRequestException($curl, $url);
+        try {
+            $response = $httpClient->request('GET', $url, $options);
+            // do a getContent to actually wait for the request to finish
+            // and catch its exceptions
+            $response->getContent();
+        } catch (TransportExceptionInterface    // When a network error occurs
+        | RedirectionExceptionInterface         // On a 3xx and the "max_redirects" option has been reached
+        | ClientExceptionInterface              // On a 4xx
+        | ServerExceptionInterface $e           // On a 5xx
+        ) {
+            $responseCode = $response->getStatusCode();
+            if ($responseCode === 403) {
+                $this->deleteSid();
+                throw new AccessDeniedHttpException('Access denied.');
+            }
+
+            // TODO: this should be logged
+            dump($e);
+
+            return null;
         }
-
-        if ($responseCode === 403) {
-            $this->deleteSid();
-            throw new AccessDeniedHttpException('Access denied.');
-        }
-
-        curl_close($curl);
 
         return $response;
     }
@@ -87,7 +99,7 @@ class Helper
 
                 // send initial request
                 $response = $this->requestUrl($_ENV['APP_API_URL_LOGIN']);
-                $xml      = simplexml_load_string($response);
+                $xml      = simplexml_load_string($response->getContent());
                 if (!$xml || !isset($xml->Challenge)) {
                     throw new InvalidResponseException('Unexpected HTTP response');
                 }
@@ -103,10 +115,13 @@ class Helper
                     $pass              = md5(mb_convert_encoding($pass, 'UTF-16LE'));
                     $challengeResponse = $challenge.'-'.$pass;
                     // send response to fritzbox
-                    $url      = $_ENV['APP_API_URL_LOGIN'].'?username='.$_ENV['APP_API_USERNAME'].'&response='.$challengeResponse;
-                    $response = $this->requestUrl($url);
+                    $query    = [
+                        'username' => $_ENV['APP_API_USERNAME'],
+                        'response' => $challengeResponse,
+                    ];
+                    $response = $this->requestUrl($_ENV['APP_API_URL_LOGIN'], ['query' => $query]);
 
-                    $xml = simplexml_load_string($response);
+                    $xml = simplexml_load_string($response->getContent());
                     if (!$xml || !isset($xml->SID)) {
                         throw new InvalidResponseException('Unexpected HTTP response');
                     }

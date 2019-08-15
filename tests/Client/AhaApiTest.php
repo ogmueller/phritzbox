@@ -7,6 +7,8 @@ use App\Client\Helper;
 use App\Device;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
  * AhaApi tests with mocks
@@ -23,10 +25,11 @@ class AhaApiTest extends TestCase
                        ->setMethods(['requestUrl', 'getSid'])
                        ->getMock();
 
+        $client = new MockHttpClient(new MockResponse($deviceXml));
         $helper->expects($this->any())
                ->method('requestUrl')
                ->withAnyParameters()
-               ->willReturn($deviceXml);
+               ->willReturn($client->request('GET','https://fritz.box'));
 
         $helper->expects($this->any())
                ->method('getSid')

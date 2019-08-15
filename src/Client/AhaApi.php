@@ -5,6 +5,11 @@ namespace App\Client;
 use App\Device;
 use SensioLabs\Security\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * Class AhaApi
@@ -38,10 +43,10 @@ class AhaApi
      * @param  string       $command
      * @param  string|null  $ain
      * @param  string|null  $param
-     * @return string|null
+     * @return ResponseInterface|null
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function commandUrl(string $command, string $ain = null, string $param = null): ?string
+    protected function commandUrl(string $command, string $ain = null, string $param = null): ?ResponseInterface
     {
         try {
             $sid = $this->helper->getSid();
@@ -51,21 +56,24 @@ class AhaApi
             return null;
         }
 
-        $url = $_ENV['APP_API_URL_AHA'].'?sid='.urlencode($sid).'&switchcmd='.urlencode($command);
+        $query = [
+            'sid'       => $sid,
+            'switchcmd' => $command,
+        ];
         if (!empty($ain)) {
-            $url .= '&ain='.urlencode($ain);
+            $query['ain'] = $ain;
         }
         if (!empty($param)) {
-            $url .= '&param='.urlencode($param);
+            $query['param'] = $param;
         }
 
         try {
-            $response = $this->helper->requestUrl($url);
+            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         } catch (AccessDeniedHttpException $e) {
             // get new SID and retry request
             $this->helper->deleteSid();
             var_dump('retry with new SID');
-            $response = $this->helper->requestUrl($url);
+            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         }
 
 //        var_dump($response);
@@ -76,36 +84,42 @@ class AhaApi
     /**
      * Deliver basic information about all SmartHome devices
      */
-    public function getTemperature(string $ain)
+    public function getSwitchList()
     {
-        $response = $this->commandUrl('gettemperature', $ain);
-        $response = trim($response);
-        dump($response);
-        if (!empty($response)) {
-            $response /= 10.0;
+        $response = $this->commandUrl('getswitchlist');
+
+        if($response === null) {
+            return null;
         }
 
-        return $response;
+        $content  = trim($response->getContent());
+        dump($content);
+        if (!empty($content)) {
+            $content = explode(',', $content);
+        } else {
+            $content = [];
+        }
+
+        return $content;
     }
 
     /**
      * Deliver basic information about all SmartHome devices
      */
-    public function getSwitchList()
+    public function getTemperature(string $ain)
     {
-        $xml = $this->commandUrl('getswitchlist');
+        $response = $this->commandUrl('gettemperature', $ain);
 
-        if (!$xml || !$xml->device) {
-            throw new InvalidResponseException('No devices available');
-        }
-        dump($xml);
-
-        $devices = [];
-        foreach ($xml->device as $device) {
-            $devices[] = Device::xmlFactory($device);
+        if($response === null) {
+            return null;
         }
 
-        return $devices;
+        $content  = trim($response->getContent());
+        if (!empty($content)) {
+            $content /= 10.0;
+        }
+
+        return $content;
     }
 
     /**
@@ -116,7 +130,7 @@ class AhaApi
         $response = $this->commandUrl('getdevicelistinfos');
 
         try {
-            $xml = simplexml_load_string($response);
+            $xml = simplexml_load_string($response->getContent());
         } catch (\Exception $e) {
             $this->helper->deleteSid();
 
@@ -128,7 +142,7 @@ class AhaApi
 
             var_dump($response);
 
-            throw new HttpException('Unknown response for '.$command);
+            throw new HttpException('Unknown response for getdevicelistinfos');
         }
 
         if (!$xml || !$xml->device) {
