@@ -81,7 +81,7 @@ class AhaApi
         $response = $this->commandUrl('gettemperature', $ain);
         $response = trim($response);
         dump($response);
-        if(!empty($response)) {
+        if (!empty($response)) {
             $response /= 10.0;
         }
 
