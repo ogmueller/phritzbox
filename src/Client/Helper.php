@@ -36,8 +36,8 @@ class Helper
                 CURLOPT_USERAGENT      => 'phritzbox',
             ]
         );
-        $response     = curl_exec($curl);
-        dump($response);
+        $response = curl_exec($curl);
+//        dump($response);
         $responseCode = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
 
         if (curl_errno($curl)) {

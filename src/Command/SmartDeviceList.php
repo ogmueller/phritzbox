@@ -12,7 +12,6 @@
 namespace App\Command;
 
 use App\Client\AhaApi;
-use App\Client\Helper;
 use App\Device;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressIndicator;
@@ -39,7 +38,7 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-class ListSmartDevices extends Command
+class SmartDeviceList extends Command
 {
     // to make your command lazily loaded, configure the $defaultName static property,
     // so it will be instantiated only when the command is actually called.
@@ -139,24 +138,27 @@ class ListSmartDevices extends Command
             ];
 
             if ($device->hasTemperature()) {
-                $offset      = $device->getTemperatureOffset();
-                $temperature = $device->getTemperatureCelsius() + $offset;
+                $feature     = $device->feature(Device::FEATURE_TEMPERATURE_SENSOR);
+                $offset      = $feature->getTemperatureOffset();
+                $temperature = $feature->getTemperatureCelsius() + $offset;
                 $row[]       = sprintf('%02.1fC / %02.1fC', $temperature, $offset);
             } else {
                 $row[] = '-';
             }
 
-            if ($device->hasSwitch()) {
-                $status = $device->isSwitchState();
-                $row[]  = $status ? 'On' : 'Off';
+            if ($device->hasOutlet()) {
+                $feature = $device->feature(Device::FEATURE_OUTLET);
+                $status  = $feature->isSwitchState();
+                $row[]   = $status ? 'On' : 'Off';
             } else {
                 $row[] = '-';
             }
 
             if ($device->hasPowerMeter()) {
-                $row[] = sprintf('%03.1fV', $device->getPowerMeterVoltage());
-                $row[] = sprintf('%03.1fV', $device->getPowerMeterPower());
-                $row[] = sprintf('%03.1fV', $device->getPowerMeterEnergy());
+                $feature = $device->feature(Device::FEATURE_POWER_METER);
+                $row[] = sprintf('%03.1fV', $feature->getPowerMeterVoltage());
+                $row[] = sprintf('%03.1fV', $feature->getPowerMeterPower());
+                $row[] = sprintf('%03.1fV', $feature->getPowerMeterEnergy());
             } else {
                 $row[] = new TableCell('-', ['colspan' => 3]);
             }
@@ -173,8 +175,7 @@ class ListSmartDevices extends Command
                 ->setHorizontalBorderChars('')
                 ->setVerticalBorderChars('')
                 ->setDefaultCrossingChar('')
-                ->setBorderFormat('')
-            ;
+                ->setBorderFormat('');
 
             $table->setStyle($borderless);
         }

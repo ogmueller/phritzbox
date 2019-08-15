@@ -34,37 +34,78 @@ class AhaApi
         $this->helper = $helper;
     }
 
-    protected function commandUrl(string $command): \SimpleXMLElement
+    /**
+     * @param  string       $command
+     * @param  string|null  $ain
+     * @param  string|null  $param
+     * @return string|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function commandUrl(string $command, string $ain = null, string $param = null): ?string
     {
-        $sid = $this->helper->getSid();
         try {
-            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'].'?sid='.$sid.'&switchcmd='.$command);
+            $sid = $this->helper->getSid();
+        } catch (\Exception $e) {
+            dump($e);
+
+            return null;
+        }
+
+        $url = $_ENV['APP_API_URL_AHA'].'?sid='.urlencode($sid).'&switchcmd='.urlencode($command);
+        if (!empty($ain)) {
+            $url .= '&ain='.urlencode($ain);
+        }
+        if (!empty($param)) {
+            $url .= '&param='.urlencode($param);
+        }
+
+        try {
+            $response = $this->helper->requestUrl($url);
         } catch (AccessDeniedHttpException $e) {
             // get new SID and retry request
             $this->helper->deleteSid();
             var_dump('retry with new SID');
-            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'].'?sid='.$sid.'&switchcmd='.$command);
+            $response = $this->helper->requestUrl($url);
         }
 
 //        var_dump($response);
-        try {
-            $xml = simplexml_load_string($response);
-        } catch (\Exception $e) {
-            Helper::deleteSid();
 
-            throw $e;
+        return $response;
+    }
+
+    /**
+     * Deliver basic information about all SmartHome devices
+     */
+    public function getTemperature(string $ain)
+    {
+        $response = $this->commandUrl('gettemperature', $ain);
+        $response = trim($response);
+        dump($response);
+        if(!empty($response)) {
+            $response /= 10.0;
         }
-        if ($xml === false) {
-            Helper::deleteSid();
 
-            var_dump($response);
+        return $response;
+    }
 
-            throw new HttpException('Unknown response for '.$command);
+    /**
+     * Deliver basic information about all SmartHome devices
+     */
+    public function getSwitchList()
+    {
+        $xml = $this->commandUrl('getswitchlist');
+
+        if (!$xml || !$xml->device) {
+            throw new InvalidResponseException('No devices available');
+        }
+        dump($xml);
+
+        $devices = [];
+        foreach ($xml->device as $device) {
+            $devices[] = Device::xmlFactory($device);
         }
 
-//        var_dump($xml);
-
-        return $xml;
+        return $devices;
     }
 
     /**
@@ -72,7 +113,23 @@ class AhaApi
      */
     public function getDeviceListInfos()
     {
-        $xml = $this->commandUrl('getdevicelistinfos');
+        $response = $this->commandUrl('getdevicelistinfos');
+
+        try {
+            $xml = simplexml_load_string($response);
+        } catch (\Exception $e) {
+            $this->helper->deleteSid();
+
+            dump($response);
+            throw $e;
+        }
+        if ($xml === false) {
+            $this->helper->deleteSid();
+
+            var_dump($response);
+
+            throw new HttpException('Unknown response for '.$command);
+        }
 
         if (!$xml || !$xml->device) {
             throw new InvalidResponseException('No devices available');

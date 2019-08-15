@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Device;
+namespace App\Device\Feature;
 
 use App\Device;
 
-trait TemperatureTrait
+class Temperature extends Device\Feature
 {
     /**
      * @var float
@@ -16,7 +16,7 @@ trait TemperatureTrait
      */
     protected $temperatureOffset;
 
-    protected function setXmlForTemperature(\SimpleXMLElement $xml)
+    public function setXml(\SimpleXMLElement $xml)
     {
         if ($node = $xml->temperature) {
             if (isset($node->celsius)) {
@@ -28,9 +28,12 @@ trait TemperatureTrait
         }
     }
 
-    public function temperature()
+    public function toArray(): array
     {
-        // TODO: Implement temperature() method.
+        return [
+            'temperatureCelsius' => $this->getTemperatureCelsius(),
+            'temperatureOffset'  => $this->getTemperatureOffset(),
+        ];
     }
 
     /**
@@ -45,7 +48,7 @@ trait TemperatureTrait
      * @param  float  $temperatureCelsius
      * @return Device
      */
-    public function setTemperatureCelsius(float $temperatureCelsius): Device
+    public function setTemperatureCelsius(float $temperatureCelsius): Temperature
     {
         $this->temperatureCelsius = $temperatureCelsius;
 
@@ -64,7 +67,7 @@ trait TemperatureTrait
      * @param  float  $temperatureOffset
      * @return Device
      */
-    public function setTemperatureOffset(float $temperatureOffset): Device
+    public function setTemperatureOffset(float $temperatureOffset): Temperature
     {
         $this->temperatureOffset = $temperatureOffset;
 

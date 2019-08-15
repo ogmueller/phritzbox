@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Device;
+namespace App\Device\Feature;
 
 use App\Device;
+use App\Device\Feature;
 
-trait PowerMeterTrait
+class PowerMeter extends Feature
 {
     /**
      * @var float
@@ -21,7 +22,7 @@ trait PowerMeterTrait
      */
     protected $powerMeterEnergy;
 
-    protected function setXmlForPowerMeter(\SimpleXMLElement $xml)
+    public function setXml(\SimpleXMLElement $xml)
     {
         if ($node = $xml->powermeter) {
             if (isset($node->voltage)) {
@@ -36,19 +37,13 @@ trait PowerMeterTrait
         }
     }
 
-    public function voltage()
+    public function toArray(): array
     {
-        // TODO: Implement voltage() method.
-    }
-
-    public function power()
-    {
-        // TODO: Implement power() method.
-    }
-
-    public function energy()
-    {
-        // TODO: Implement energy() method.
+        return [
+            'powerMeterEnergy'  => $this->getPowerMeterEnergy(),
+            'powerMeterPower'   => $this->getPowerMeterPower(),
+            'powerMeterVoltage' => $this->getPowerMeterVoltage(),
+        ];
     }
 
     /**
@@ -63,7 +58,7 @@ trait PowerMeterTrait
      * @param  float  $powerMeterVoltage
      * @return Device
      */
-    public function setPowerMeterVoltage(float $powerMeterVoltage): Device
+    public function setPowerMeterVoltage(float $powerMeterVoltage): PowerMeter
     {
         $this->powerMeterVoltage = $powerMeterVoltage;
 
@@ -82,7 +77,7 @@ trait PowerMeterTrait
      * @param  float  $powerMeterPower
      * @return Device
      */
-    public function setPowerMeterPower(float $powerMeterPower): Device
+    public function setPowerMeterPower(float $powerMeterPower): PowerMeter
     {
         $this->powerMeterPower = $powerMeterPower;
 
@@ -101,7 +96,7 @@ trait PowerMeterTrait
      * @param  float  $powerMeterEnergy
      * @return Device
      */
-    public function setPowerMeterEnergy(float $powerMeterEnergy): Device
+    public function setPowerMeterEnergy(float $powerMeterEnergy): PowerMeter
     {
         $this->powerMeterEnergy = $powerMeterEnergy;
 

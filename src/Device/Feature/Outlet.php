@@ -1,14 +1,12 @@
 <?php
 
-namespace App\Device;
+namespace App\Device\Feature;
 
 use App\Device;
-use App\Device\PowerMeterInterface;
-use App\Device\SwitchInterface;
-use App\Device\TemperatureInterface;
-use http\Exception\UnexpectedValueException;
+use App\Device\Feature;
+use UnexpectedValueException;
 
-trait SwitchTrait
+class Outlet extends Feature
 {
     /**
      * @var bool
@@ -30,21 +28,11 @@ trait SwitchTrait
      */
     protected $switchDeviceLock;
 
-
-    public function switchState()
-    {
-        // TODO: Implement switchState() method.
-    }
-
-    public function setSwitch()
-    {
-        // TODO: Implement setSwitch() method.
-    }
-
     /**
      * @param  \SimpleXMLElement  $xml
      */
-    protected function setXmlForSwitch(\SimpleXMLElement $xml) {
+    public function setXml(\SimpleXMLElement $xml)
+    {
         if ($node = $xml->switch) {
             if (isset($node->state)) {
                 $this->setSwitchState((bool)$node->state);
@@ -61,6 +49,16 @@ trait SwitchTrait
         }
     }
 
+    public function toArray(): array
+    {
+        return [
+            'switchDeviceLock' => $this->isSwitchDeviceLock(),
+            'switchLock'       => $this->isSwitchLock(),
+            'switchMode'       => $this->getSwitchMode(),
+            'switchState'      => $this->isSwitchState(),
+        ];
+    }
+
     /**
      * @return bool
      */
@@ -73,7 +71,7 @@ trait SwitchTrait
      * @param  bool  $switchState
      * @return Device
      */
-    public function setSwitchState(bool $switchState): Device
+    public function setSwitchState(bool $switchState): Outlet
     {
         $this->switchState = $switchState;
 
@@ -94,17 +92,17 @@ trait SwitchTrait
      * @param  string  $switchMode
      * @return Device
      */
-    public function setSwitchMode(string $switchMode): Device
+    public function setSwitchMode(string $switchMode): Outlet
     {
         $switchMode = strtolower($switchMode);
 
         $validSwitchModes = ['auto', 'manuell', 'manual'];
-        if( !in_array($switchMode, $validSwitchModes) ) {
+        if (!in_array($switchMode, $validSwitchModes)) {
             throw new UnexpectedValueException('Unknow switch mode');
         }
 
         // translate into english
-        if($switchMode == 'manuell') {
+        if ($switchMode === 'manuell') {
             $switchMode = 'manual';
         }
 
@@ -125,7 +123,7 @@ trait SwitchTrait
      * @param  bool  $switchLock
      * @return Device
      */
-    public function setSwitchLock(bool $switchLock): Device
+    public function setSwitchLock(bool $switchLock): Outlet
     {
         $this->switchLock = $switchLock;
 
@@ -144,7 +142,7 @@ trait SwitchTrait
      * @param  bool  $switchDeviceLock
      * @return Device
      */
-    public function setSwitchDeviceLock(bool $switchDeviceLock): Device
+    public function setSwitchDeviceLock(bool $switchDeviceLock): Outlet
     {
         $this->switchDeviceLock = $switchDeviceLock;
 

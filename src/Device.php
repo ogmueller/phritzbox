@@ -2,7 +2,7 @@
 
 namespace App;
 
-use Symfony\Component\Yaml\Parser;
+use App\Device\Feature;
 
 class Device
 {
@@ -23,6 +23,14 @@ class Device
     const FUNCTION_BIT_MICROFON = 1 << 11;
 
     const FUNCTION_BIT_HANFUN_UNIT = 1 << 13;
+
+    const FEATURE_ALARM = 'alarm';
+
+    const FEATURE_POWER_METER = 'power';
+
+    const FEATURE_TEMPERATURE_SENSOR = 'temp';
+
+    const FEATURE_OUTLET = 'outlet';
 
     /**
      * @var array
@@ -69,8 +77,21 @@ class Device
      */
     protected $productName;
 
+    /**
+     * @var Feature[]
+     */
+    protected $featureList = [];
+
     public function __construct()
     {
+    }
+
+    /**
+     * @return Feature|null
+     */
+    public function feature($name): ?Feature
+    {
+        return isset($this->featureList[$name]) ? $this->featureList[$name] : null;
     }
 
     /**
@@ -80,7 +101,7 @@ class Device
      */
     public function toArray(): array
     {
-        return [
+        $array = [
             'firmwareVersion' => $this->getFirmwareVersion(),
             'functionBitMask' => $this->getFunctionBitMask(),
             'id'              => $this->getId(),
@@ -90,6 +111,13 @@ class Device
             'present'         => $this->isPresent(),
             'productName'     => $this->getProductName(),
         ];
+
+        /** @var Feature $feature */
+        foreach ($this->featureList as $feature) {
+            $array += $feature->toArray();
+        }
+
+        return $array;
     }
 
     /**
@@ -127,6 +155,11 @@ class Device
         if ($xml->name) {
             $this->setName((string)$xml->name);
         }
+
+        /** @var Feature $feature */
+        foreach ($this->featureList as $feature) {
+            $feature->setXml($xml);
+        }
     }
 
     /**
@@ -137,25 +170,25 @@ class Device
      */
     static public function xmlFactory(\SimpleXMLElement $xml): Device
     {
-        if (empty(self::$mapping)) {
-            $yaml          = new Parser();
-            self::$mapping = $yaml->parse(file_get_contents(__DIR__.'/../config/devices.yaml'));
-        }
+//        if (empty(self::$mapping)) {
+//            $yaml          = new Parser();
+//            self::$mapping = $yaml->parse(file_get_contents(__DIR__.'/../config/devices.yaml'));
+//        }
 
         // analyse XML to identify device
-        $attr = $xml->attributes();
+//        $attr = $xml->attributes();
 
-        $className = '\App\Device';
-        if (isset($attr['manufacturer']) && isset($attr['productname'])) {
-            $manufacturer = strtolower($attr['manufacturer']);
-            $productName  = strtolower($attr['productname']);
-            if (!empty(self::$mapping[$manufacturer][$productName])) {
-                $className = self::$mapping[$manufacturer][$productName];
-            }
-        }
+//        $className = '\App\Device';
+//        if (isset($attr['manufacturer']) && isset($attr['productname'])) {
+//            $manufacturer = strtolower($attr['manufacturer']);
+//            $productName  = strtolower($attr['productname']);
+//            if (!empty(self::$mapping[$manufacturer][$productName])) {
+//                $className = self::$mapping[$manufacturer][$productName];
+//            }
+//        }
 
         /** @var Device $device */
-        $device = new $className;
+        $device = new Device();
         $device->setXml($xml);
 
         return $device;
@@ -253,6 +286,22 @@ class Device
     {
         $this->functionBitMask = $functionBitMask;
 
+//        if( $this->hasAlarm() ) {
+//            $this->featureList[self::FEATURE_ALARM] = new Feature\Alarm();
+//        }
+
+        if ($this->hasPowerMeter()) {
+            $this->featureList[self::FEATURE_POWER_METER] = new Feature\PowerMeter();
+        }
+
+        if ($this->hasOutlet()) {
+            $this->featureList[self::FEATURE_OUTLET] = new Feature\Outlet();
+        }
+
+        if ($this->hasTemperature()) {
+            $this->featureList[self::FEATURE_TEMPERATURE_SENSOR] = new Feature\Temperature();
+        }
+
         return $this;
     }
 
@@ -323,7 +372,7 @@ class Device
         return ($this->functionBitMask & self::FUNCTION_BIT_TEMPERATURE_SENSOR) > 0;
     }
 
-    public function hasSwitch()
+    public function hasOutlet()
     {
         return ($this->functionBitMask & self::FUNCTION_BIT_OUTLET) > 0;
     }
