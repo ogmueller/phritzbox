@@ -11,10 +11,9 @@
 
 namespace App\Command;
 
-use App\Client\AhaApi;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Helper\ProgressIndicator;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
@@ -25,36 +24,19 @@ use Symfony\Component\Stopwatch\Stopwatch;
  * To use this command, open a terminal window, enter into your project
  * directory and execute the following:
  *
- *     $ php bin/console smart:device:switchlist
+ *     $ php bin/console smart:switch:on
  *
  * To output detailed information, increase the command verbosity:
  *
- *     $ php bin/console smart:device:switchlist -vv
+ *     $ php bin/console smart:switch:on -vv
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-class SmartDeviceSwitchList extends Command
+class SmartSwitchOff extends Smart
 {
     // to make your command lazily loaded, configure the $defaultName static property,
     // so it will be instantiated only when the command is actually called.
-    protected static $defaultName = 'smart:device:switchlist';
-
-    /**
-     * @var SymfonyStyle
-     */
-    private $io;
-
-    /**
-     * @var AhaApi
-     */
-    private $ahaApi;
-
-    public function __construct(AhaApi $ahaApi)
-    {
-        parent::__construct();
-
-        $this->ahaApi = $ahaApi;
-    }
+    protected static $defaultName = 'smart:switch:off';
 
     /**
      * {@inheritdoc}
@@ -62,8 +44,15 @@ class SmartDeviceSwitchList extends Command
     protected function configure(): void
     {
         $this
-            ->setDescription('List all known SmartHome outlets')
-            ->setHelp($this->getCommandHelp());
+            ->setDescription('Turn off a SmartHome outlet')
+            ->setHelp($this->getCommandHelp())
+            ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
+            ->addOption(
+                'simple',
+                's',
+                InputOption::VALUE_NONE,
+                'Binary output 0/1'
+            );
     }
 
     /**
@@ -95,46 +84,26 @@ class SmartDeviceSwitchList extends Command
     {
     }
 
-    /**
-     * This method is executed after interact() and initialize(). It usually
-     * contains the logic to execute to complete this command task.
-     */
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $stopwatch = new Stopwatch();
-        $stopwatch->start(self::$defaultName);
-
-        $errOutput  = $output->getErrorOutput();
+    protected function executeSmart(
+        InputInterface $input,
+        OutputInterface $output,
+        OutputInterface $errOutput,
+        Stopwatch $stopwatch
+    ): int {
         $returnCode = 0;
 
-        if ($output->isVerbose()) {
-            $progress = new ProgressIndicator($output);
-            $progress->start('Fetching data...');
-        }
+        $ain   = $input->getArgument('ain');
+        $state = $this->ahaApi->setSwitchOff($ain);
 
-        $list = $this->ahaApi->getSwitchList();
-
-        $output->isVerbose() && $progress->finish('Done');
-
-        if (count($list)) {
-            foreach ($list as $ain) {
-                $this->io->writeln($ain);
+        if ($state === '0') {
+            if ($input->getOption('simple')) {
+                $this->io->writeln($state);
+            } else {
+                $this->io->writeln('Switch '.$ain.' is now <fg=red>OFF</>');
             }
         } else {
             $errOutput->writeln('No switches available');
             $returnCode = 1;
-        }
-
-        $event = $stopwatch->stop(self::$defaultName);
-
-        if ($output->isVeryVerbose()) {
-            $this->io->comment(
-                sprintf(
-                    'SmartHome SwitchList: Elapsed time: %.2f ms / Consumed memory: %.2f MB',
-                    $event->getDuration(),
-                    $event->getMemory() / (1024 ** 2)
-                )
-            );
         }
 
         return $returnCode;

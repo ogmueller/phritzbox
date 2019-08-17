@@ -5,10 +5,6 @@ namespace App\Client;
 use App\Device;
 use SensioLabs\Security\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
@@ -81,19 +77,31 @@ class AhaApi
         return $response;
     }
 
-    /**
-     * Deliver basic information about all SmartHome devices
-     */
-    public function getSwitchList()
+    protected function basicCommand(string $command, string $ain = null): ?string
     {
-        $response = $this->commandUrl('getswitchlist');
+        $response = $this->commandUrl($command, $ain);
 
-        if($response === null) {
+        if ($response === null) {
             return null;
         }
 
-        $content  = trim($response->getContent());
-        dump($content);
+        $content = trim($response->getContent());
+
+        return $content;
+    }
+
+    /**
+     * Delivers AIN/MAC of all SmartHome outlets
+     */
+    public function getSwitchList(): ?array
+    {
+        $response = $this->commandUrl('getswitchlist');
+
+        if ($response === null) {
+            return null;
+        }
+
+        $content = trim($response->getContent());
         if (!empty($content)) {
             $content = explode(',', $content);
         } else {
@@ -104,22 +112,67 @@ class AhaApi
     }
 
     /**
-     * Deliver basic information about all SmartHome devices
+     * Switch on a SmartHome outlet
      */
-    public function getTemperature(string $ain)
+    public function setSwitchOn(string $ain)
     {
-        $response = $this->commandUrl('gettemperature', $ain);
+        return $this->basicCommand('setswitchon', $ain);
+    }
 
-        if($response === null) {
-            return null;
-        }
+    /**
+     * Switch off a SmartHome outlet
+     */
+    public function setSwitchOff(string $ain)
+    {
+        return $this->basicCommand('setswitchoff', $ain);
+    }
 
-        $content  = trim($response->getContent());
-        if (!empty($content)) {
-            $content /= 10.0;
-        }
+    /**
+     * Toggle power state off a SmartHome outlet
+     */
+    public function setSwitchToggle(string $ain)
+    {
+        return $this->basicCommand('setswitchtoggle', $ain);
+    }
 
-        return $content;
+    /**
+     * Determine availability of a SmartHome outlet
+     *
+     * If a device gets disconnected it state might need
+     * a couple of minutes to be recognized.
+     */
+    public function getSwitchPresent(string $ain)
+    {
+        return $this->basicCommand('getswitchpresent', $ain);
+    }
+
+    /**
+     * Get current power consumption off a SmartHome outlet
+     *
+     * Value reading is delayed by a few seconds.
+     */
+    public function getSwitchPower(string $ain)
+    {
+        return $this->basicCommand('getswitchpower', $ain);
+    }
+
+    /**
+     * Get energy quantity delivered over a SmartHome outlet
+     *
+     * Value reflects consumption since first use of outlet
+     * or last reset of energy statistics.
+     */
+    public function getSwitchEnergy(string $ain)
+    {
+        return $this->basicCommand('getswitchenergy', $ain);
+    }
+
+    /**
+     * Get name of a SmartHome outlet
+     */
+    public function getSwitchName(string $ain)
+    {
+        return $this->basicCommand('getswitchname', $ain);
     }
 
     /**
@@ -155,5 +208,13 @@ class AhaApi
         }
 
         return $devices;
+    }
+
+    /**
+     * Deliver basic information about all SmartHome devices
+     */
+    public function getTemperature(string $ain)
+    {
+        return $this->basicCommand('gettemperature', $ain);
     }
 }

@@ -11,13 +11,6 @@
 
 namespace App\Command;
 
-use App\Client\AhaApi;
-use App\Device;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Helper\ProgressIndicator;
-use Symfony\Component\Console\Helper\Table;
-use Symfony\Component\Console\Helper\TableCell;
-use Symfony\Component\Console\Helper\TableStyle;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -39,28 +32,11 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-class SmartDeviceTemperature extends Command
+class SmartSwitchEnergy extends Smart
 {
     // to make your command lazily loaded, configure the $defaultName static property,
     // so it will be instantiated only when the command is actually called.
-    protected static $defaultName = 'smart:device:temperature';
-
-    /**
-     * @var SymfonyStyle
-     */
-    private $io;
-
-    /**
-     * @var AhaApi
-     */
-    private $ahaApi;
-
-    public function __construct(AhaApi $ahaApi)
-    {
-        parent::__construct();
-
-        $this->ahaApi = $ahaApi;
-    }
+    protected static $defaultName = 'smart:switch:energy';
 
     /**
      * {@inheritdoc}
@@ -68,14 +44,14 @@ class SmartDeviceTemperature extends Command
     protected function configure(): void
     {
         $this
-            ->setDescription('Read temperature of a SmartHome device')
+            ->setDescription('Read energy quantity delivered over a SmartHome outlet [Wh]')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(
                 'simple',
                 's',
                 InputOption::VALUE_NONE,
-                'No header output'
+                'Output without unit output'
             );
     }
 
@@ -108,45 +84,34 @@ class SmartDeviceTemperature extends Command
     {
     }
 
-    /**
-     * This method is executed after interact() and initialize(). It usually
-     * contains the logic to execute to complete this command task.
-     */
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $stopwatch = new Stopwatch();
-        $stopwatch->start(self::$defaultName);
-
-        $errOutput  = $output->getErrorOutput();
+    protected function executeSmart(
+        InputInterface $input,
+        OutputInterface $output,
+        OutputInterface $errOutput,
+        Stopwatch $stopwatch
+    ): int {
         $returnCode = 0;
 
-        if ($output->isVerbose()) {
-            $progress = new ProgressIndicator($output);
-            $progress->start('Fetching data...');
-        }
+        $ain       = $input->getArgument('ain');
+        $wattHours = $this->ahaApi->getSwitchEnergy($ain);
+        dump($wattHours);
 
-        $ain = $input->getArgument('ain');
-        $temperature = $this->ahaApi->getTemperature($ain);
+        if (!empty($wattHours) || is_numeric($wattHours)) {
+            $wattHours = (int)$wattHours;
 
-        $output->isVerbose() && $progress->finish('Done');
-
-        if(!empty($temperature)) {
-            $this->io->writeln($temperature);
+            if (!$input->getOption('simple')) {
+                $prefix = ['', 'k', 'M', 'G', 'T', 'P'];
+                $base   = 0;
+                if ($wattHours > 0) {
+                    $base      = floor(log($wattHours, 1000));
+                    $wattHours = round($wattHours / pow(1000, $base), 2);
+                }
+                $wattHours = $wattHours.' '.$prefix[$base].'Wh';
+            }
+            $this->io->writeln($wattHours);
         } else {
-            $errOutput->writeln('No temperature available on that device');
+            $errOutput->writeln('No energy quantity available on that device');
             $returnCode = 1;
-        }
-
-        $event = $stopwatch->stop(self::$defaultName);
-
-        if ($output->isVeryVerbose()) {
-            $this->io->comment(
-                sprintf(
-                    'SmartHome List: Elapsed time: %.2f ms / Consumed memory: %.2f MB',
-                    $event->getDuration(),
-                    $event->getMemory() / (1024 ** 2)
-                )
-            );
         }
 
         return $returnCode;

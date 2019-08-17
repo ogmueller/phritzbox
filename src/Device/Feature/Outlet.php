@@ -35,16 +35,16 @@ class Outlet extends Feature
     {
         if ($node = $xml->switch) {
             if (isset($node->state)) {
-                $this->setSwitchState((bool)$node->state);
+                $this->setSwitchState((bool)(string)($node->state));
             }
             if (isset($node->mode)) {
                 $this->setSwitchMode((string)$node->mode);
             }
             if (isset($node->lock)) {
-                $this->setSwitchLock((bool)$node->lock);
+                $this->setSwitchLock((bool)(string)$node->lock);
             }
             if (isset($node->devicelock)) {
-                $this->setSwitchDeviceLock((bool)$node->devicelock);
+                $this->setSwitchDeviceLock((bool)(string)$node->devicelock);
             }
         }
     }

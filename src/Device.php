@@ -149,7 +149,7 @@ class Device
         }
 
         if ($xml->present) {
-            $this->setPresent((bool)$xml->present);
+            $this->setPresent((bool)(string)$xml->present);
         }
 
         if ($xml->name) {

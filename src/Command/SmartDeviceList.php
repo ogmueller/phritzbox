@@ -11,17 +11,13 @@
 
 namespace App\Command;
 
-use App\Client\AhaApi;
 use App\Device;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Helper\ProgressIndicator;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableCell;
 use Symfony\Component\Console\Helper\TableStyle;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
@@ -38,28 +34,11 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-class SmartDeviceList extends Command
+class SmartDeviceList extends Smart
 {
     // to make your command lazily loaded, configure the $defaultName static property,
     // so it will be instantiated only when the command is actually called.
     protected static $defaultName = 'smart:device:list';
-
-    /**
-     * @var SymfonyStyle
-     */
-    private $io;
-
-    /**
-     * @var AhaApi
-     */
-    private $ahaApi;
-
-    public function __construct(AhaApi $ahaApi)
-    {
-        parent::__construct();
-
-        $this->ahaApi = $ahaApi;
-    }
 
     /**
      * {@inheritdoc}
@@ -77,55 +56,14 @@ class SmartDeviceList extends Command
             );
     }
 
-    /**
-     * This optional method is the first one executed for a command after configure()
-     * and is useful to initialize properties based on the input arguments and options.
-     *
-     * @param  InputInterface   $input
-     * @param  OutputInterface  $output
-     */
-    protected function initialize(InputInterface $input, OutputInterface $output): void
-    {
-        // SymfonyStyle is an optional feature that Symfony provides so you can
-        // apply a consistent look to the commands of your application.
-        // See https://symfony.com/doc/current/console/style.html
-        $this->io = new SymfonyStyle($input, $output);
-    }
-
-    /**
-     * This method is executed after initialize() and before execute(). Its purpose
-     * is to check if some of the options/arguments are missing and interactively
-     * ask the user for those values.
-     *
-     * This method is completely optional. If you are developing an internal console
-     * command, you probably should not implement this method because it requires
-     * quite a lot of work. However, if the command is meant to be used by external
-     * users, this method is a nice way to fall back and prevent errors.
-     */
-    protected function interact(InputInterface $input, OutputInterface $output)
-    {
-    }
-
-    /**
-     * This method is executed after interact() and initialize(). It usually
-     * contains the logic to execute to complete this command task.
-     */
-    protected function execute(InputInterface $input, OutputInterface $output): void
-    {
-        $stopwatch = new Stopwatch();
-        $stopwatch->start(self::$defaultName);
-
-        if ($output->isVerbose()) {
-            $progress = new ProgressIndicator($output);
-            $progress->start('Fetching data...');
-        }
-
+    protected function executeSmart(
+        InputInterface $input,
+        OutputInterface $output,
+        OutputInterface $errOutput,
+        Stopwatch $stopwatch
+    ): int {
         $simpleOutput = $input->getOption('simple');
-
-//        $sid     = Helper::getSid();
-        $devices = $this->ahaApi->getDeviceListInfos();
-
-        $output->isVerbose() && $progress->finish('Done');
+        $devices      = $this->ahaApi->getDeviceListInfos();
 
         $table = new Table($output);
         $rows  = [];
@@ -138,6 +76,7 @@ class SmartDeviceList extends Command
             ];
 
             if ($device->hasTemperature()) {
+                /** @var Device\Feature\Temperature $feature */
                 $feature     = $device->feature(Device::FEATURE_TEMPERATURE_SENSOR);
                 $offset      = $feature->getTemperatureOffset();
                 $temperature = $feature->getTemperatureCelsius() + $offset;
@@ -147,6 +86,7 @@ class SmartDeviceList extends Command
             }
 
             if ($device->hasOutlet()) {
+                /** @var Device\Feature\Outlet $feature */
                 $feature = $device->feature(Device::FEATURE_OUTLET);
                 $status  = $feature->isSwitchState();
                 $row[]   = $status ? 'On' : 'Off';
@@ -155,10 +95,11 @@ class SmartDeviceList extends Command
             }
 
             if ($device->hasPowerMeter()) {
+                /** @var Device\Feature\PowerMeter $feature */
                 $feature = $device->feature(Device::FEATURE_POWER_METER);
-                $row[] = sprintf('%03.1fV', $feature->getPowerMeterVoltage());
-                $row[] = sprintf('%03.1fV', $feature->getPowerMeterPower());
-                $row[] = sprintf('%03.1fV', $feature->getPowerMeterEnergy());
+                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterVoltage());
+                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterPower());
+                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterEnergy());
             } else {
                 $row[] = new TableCell('-', ['colspan' => 3]);
             }
@@ -191,17 +132,7 @@ class SmartDeviceList extends Command
         $table->addRows($rows);
         $table->render();
 
-        $event = $stopwatch->stop(self::$defaultName);
-
-        if ($output->isVeryVerbose()) {
-            $this->io->comment(
-                sprintf(
-                    'SmartHome List: Elapsed time: %.2f ms / Consumed memory: %.2f MB',
-                    $event->getDuration(),
-                    $event->getMemory() / (1024 ** 2)
-                )
-            );
-        }
+        return 0;
     }
 
     /**
