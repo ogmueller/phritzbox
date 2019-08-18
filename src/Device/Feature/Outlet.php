@@ -98,7 +98,7 @@ class Outlet extends Feature
 
         $validSwitchModes = ['auto', 'manuell', 'manual'];
         if (!in_array($switchMode, $validSwitchModes)) {
-            throw new UnexpectedValueException('Unknow switch mode');
+            throw new UnexpectedValueException('Unknow switch mode "'.$switchMode.'"');
         }
 
         // translate into english

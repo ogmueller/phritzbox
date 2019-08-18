@@ -3,6 +3,7 @@
 namespace App\Client;
 
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\CacheItem;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -54,6 +55,7 @@ class Helper
         ) {
             $responseCode = $response->getStatusCode();
             if ($responseCode === 403) {
+                dump($response);
                 $this->deleteSid();
                 throw new AccessDeniedHttpException('Access denied.');
             }

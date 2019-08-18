@@ -36,9 +36,9 @@ class AhaApi
     }
 
     /**
-     * @param  string       $command
-     * @param  string|null  $ain
-     * @param  string|null  $param
+     * @param  string       $command  AHA command
+     * @param  string|null  $ain      Actor identification number
+     * @param  string|null  $param    Set value
      * @return ResponseInterface|null
      * @throws \Psr\Cache\InvalidArgumentException
      */
@@ -66,10 +66,10 @@ class AhaApi
         try {
             $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         } catch (AccessDeniedHttpException $e) {
-            // get new SID and retry request
-            $this->helper->deleteSid();
-            var_dump('retry with new SID');
-            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
+            // cached/given SID seems to be invalid. Delete cache and try to get new SID
+            var_dump('Access denied. Request new SID...');
+            $query['sid'] = $this->helper->getSid();
+            $response     = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         }
 
 //        var_dump($response);
@@ -77,9 +77,9 @@ class AhaApi
         return $response;
     }
 
-    protected function basicCommand(string $command, string $ain = null): ?string
+    protected function basicCommand(string $command, string $ain = null, string $param = null): ?string
     {
-        $response = $this->commandUrl($command, $ain);
+        $response = $this->commandUrl($command, $ain, $param);
 
         if ($response === null) {
             return null;
@@ -216,5 +216,115 @@ class AhaApi
     public function getTemperature(string $ain)
     {
         return $this->basicCommand('gettemperature', $ain);
+    }
+
+    /**
+     * Get setpoint temperature of a SmartHome smart radiator control
+     */
+    public function getSrcSetpoint(string $ain)
+    {
+        return $this->basicCommand('gethkrtsoll', $ain);
+    }
+
+    /**
+     * Get setpoint for comfort temperature of a SmartHome smart radiator control
+     */
+    public function getSrcComfort(string $ain)
+    {
+        return $this->basicCommand('gethkrkomfort', $ain);
+    }
+
+    /**
+     * Get setpoint for saving temperature of a SmartHome smart radiator control
+     */
+    public function getSrcSaving(string $ain)
+    {
+        return $this->basicCommand('gethkrabsenk', $ain);
+    }
+
+    /**
+     * Set setpoint temperature of a SmartHome smart radiator control
+     */
+    public function setSrcSetpoint(string $ain, $setpoint)
+    {
+        $setpoint = max(8, min(28, (float)$setpoint));
+
+        $setpoint = round($setpoint * 2);
+
+        return $this->basicCommand('sethkrtsoll', $ain, $setpoint);
+    }
+
+    /**
+     * Turn on a SmartHome smart radiator control
+     */
+    public function setSrcOn(string $ain)
+    {
+        return $this->basicCommand('sethkrtsoll', $ain, 254);
+    }
+
+    /**
+     * Turn off a SmartHome smart radiator control
+     */
+    public function setSrcOff(string $ain)
+    {
+        return $this->basicCommand('sethkrtsoll', $ain, 253);
+    }
+
+    /**
+     * Deliver basic information of a SmartHome device
+     */
+    public function getBasicDeviceStats(string $ain)
+    {
+        $response = $this->commandUrl('getbasicdevicestats', $ain);
+        dump($response->getContent());
+
+        try {
+            $xml = simplexml_load_string($response->getContent());
+            dump($xml);
+        } catch (\Exception $e) {
+            $this->helper->deleteSid();
+
+            dump($response);
+            throw $e;
+        }
+        if ($xml === false) {
+            $this->helper->deleteSid();
+
+            var_dump($response);
+
+            throw new HttpException('Unknown response for getbasicdevicestats');
+        }
+
+        if (!$xml || $xml->getName() !== 'devicestats') {
+            throw new InvalidResponseException('Device not available');
+        }
+
+        $statistics = [];
+        foreach ($xml->children() as $category) {
+            $name = $category->getName();
+            switch ($name) {
+                case 'temperature':
+                    $convert = 10;
+                    break;
+            }
+            if ($category->count()) {
+                foreach ($category->children() as $stats) {
+                    $attr = $stats->attributes();
+                    // number of elements
+                    $arr['count'] = (int)$attr['count'];
+                    // time resolution in seconds
+                    $arr['grid']         = (int)$attr['grid'];
+                    $arr['values']       = array_map(
+                        function ($value) use ($convert) {
+                            return $value / $convert;
+                        },
+                        explode(',', (string)$stats)
+                    );
+                    $statistics[$name][] = $arr;
+                }
+            }
+        }
+
+        return $statistics;
     }
 }
