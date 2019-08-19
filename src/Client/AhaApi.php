@@ -276,11 +276,11 @@ class AhaApi
     public function getBasicDeviceStats(string $ain)
     {
         $response = $this->commandUrl('getbasicdevicestats', $ain);
-        dump($response->getContent());
+//        dump($response->getContent());
 
         try {
             $xml = simplexml_load_string($response->getContent());
-            dump($xml);
+//            dump($xml);
         } catch (\Exception $e) {
             $this->helper->deleteSid();
 
@@ -300,23 +300,31 @@ class AhaApi
         }
 
         $statistics = [];
+        $convert    = [
+            'temperature' => [0 => 10],
+            'voltage'     => [0 => 1],
+            'power'       => [0 => 0.1],
+            'energy'      => [
+                0 => 0.01,
+                1 => 0.0001,
+            ],
+        ];
+
         foreach ($xml->children() as $category) {
             $name = $category->getName();
-            switch ($name) {
-                case 'temperature':
-                    $convert = 10;
-                    break;
-            }
             if ($category->count()) {
+                $i = 0;
                 foreach ($category->children() as $stats) {
+                    $factor = $convert[$name][$i++];
+
                     $attr = $stats->attributes();
                     // number of elements
                     $arr['count'] = (int)$attr['count'];
                     // time resolution in seconds
                     $arr['grid']         = (int)$attr['grid'];
                     $arr['values']       = array_map(
-                        function ($value) use ($convert) {
-                            return $value / $convert;
+                        function ($value) use ($factor) {
+                            return $value / $factor;
                         },
                         explode(',', (string)$stats)
                     );

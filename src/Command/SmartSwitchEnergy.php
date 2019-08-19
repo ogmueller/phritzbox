@@ -11,6 +11,7 @@
 
 namespace App\Command;
 
+use App\Client\Helper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -94,19 +95,15 @@ class SmartSwitchEnergy extends Smart
 
         $ain       = $input->getArgument('ain');
         $wattHours = $this->ahaApi->getSwitchEnergy($ain);
-        dump($wattHours);
+//        dump($wattHours);
 
         if (!empty($wattHours) || is_numeric($wattHours)) {
             $wattHours = (int)$wattHours;
 
             if (!$input->getOption('simple')) {
-                $prefix = ['', 'k', 'M', 'G', 'T', 'P'];
-                $base   = 0;
-                if ($wattHours > 0) {
-                    $base      = floor(log($wattHours, 1000));
-                    $wattHours = round($wattHours / pow(1000, $base), 2);
-                }
-                $wattHours = $wattHours.' '.$prefix[$base].'Wh';
+                $helper    = new Helper();
+                $best      = $helper->bestFactor($wattHours * 1000, 'Wh');
+                $wattHours = $best['value'].' '.$best['unit'];
             }
             $this->io->writeln($wattHours);
         } else {

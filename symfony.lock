@@ -132,6 +132,9 @@
     "nikic/php-parser": {
         "version": "v4.2.1"
     },
+    "noximo/php-colored-ascii-linechart": {
+        "version": "v1.1.1"
+    },
     "ocramius/package-versions": {
         "version": "1.4.0"
     },

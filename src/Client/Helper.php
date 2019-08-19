@@ -3,7 +3,6 @@
 namespace App\Client;
 
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Component\Cache\CacheItem;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -161,5 +160,28 @@ class Helper
     {
         $this->deleteSid();
         $this->sid = $sid;
+    }
+
+    /**
+     * Calulate best representation of a number using unit prefixes
+     *
+     * @param  float   $milliValue      Unit has to be given in its milli (0.001) representation
+     * @param  string  $unit            Unit name e.g. V, W, m, ...
+     * @return array
+     */
+    public function bestFactor(float $milliValue, string $unit): array
+    {
+        // usually this method would round e.g. 1005 to 1.005k, which might get rounded to 1.00k.
+        // In order to get more precision near prefix, we raise the barrier to 2000.
+        $milliValue /= 2;
+
+        $prefix = ['m', '', 'k', 'M', 'G', 'T', 'P'];
+        $base   = 0;
+        if ($milliValue > 0) {
+            $base       = floor(log($milliValue, 1000));
+            $milliValue = round($milliValue / pow(1000, $base), 3);
+        }
+
+        return ['value' => $milliValue * 2, 'unit' => $prefix[$base].$unit, 'factor' => pow(1000, $base)];
     }
 }

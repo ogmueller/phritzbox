@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4deac3fa5c0d5c5276f0e94c1beb9a90",
+    "content-hash": "f2b145fd7f633ef44a9bb3cdd790bed3",
     "packages": [
         {
             "name": "composer/ca-bundle",
@@ -1614,6 +1614,56 @@
                 "psr-3"
             ],
             "time": "2018-11-05T09:00:11+00:00"
+        },
+        {
+            "name": "noximo/php-colored-ascii-linechart",
+            "version": "v1.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/noximo/PHP-colored-ascii-linechart.git",
+                "reference": "eca696639aedfb72316addad13e8f1e229373e25"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/noximo/PHP-colored-ascii-linechart/zipball/eca696639aedfb72316addad13e8f1e229373e25",
+                "reference": "eca696639aedfb72316addad13e8f1e229373e25",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": ">=1.3.7",
+                "php": ">= 7.1"
+            },
+            "require-dev": {
+                "nette/tester": "1.7.2",
+                "phpstan/phpstan": ">=0.10.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "noximo\\PHPColoredAsciiLinechart\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Tomas Pospisil",
+                    "email": "pospisilt@gmail.com"
+                }
+            ],
+            "description": "Pretty line graphs in your console, html or images",
+            "keywords": [
+                "ascii",
+                "chart",
+                "graph",
+                "linechart",
+                "linegraph",
+                "marker",
+                "stock"
+            ],
+            "time": "2018-08-12T21:30:04+00:00"
         },
         {
             "name": "ocramius/package-versions",
@@ -8150,16 +8200,16 @@
         },
         {
             "name": "symfony/maker-bundle",
-            "version": "v1.12.0",
+            "version": "v1.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/maker-bundle.git",
-                "reference": "201d0e050dca336c44f93657ce1f34f3b3868432"
+                "reference": "c4388410e2fb6321e77c5dd6e3cb2dba821f9fe6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/maker-bundle/zipball/201d0e050dca336c44f93657ce1f34f3b3868432",
-                "reference": "201d0e050dca336c44f93657ce1f34f3b3868432",
+                "url": "https://api.github.com/repos/symfony/maker-bundle/zipball/c4388410e2fb6321e77c5dd6e3cb2dba821f9fe6",
+                "reference": "c4388410e2fb6321e77c5dd6e3cb2dba821f9fe6",
                 "shasum": ""
             },
             "require": {
@@ -8214,7 +8264,7 @@
                 "scaffold",
                 "scaffolding"
             ],
-            "time": "2019-07-09T22:19:18+00:00"
+            "time": "2019-08-18T17:34:03+00:00"
         },
         {
             "name": "symfony/phpunit-bridge",

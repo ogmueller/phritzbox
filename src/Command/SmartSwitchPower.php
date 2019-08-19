@@ -11,6 +11,7 @@
 
 namespace App\Command;
 
+use App\Client\Helper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -94,20 +95,15 @@ class SmartSwitchPower extends Smart
 
         $ain       = $input->getArgument('ain');
         $milliWatt = $this->ahaApi->getSwitchPower($ain);
-        dump($milliWatt);
 
         if (!empty($milliWatt) || is_numeric($milliWatt)) {
             $milliWatt = (int)$milliWatt;
 
             if (!$input->getOption('simple')) {
-                $prefix = ['m', '', 'k', 'M', 'G'];
-                $base   = 0;
-                if ($milliWatt > 0) {
-                    $base      = floor(log($milliWatt, 1000));
-                    $milliWatt = round($milliWatt / pow(1000, $base), 2);
-                }
-
-                $milliWatt = $milliWatt.' '.$prefix[$base].'W';
+                $helper    = new Helper();
+                $best      = $helper->bestFactor($milliWatt, 'W');
+                $milliWatt = $best['value'].' '.$best['unit'];
+//                $milliWatt = $milliWatt.' '.$prefix[$base].'W';
             }
             $this->io->writeln($milliWatt);
         } else {
