@@ -13,29 +13,14 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 /**
  * AhaApi tests with mocks
  */
-class AhaApiTest extends TestCase
+class GetDeviceListTest extends TestCase
 {
     /**
      * @dataProvider provideDevices
      */
-    public function testGetDeviceListInfos($deviceXml, $expected)
+    public function testDevices($deviceXml, $expected)
     {
-        /** @var MockObject|Helper $helper */
-        $helper = $this->getMockBuilder(Helper::class)
-                       ->setMethods(['requestUrl', 'getSid'])
-                       ->getMock();
-
-        $client = new MockHttpClient(new MockResponse($deviceXml));
-        $helper->expects($this->any())
-               ->method('requestUrl')
-               ->withAnyParameters()
-               ->willReturn($client->request('GET', 'https://fritz.box'));
-
-        $helper->expects($this->any())
-               ->method('getSid')
-               ->willReturn(123);
-
-        $aha     = new AhaApi($helper);
+        $aha = \App\Tests\Helper::mockClientHelper($this, $deviceXml);
         $devices = $aha->getDeviceListInfos();
 
         $this->assertCount(1, $devices);
