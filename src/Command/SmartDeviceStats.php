@@ -73,219 +73,221 @@ class SmartDeviceStats extends Smart
         $stats        = $this->ahaApi->getBasicDeviceStats($ain);
         $helper       = new Helper();
 
-        $settings = new Settings();
-        $settings
-            ->setColorizer(new AsciiColorizer())
-            ->setPadding(7, ' ')  // Set lenght of a padding and character used
-            ->setOffset(6)  // Offset left border
-            ->setFormat(  // Control how y axis labels will be printed out
-                function ($x, Settings $settings) {
-                    $padding       = $settings->getPadding();
-                    $paddingLength = \strlen($padding);
-
-                    return substr($padding.number_format($x, 2, '.', ''), -$paddingLength);
-                }
-            );
-
-//        dump($stats);
-
-        #
-        # temperature
-        #
-        if (isset($stats['temperature'][0]['values'])) {
-            $values = $stats['temperature'][0]['values'];
-            $grid   = $stats['temperature'][0]['grid'];
-
-            $temperatures = new Linechart();
-            $settings->setHeight(min(20, (max($values) - min($values)) * 2));
-            $temperatures->setSettings($settings);
-
-            $temperatures->addMarkers(
-                array_reverse($values),
-                [AsciiColorizer::RED, AsciiColorizer::BOLD],
-                [AsciiColorizer::BLUE, AsciiColorizer::BOLD]
-            );
-
-            $this->io->writeln(
-                'Temperature [C] every '.$this->humanReadableTime($grid).' within last '.$this->timeRange(
-                    $grid,
-                    count($values)
-                )
-            );
-            $this->io->writeln($temperatures->chart());
-        }
-
-        #
-        # voltage
-        #
-        if (isset($stats['voltage'][0]['values'])) {
-            $values = $stats['voltage'][0]['values'];
-            $count  = $stats['voltage'][0]['count'];
-            $grid   = $stats['voltage'][0]['grid'];
-            $unit   = $helper->bestFactor(max($values), 'V');
-            $factor = $unit['factor'];
-
-            list($voltages, $values) = $this->createChart($values, $factor, $settings);
-
-            $voltages->addMarkers(
-                array_reverse($values),
-                [AsciiColorizer::YELLOW, AsciiColorizer::BOLD]
-            );
-
-            $this->io->writeln(
-                'Voltage ['.$unit['unit'].'] every '.$this->humanReadableTime($grid).' within last '.$this->timeRange(
-                    $grid,
-                    count($values)
-                )
-            );
-            $this->io->writeln($voltages->chart());
-        }
-
-        #
-        # power
-        #
-        if (isset($stats['power'][0]['values'])) {
-            $values = $stats['power'][0]['values'];
-            $count  = $stats['power'][0]['count'];
-            $grid   = $stats['power'][0]['grid'];
-            $unit   = $helper->bestFactor(max($values), 'W');
-            $factor = $unit['factor'];
-
-            list($powers, $values) = $this->createChart($values, $factor, $settings);
-
-            $powers->addMarkers(
-                array_reverse($values),
-                [AsciiColorizer::GREEN, AsciiColorizer::BOLD]
-            );
-
-            $this->io->writeln(
-                'Power ['.$unit['unit'].'] every '.$this->humanReadableTime($grid).' within last '.$this->timeRange(
-                    $grid,
-                    count($values)
-                )
-            );
-            $this->io->writeln($powers->chart());
-        }
-
-        #
-        # energy [year]
-        #
-        if (isset($stats['energy'][0]['values'])) {
-            $values = $stats['energy'][0]['values'];
-            $count  = $stats['energy'][0]['count'];
-            $grid   = $stats['energy'][0]['grid'];
-            $unit   = $helper->bestFactor(max($values), 'W');
-            $factor = $unit['factor'];
-
-            list($energyYear, $values) = $this->createChart($values, $factor, $settings);
-
-            $energyYear->addMarkers(
-                array_reverse($values),
-                [AsciiColorizer::CYAN, AsciiColorizer::BOLD]
-            );
-
-            $this->io->writeln(
-                'Energy ['.$unit['unit'].'] every '.$this->humanReadableTime($grid).' within last '.$this->timeRange(
-                    $grid,
-                    count($values)
-                )
-            );
-            $this->io->writeln($energyYear->chart());
-        }
-
-        #
-        # energy [month]
-        #
-        if (isset($stats['energy'][1]['values'])) {
-            $values = $stats['energy'][1]['values'];
-            $count  = $stats['energy'][1]['count'];
-            $grid   = $stats['energy'][1]['grid'];
-            $unit   = $helper->bestFactor(max($values), 'W');
-            $factor = $unit['factor'];
-
-            list($energyMonth, $values) = $this->createChart($values, $factor, $settings);
-
-            $energyMonth->addMarkers(
-                array_reverse($values),
-                [AsciiColorizer::CYAN, AsciiColorizer::BOLD]
-            );
-
-            $this->io->writeln(
-                'Energy ['.$unit['unit'].'] every '.$this->humanReadableTime($grid).' within last '.$this->timeRange(
-                    $grid,
-                    count($values)
-                )
-            );
-            $this->io->writeln($energyMonth->chart());
-        }
-
-        exit;
-        $table = new Table($output);
-        $rows  = [];
-
-        /** @var Device $device */
-        foreach ($devices as $device) {
-            $row = [
-                $device->getIdentifier(),
-                $device->getName(),
-            ];
-
-            if ($device->hasTemperature()) {
-                /** @var Device\Feature\Temperature $feature */
-                $feature     = $device->feature(Device::FEATURE_TEMPERATURE_SENSOR);
-                $offset      = $feature->getTemperatureOffset();
-                $temperature = $feature->getTemperatureCelsius() + $offset;
-                $row[]       = sprintf('%02.1fC / %02.1fC', $temperature, $offset);
-            } else {
-                $row[] = '-';
-            }
-
-            if ($device->hasOutlet()) {
-                /** @var Device\Feature\Outlet $feature */
-                $feature = $device->feature(Device::FEATURE_OUTLET);
-                $status  = $feature->isSwitchState();
-                $row[]   = $status ? 'On' : 'Off';
-            } else {
-                $row[] = '-';
-            }
-
-            if ($device->hasPowerMeter()) {
-                /** @var Device\Feature\PowerMeter $feature */
-                $feature = $device->feature(Device::FEATURE_POWER_METER);
-                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterVoltage());
-                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterPower());
-                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterEnergy());
-            } else {
-                $row[] = new TableCell('-', ['colspan' => 3]);
-            }
-
-            $rows[] = $row;
-        }
-
         if (!$simpleOutput) {
-            $table->setHeaders(['Identifier', 'Name', 'Temp / Offset', 'Switch', 'Voltage', 'Power', 'Energy']);
-//            $table->set
+            $settings = new Settings();
+            $settings->setColorizer(new AsciiColorizer())
+                     ->setPadding(7, ' ')  // Set lenght of a padding and character used
+                     ->setOffset(6)  // Offset left border
+                     ->setFormat(  // Control how y axis labels will be printed out
+                    function ($x, Settings $settings) {
+                        $padding       = $settings->getPadding();
+                        $paddingLength = \strlen($padding);
+
+                        return substr($padding.number_format($x, 2, '.', ''), -$paddingLength);
+                    }
+                );
+
+            #
+            # temperature
+            #
+            if (isset($stats['temperature'][0]['values'])) {
+                $data   = $stats['temperature'][0];
+                $values = $data['values'];
+
+                $temperatures = new Linechart();
+                $settings->setHeight(min(20, (max($values) - min($values)) * 2));
+                $temperatures->setSettings($settings);
+
+                $temperatures->addMarkers(
+                    array_reverse($values),
+                    [AsciiColorizer::RED, AsciiColorizer::BOLD],
+                    [AsciiColorizer::BLUE, AsciiColorizer::BOLD]
+                );
+
+                $this->io->writeln(
+                    'Temperature [C] every '.$this->humanReadableTime($data['interval']).' within last '.$this->timeRange(
+                        $data['interval'],
+                        count($values)
+                    )
+                );
+                $this->io->writeln($temperatures->chart());
+            }
+
+            #
+            # voltage
+            #
+            if (isset($stats['voltage'][0]['values'])) {
+                $data   = $stats['voltage'][0];
+                $values = $data['values'];
+                $milli  = 1000/$data['factor'];
+                $unit   = $helper->bestFactor(max($values)*$milli, $data['unit']);
+//dump($unit, $data['factor'],max($values),max($values)/$data['factor']*1000);
+
+                [$voltages, $values] = $this->createChart($data['values'], $unit['factor']/$milli, $settings);
+
+                $voltages->addMarkers(
+                    array_reverse($values),
+                    [AsciiColorizer::YELLOW, AsciiColorizer::BOLD]
+                );
+
+                $this->io->writeln(
+                    'Voltage ['.$unit['unit'].'] every '.$this->humanReadableTime(
+                        $data['interval']
+                    ).' within last '.$this->timeRange(
+                        $data['interval'],
+                        count($values)
+                    )
+                );
+                $this->io->writeln($voltages->chart());
+            }
+
+            #
+            # power
+            #
+            if (isset($stats['power'][0]['values'])) {
+                $data   = $stats['power'][0];
+                $values = $data['values'];
+                $milli  = 1000/$data['factor'];
+                $unit   = $helper->bestFactor(max($values)*$milli, $data['unit']);
+
+                [$powers, $values] = $this->createChart($data['values'], $unit['factor']/$milli, $settings);
+
+                $powers->addMarkers(
+                    array_reverse($values),
+                    [AsciiColorizer::GREEN, AsciiColorizer::BOLD]
+                );
+
+                $this->io->writeln(
+                    'Power ['.$unit['unit'].'] every '.$this->humanReadableTime($data['interval']).' within last '.$this->timeRange(
+                        $data['interval'],
+                        count($values)
+                    )
+                );
+                $this->io->writeln($powers->chart());
+            }
+
+            #
+            # energy [year]
+            #
+            if (isset($stats['energy'][0]['values'])) {
+                $data   = $stats['energy'][0];
+                $values = $data['values'];
+                $milli  = 1000/$data['factor'];
+                $unit   = $helper->bestFactor(max($values)*$milli, $data['unit']);
+
+                [$energyYear, $values] = $this->createChart($data['values'], $unit['factor']/$milli, $settings);
+
+                $energyYear->addMarkers(
+                    array_reverse($values),
+                    [AsciiColorizer::CYAN, AsciiColorizer::BOLD]
+                );
+
+                $this->io->writeln(
+                    'Energy ['.$unit['unit'].'] every '.$this->humanReadableTime(
+                        $data['interval']
+                    ).' within last '.$this->timeRange(
+                        $data['interval'],
+                        count($values)
+                    )
+                );
+                $this->io->writeln($energyYear->chart());
+            }
+
+            #
+            # energy [month]
+            #
+            if (isset($stats['energy'][1]['values'])) {
+                $data   = $stats['energy'][1];
+                $values = $data['values'];
+                $milli  = 1000/$data['factor'];
+                $unit   = $helper->bestFactor(max($values)*$milli, $data['unit']);
+
+                [$energyMonth, $values] = $this->createChart($data['values'], $unit['factor']/$milli, $settings);
+
+                $energyMonth->addMarkers(
+                    array_reverse($values),
+                    [AsciiColorizer::CYAN, AsciiColorizer::BOLD]
+                );
+
+                $this->io->writeln(
+                    'Energy ['.$unit['unit'].'] every '.$this->humanReadableTime(
+                        $data['interval']
+                    ).' within last '.$this->timeRange(
+                        $data['interval'],
+                        count($values)
+                    )
+                );
+                $this->io->writeln($energyMonth->chart());
+            }
         } else {
-            $borderless = new TableStyle();
-            $borderless
-                ->setHorizontalBorderChars('')
-                ->setVerticalBorderChars('')
-                ->setDefaultCrossingChar('')
-                ->setBorderFormat('');
+        dump($stats);
+            $table = new Table($output);
+            $rows  = [];
 
-            $table->setStyle($borderless);
+            /** @var Device $device */
+            foreach ($devices as $device) {
+                $row = [
+                    $device->getIdentifier(),
+                    $device->getName(),
+                ];
+
+                if ($device->hasTemperature()) {
+                    /** @var Device\Feature\Temperature $feature */
+                    $feature     = $device->feature(Device::FEATURE_TEMPERATURE_SENSOR);
+                    $offset      = $feature->getTemperatureOffset();
+                    $temperature = $feature->getTemperatureCelsius() + $offset;
+                    $row[]       = sprintf('%02.1fC / %02.1fC', $temperature, $offset);
+                } else {
+                    $row[] = '-';
+                }
+
+                if ($device->hasOutlet()) {
+                    /** @var Device\Feature\Outlet $feature */
+                    $feature = $device->feature(Device::FEATURE_OUTLET);
+                    $status  = $feature->isSwitchState();
+                    $row[]   = $status ? 'On' : 'Off';
+                } else {
+                    $row[] = '-';
+                }
+
+                if ($device->hasPowerMeter()) {
+                    /** @var Device\Feature\PowerMeter $feature */
+                    $feature = $device->feature(Device::FEATURE_POWER_METER);
+                    $row[]   = sprintf('%03.1fV', $feature->getPowerMeterVoltage());
+                    $row[]   = sprintf('%03.1fV', $feature->getPowerMeterPower());
+                    $row[]   = sprintf('%03.1fV', $feature->getPowerMeterEnergy());
+                } else {
+                    $row[] = new TableCell('-', ['colspan' => 3]);
+                }
+
+                $rows[] = $row;
+            }
+
+            if (!$simpleOutput) {
+                $table->setHeaders(['Identifier', 'Name', 'Temp / Offset', 'Switch', 'Voltage', 'Power', 'Energy']);
+//            $table->set
+            } else {
+                $borderless = new TableStyle();
+                $borderless
+                    ->setHorizontalBorderChars('')
+                    ->setVerticalBorderChars('')
+                    ->setDefaultCrossingChar('')
+                    ->setBorderFormat('');
+
+                $table->setStyle($borderless);
+            }
+
+            $rightAligned = new TableStyle();
+            $rightAligned->setPadType(STR_PAD_LEFT);
+
+            $table->setColumnStyle(5, $rightAligned);
+            $table->setColumnStyle(6, $rightAligned);
+            $table->setColumnStyle(7, $rightAligned);
+
+            $table->setFooterTitle(count($devices).' Devices found');
+            $table->addRows($rows);
+            $table->render();
         }
-
-        $rightAligned = new TableStyle();
-        $rightAligned->setPadType(STR_PAD_LEFT);
-
-        $table->setColumnStyle(5, $rightAligned);
-        $table->setColumnStyle(6, $rightAligned);
-        $table->setColumnStyle(7, $rightAligned);
-
-        $table->setFooterTitle(count($devices).' Devices found');
-        $table->addRows($rows);
-        $table->render();
 
         return 0;
     }

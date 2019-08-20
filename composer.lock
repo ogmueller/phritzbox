@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f2b145fd7f633ef44a9bb3cdd790bed3",
+    "content-hash": "bc1eb4fa7ee92e5a30b26a8207ac6b5a",
     "packages": [
         {
             "name": "composer/ca-bundle",
@@ -1617,16 +1617,16 @@
         },
         {
             "name": "noximo/php-colored-ascii-linechart",
-            "version": "v1.1.1",
+            "version": "dev-master",
             "source": {
                 "type": "git",
                 "url": "https://github.com/noximo/PHP-colored-ascii-linechart.git",
-                "reference": "eca696639aedfb72316addad13e8f1e229373e25"
+                "reference": "8cf542fb00e9ba38f97d7957a96ed4aba83cb7e8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/noximo/PHP-colored-ascii-linechart/zipball/eca696639aedfb72316addad13e8f1e229373e25",
-                "reference": "eca696639aedfb72316addad13e8f1e229373e25",
+                "url": "https://api.github.com/repos/noximo/PHP-colored-ascii-linechart/zipball/8cf542fb00e9ba38f97d7957a96ed4aba83cb7e8",
+                "reference": "8cf542fb00e9ba38f97d7957a96ed4aba83cb7e8",
                 "shasum": ""
             },
             "require": {
@@ -1635,7 +1635,7 @@
             },
             "require-dev": {
                 "nette/tester": "1.7.2",
-                "phpstan/phpstan": ">=0.10.2"
+                "phpstan/phpstan": "^0.10.6"
             },
             "type": "library",
             "autoload": {
@@ -1663,7 +1663,7 @@
                 "marker",
                 "stock"
             ],
-            "time": "2018-08-12T21:30:04+00:00"
+            "time": "2018-12-30T02:26:43+00:00"
         },
         {
             "name": "ocramius/package-versions",
@@ -5663,19 +5663,19 @@
             "authors": [
                 {
                     "name": "Fabien Potencier",
+                    "role": "Lead Developer",
                     "email": "fabien@symfony.com",
-                    "homepage": "http://fabien.potencier.org",
-                    "role": "Lead Developer"
+                    "homepage": "http://fabien.potencier.org"
                 },
                 {
                     "name": "Armin Ronacher",
-                    "email": "armin.ronacher@active-4.com",
-                    "role": "Project Founder"
+                    "role": "Project Founder",
+                    "email": "armin.ronacher@active-4.com"
                 },
                 {
                     "name": "Twig Team",
-                    "homepage": "https://twig.symfony.com/contributors",
-                    "role": "Contributors"
+                    "role": "Contributors",
+                    "homepage": "https://twig.symfony.com/contributors"
                 }
             ],
             "description": "Twig, the flexible, fast, and secure template language for PHP",
@@ -8785,6 +8785,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
+        "noximo/php-colored-ascii-linechart": 20,
         "phpmd/phpmd": 0,
         "roave/security-advisories": 20
     },

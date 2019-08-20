@@ -7,7 +7,7 @@
     "ext-curl": "*",
     "ext-pdo_sqlite": "*",
     "ext-simplexml": "*",
-    "noximo/php-colored-ascii-linechart": "*",
+    "noximo/php-colored-ascii-linechart": "dev-master",
     "doctrine/doctrine-bundle": "^1.6.10",
     "doctrine/doctrine-migrations-bundle": "^1.3",
     "doctrine/orm": "^2.5.11",

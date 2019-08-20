@@ -301,33 +301,44 @@ class AhaApi
 
         $statistics = [];
         $convert    = [
-            'temperature' => [0 => 10],
-            'voltage'     => [0 => 1],
-            'power'       => [0 => 0.1],
-            'energy'      => [
-                0 => 0.01,
-                1 => 0.0001,
-            ],
+            'temperature' => 10,
+            'voltage'     => 1,
+            'power'       => 1,
+            'energy'      => 1,
+        ];
+
+        $unit = [
+            'temperature' => ['name' => 'C', 'factor' => 1],        // raw data in C
+            'voltage'     => ['name' => 'V', 'factor' => 1000],     // raw data in mV
+            'power'       => ['name' => 'W', 'factor' => 100],      // raw data in cW
+            'energy'      => ['name' => 'Wh', 'factor' => 1],       // raw data in Wh
         ];
 
         foreach ($xml->children() as $category) {
             $name = $category->getName();
             if ($category->count()) {
-                $i = 0;
                 foreach ($category->children() as $stats) {
-                    $factor = $convert[$name][$i++];
+                    $factor = $convert[$name];
 
                     $attr = $stats->attributes();
                     // number of elements
                     $arr['count'] = (int)$attr['count'];
                     // time resolution in seconds
-                    $arr['grid']         = (int)$attr['grid'];
-                    $arr['values']       = array_map(
-                        function ($value) use ($factor) {
-                            return $value / $factor;
-                        },
-                        explode(',', (string)$stats)
-                    );
+                    $arr['interval'] = (int)$attr['grid'];
+                    $arr['unit']     = $unit[$name]['name'];
+                    $arr['factor']   = $unit[$name]['factor'];
+                    $arr['values']   = explode(',', (string)$stats);
+
+                    // some values are delivered with an unusual factor, e.g. tenth part of celsius (0.1)
+                    // we convert them into most commom representation, e.g. celsius (1)
+                    if ($factor != 1) {
+                        $arr['values'] = array_map(
+                            function ($value) use ($factor) {
+                                return $value / $factor;
+                            },
+                            $arr['values']
+                        );
+                    }
                     $statistics[$name][] = $arr;
                 }
             }

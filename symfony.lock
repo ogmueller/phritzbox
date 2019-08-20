@@ -133,7 +133,7 @@
         "version": "v4.2.1"
     },
     "noximo/php-colored-ascii-linechart": {
-        "version": "v1.1.1"
+        "version": "dev-master"
     },
     "ocramius/package-versions": {
         "version": "1.4.0"
@@ -307,7 +307,7 @@
         "version": "4.2-dev"
     },
     "symfony/debug": {
-        "version": "4.2-dev"
+        "version": "v4.3.3"
     },
     "symfony/debug-bundle": {
         "version": "4.1",
