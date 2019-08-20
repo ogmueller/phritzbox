@@ -102,7 +102,7 @@ class SmartSwitchOn extends Smart
                 $this->io->writeln('Switch '.$ain.' is now <fg=green>ON</>');
             }
         } else {
-            $errOutput->writeln('No switches available');
+            $errOutput->writeln('Switch '.$ain.' unknown');
             $returnCode = 1;
         }
 
