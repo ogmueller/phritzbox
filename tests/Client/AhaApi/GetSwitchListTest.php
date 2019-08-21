@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * AhaApi tests with mocks
  */
-class GetSwitchList extends TestCase
+class GetSwitchListTest extends TestCase
 {
     public function testSuccess()
     {
