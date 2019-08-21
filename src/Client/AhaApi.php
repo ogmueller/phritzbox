@@ -330,15 +330,14 @@ class AhaApi
                     $arr['values']   = explode(',', (string)$stats);
 
                     // some values are delivered with an unusual factor, e.g. tenth part of celsius (0.1)
-                    // we convert them into most commom representation, e.g. celsius (1)
-                    if ($factor != 1) {
-                        $arr['values'] = array_map(
-                            function ($value) use ($factor) {
-                                return $value / $factor;
-                            },
-                            $arr['values']
-                        );
-                    }
+                    // we convert them into most common representation, e.g. celsius (1) and
+                    // force all entries to be floats
+                    $arr['values']       = array_map(
+                        function ($value) use ($factor) {
+                            return $value / $factor;
+                        },
+                        $arr['values']
+                    );
                     $statistics[$name][] = $arr;
                 }
             }

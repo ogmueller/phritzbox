@@ -105,7 +105,9 @@ class SmartDeviceStats extends Smart
                 );
 
                 $this->io->writeln(
-                    'Temperature [C] every '.$this->humanReadableTime($data['interval']).' within last '.$this->timeRange(
+                    'Temperature [C] every '.$this->humanReadableTime(
+                        $data['interval']
+                    ).' within last '.$this->timeRange(
                         $data['interval'],
                         count($values)
                     )
@@ -119,11 +121,11 @@ class SmartDeviceStats extends Smart
             if (isset($stats['voltage'][0]['values'])) {
                 $data   = $stats['voltage'][0];
                 $values = $data['values'];
-                $milli  = 1000/$data['factor'];
-                $unit   = $helper->bestFactor(max($values)*$milli, $data['unit']);
+                $milli  = 1000 / $data['factor'];
+                $unit   = $helper->bestFactor(max($values) * $milli, $data['unit']);
 //dump($unit, $data['factor'],max($values),max($values)/$data['factor']*1000);
 
-                [$voltages, $values] = $this->createChart($data['values'], $unit['factor']/$milli, $settings);
+                [$voltages, $values] = $this->createChart($data['values'], $unit['factor'] / $milli, $settings);
 
                 $voltages->addMarkers(
                     array_reverse($values),
@@ -147,10 +149,10 @@ class SmartDeviceStats extends Smart
             if (isset($stats['power'][0]['values'])) {
                 $data   = $stats['power'][0];
                 $values = $data['values'];
-                $milli  = 1000/$data['factor'];
-                $unit   = $helper->bestFactor(max($values)*$milli, $data['unit']);
+                $milli  = 1000 / $data['factor'];
+                $unit   = $helper->bestFactor(max($values) * $milli, $data['unit']);
 
-                [$powers, $values] = $this->createChart($data['values'], $unit['factor']/$milli, $settings);
+                [$powers, $values] = $this->createChart($data['values'], $unit['factor'] / $milli, $settings);
 
                 $powers->addMarkers(
                     array_reverse($values),
@@ -158,7 +160,9 @@ class SmartDeviceStats extends Smart
                 );
 
                 $this->io->writeln(
-                    'Power ['.$unit['unit'].'] every '.$this->humanReadableTime($data['interval']).' within last '.$this->timeRange(
+                    'Power ['.$unit['unit'].'] every '.$this->humanReadableTime(
+                        $data['interval']
+                    ).' within last '.$this->timeRange(
                         $data['interval'],
                         count($values)
                     )
@@ -172,10 +176,10 @@ class SmartDeviceStats extends Smart
             if (isset($stats['energy'][0]['values'])) {
                 $data   = $stats['energy'][0];
                 $values = $data['values'];
-                $milli  = 1000/$data['factor'];
-                $unit   = $helper->bestFactor(max($values)*$milli, $data['unit']);
+                $milli  = 1000 / $data['factor'];
+                $unit   = $helper->bestFactor(max($values) * $milli, $data['unit']);
 
-                [$energyYear, $values] = $this->createChart($data['values'], $unit['factor']/$milli, $settings);
+                [$energyYear, $values] = $this->createChart($data['values'], $unit['factor'] / $milli, $settings);
 
                 $energyYear->addMarkers(
                     array_reverse($values),
@@ -199,10 +203,10 @@ class SmartDeviceStats extends Smart
             if (isset($stats['energy'][1]['values'])) {
                 $data   = $stats['energy'][1];
                 $values = $data['values'];
-                $milli  = 1000/$data['factor'];
-                $unit   = $helper->bestFactor(max($values)*$milli, $data['unit']);
+                $milli  = 1000 / $data['factor'];
+                $unit   = $helper->bestFactor(max($values) * $milli, $data['unit']);
 
-                [$energyMonth, $values] = $this->createChart($data['values'], $unit['factor']/$milli, $settings);
+                [$energyMonth, $values] = $this->createChart($data['values'], $unit['factor'] / $milli, $settings);
 
                 $energyMonth->addMarkers(
                     array_reverse($values),
@@ -220,7 +224,61 @@ class SmartDeviceStats extends Smart
                 $this->io->writeln($energyMonth->chart());
             }
         } else {
-        dump($stats);
+//            dump($stats);
+
+            // CSV header
+            $return = [
+                ['name', 'unit', 'number_of_values', 'time_interval', 'values...'],
+            ];
+
+            #
+            # temperature
+            #
+            if (isset($stats['temperature'][0]['values'])) {
+                $data   = $stats['temperature'][0];
+                $return[] = array_merge(['temperature', 'C', $data['count'], $data['interval']], $data['values']);
+            }
+
+            #
+            # voltage
+            #
+            if (isset($stats['voltage'][0]['values'])) {
+                $data   = $stats['voltage'][0];
+                dump($data);
+                $return[] = array_merge(['voltage', 'mV', $data['count'], $data['interval']], $data['values']);
+            }
+
+            #
+            # power
+            #
+            if (isset($stats['power'][0]['values'])) {
+                $data   = $stats['power'][0];
+                $return[] = array_merge(['power', 'cW', $data['count'], $data['interval']], $data['values']);
+            }
+
+            #
+            # energy [year]
+            #
+            if (isset($stats['energy'][0]['values'])) {
+                $data   = $stats['energy'][0];
+                $return[] = array_merge(['energy_year', 'Wh', $data['count'], $data['interval']], $data['values']);
+            }
+
+            #
+            # energy [month]
+            #
+            if (isset($stats['energy'][1]['values'])) {
+                $data   = $stats['energy'][1];
+                $return[] = array_merge(['energy_month', 'Wh', $data['count'], $data['interval']], $data['values']);
+            }
+
+            foreach($return as $line) {
+
+                $stream = $output->getStream();
+//                dump($stream);
+                fputcsv($stream, $line);
+            }
+            exit;
             $table = new Table($output);
             $rows  = [];
 
@@ -309,13 +367,15 @@ class SmartDeviceStats extends Smart
             $values = array_slice($values, 0, $chartWidth);
         }
 
-        // convert values to best readable unit
-        $values = array_map(
-            function ($value) use ($factor) {
-                return $value / $factor;
-            },
-            $values
-        );
+        if ($factor != 0) {
+            // convert values to best readable unit
+            $values = array_map(
+                function ($value) use ($factor) {
+                    return $value / $factor;
+                },
+                $values
+            );
+        }
 
         $chart = new Linechart();
         $settings->setHeight(min($maxXScaleHeight, ceil(max($values)) - floor(min($values))));

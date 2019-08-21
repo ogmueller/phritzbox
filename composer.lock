@@ -1621,12 +1621,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/noximo/PHP-colored-ascii-linechart.git",
-                "reference": "8cf542fb00e9ba38f97d7957a96ed4aba83cb7e8"
+                "reference": "e80aed9e04227da65ce21f549c2b6efb83a2edf4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/noximo/PHP-colored-ascii-linechart/zipball/8cf542fb00e9ba38f97d7957a96ed4aba83cb7e8",
-                "reference": "8cf542fb00e9ba38f97d7957a96ed4aba83cb7e8",
+                "url": "https://api.github.com/repos/noximo/PHP-colored-ascii-linechart/zipball/e80aed9e04227da65ce21f549c2b6efb83a2edf4",
+                "reference": "e80aed9e04227da65ce21f549c2b6efb83a2edf4",
                 "shasum": ""
             },
             "require": {
@@ -1634,8 +1634,14 @@
                 "php": ">= 7.1"
             },
             "require-dev": {
-                "nette/tester": "1.7.2",
-                "phpstan/phpstan": "^0.10.6"
+                "jakub-onderka/php-console-highlighter": "^0.4",
+                "jakub-onderka/php-parallel-lint": "1.0.*",
+                "noximo/phpstan-fileoutput": "0.1.*",
+                "phpstan/phpstan": "^0.11",
+                "phpstan/phpstan-deprecation-rules": "^0.11",
+                "phpstan/phpstan-strict-rules": "^0.11",
+                "roave/security-advisories": "dev-master",
+                "symplify/easy-coding-standard": "^6.0"
             },
             "type": "library",
             "autoload": {
@@ -1663,7 +1669,7 @@
                 "marker",
                 "stock"
             ],
-            "time": "2018-12-30T02:26:43+00:00"
+            "time": "2019-08-20T22:17:57+00:00"
         },
         {
             "name": "ocramius/package-versions",
@@ -7045,16 +7051,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "7.5.14",
+            "version": "7.5.15",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "2834789aeb9ac182ad69bfdf9ae91856a59945ff"
+                "reference": "d79c053d972856b8b941bb233e39dc521a5093f0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/2834789aeb9ac182ad69bfdf9ae91856a59945ff",
-                "reference": "2834789aeb9ac182ad69bfdf9ae91856a59945ff",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/d79c053d972856b8b941bb233e39dc521a5093f0",
+                "reference": "d79c053d972856b8b941bb233e39dc521a5093f0",
                 "shasum": ""
             },
             "require": {
@@ -7125,7 +7131,7 @@
                 "testing",
                 "xunit"
             ],
-            "time": "2019-07-15T06:24:08+00:00"
+            "time": "2019-08-21T07:05:16+00:00"
         },
         {
             "name": "roave/security-advisories",
