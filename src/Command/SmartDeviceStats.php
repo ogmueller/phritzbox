@@ -318,7 +318,8 @@ class SmartDeviceStats extends Smart
         );
 
         $chart = new Linechart();
-        $settings->setHeight(min($maxXScaleHeight, ceil(max($values)) - floor(min($values))));
+        $height = ceil(max($values)) - floor(min($values));
+        $settings->setHeight(max(1, min($maxXScaleHeight, $height)));
         $chart->setSettings($settings);
 
         return [$chart, $values];
