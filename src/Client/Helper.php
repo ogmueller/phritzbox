@@ -95,9 +95,6 @@ class Helper
         $sid   = $cache->get(
             self::session_cache_name,
             function (ItemInterface $item) {
-                // a session should expire after 60min, but we re-validate it after 55min
-                $item->expiresAfter(3300);
-
                 // send initial request
                 $response = $this->requestUrl($_ENV['APP_API_URL_LOGIN']);
                 $xml      = simplexml_load_string($response->getContent());
