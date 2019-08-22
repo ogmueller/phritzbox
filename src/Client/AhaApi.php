@@ -345,4 +345,37 @@ class AhaApi
 
         return $statistics;
     }
+
+    /**
+     * Deliver basic information of all SmartHome templates
+     */
+    public function getTemplateListInfos()
+    {
+        $response = $this->commandUrl('gettemplatelistinfos');
+        dump($response->getContent());
+
+        try {
+            $xml = simplexml_load_string($response->getContent());
+//            dump($xml);
+        } catch (\Exception $e) {
+            $this->helper->deleteSid();
+
+            dump($response);
+            throw $e;
+        }
+        if ($xml === false) {
+            $this->helper->deleteSid();
+
+            var_dump($response);
+
+            throw new HttpException('Unknown response for gettemplatelistinfos');
+        }
+
+        if (!$xml) {
+            throw new InvalidResponseException('Templates not available');
+        }
+
+
+        return $xml;
+    }
 }
