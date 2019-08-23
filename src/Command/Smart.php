@@ -19,6 +19,7 @@ use Symfony\Component\Console\Helper\ProgressIndicator;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableStyle;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -51,8 +52,11 @@ abstract class Smart extends Command
 
     /**
      * Prevent failure in case necessary arguments are missing
+     *
+     * @param  InputInterface   $input
+     * @param  OutputInterface  $output
      */
-    protected function interact(InputInterface $input, OutputInterface $output)
+    protected function interact(InputInterface $input, OutputInterface $output): void
     {
         // if command requires an AIN, but none give, we want to ask for it
         if ($input->hasArgument('ain') && empty($input->getArgument('ain'))) {
@@ -63,6 +67,7 @@ abstract class Smart extends Command
                 function (ItemInterface $item) {
                     // cache should expire after 15min
                     $item->expiresAfter(900);
+
                     return $this->ahaApi->getDeviceListInfos();
                 }
             );
@@ -94,7 +99,7 @@ abstract class Smart extends Command
                 $table->setColumnStyle(4, $centered);
                 $table->addRows($rows);
                 $table->render();
-                $this->io->writeln("");
+                $this->io->writeln('');
 
                 $availableAin = array_column($rows, 0);
                 $question->setAutocompleterValues($availableAin);
@@ -127,6 +132,10 @@ abstract class Smart extends Command
     /**
      * This method is executed after interact() and initialize(). It usually
      * contains the logic to execute to complete this command task.
+     *
+     * @param  InputInterface   $input
+     * @param  OutputInterface  $output
+     * @return int
      */
     protected function execute(
         InputInterface $input,
@@ -135,6 +144,7 @@ abstract class Smart extends Command
         $stopwatch = new Stopwatch();
         $stopwatch->start(self::$defaultName);
 
+        /** @var ConsoleOutput $output */
         $errOutput  = $output->getErrorOutput();
         $returnCode = 0;
 

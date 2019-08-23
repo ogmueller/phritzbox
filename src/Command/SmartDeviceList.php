@@ -23,15 +23,6 @@ use Symfony\Component\Stopwatch\Stopwatch;
 /**
  * A console command to read out all available smart home devices
  *
- * To use this command, open a terminal window, enter into your project
- * directory and execute the following:
- *
- *     $ php bin/console smart:device:list
- *
- * To output detailed information, increase the command verbosity:
- *
- *     $ php bin/console smart:device:list -vv
- *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 class SmartDeviceList extends Smart
@@ -70,9 +61,12 @@ class SmartDeviceList extends Smart
 
         /** @var Device $device */
         foreach ($devices as $device) {
+            $identifier = $device->isPresent() ? '<fg=green>'.$device->getIdentifier().'</>' : $device->getIdentifier();
             $row = [
-                $device->getIdentifier(),
+                $identifier,
                 $device->getName(),
+                $device->getManufacturer(),
+                $device->getFirmwareVersion(),
             ];
 
             if ($device->hasTemperature()) {
@@ -88,8 +82,13 @@ class SmartDeviceList extends Smart
             if ($device->hasOutlet()) {
                 /** @var Device\Feature\Outlet $feature */
                 $feature = $device->feature(Device::FEATURE_OUTLET);
-                $status  = $feature->isSwitchState();
-                $row[]   = $status ? 'On' : 'Off';
+                $tmp     = [
+                    $feature->isSwitchState() ? 'On ' : 'Off',
+                    $feature->getSwitchMode() ?? ' ',
+                    $feature->isSwitchLock() ? 'x' : '-',
+                    $feature->isSwitchDeviceLock() ? 'x' : '-',
+                ];
+                $row[]   = implode(' / ', $tmp);
             } else {
                 $row[] = '-';
             }
@@ -97,9 +96,9 @@ class SmartDeviceList extends Smart
             if ($device->hasPowerMeter()) {
                 /** @var Device\Feature\PowerMeter $feature */
                 $feature = $device->feature(Device::FEATURE_POWER_METER);
-                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterVoltage());
-                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterPower());
-                $row[]   = sprintf('%03.1fV', $feature->getPowerMeterEnergy());
+                $row[]   = sprintf('%03.1f W', $feature->getPowerMeterPower());
+                $row[]   = sprintf('%03.1f Wh', $feature->getPowerMeterEnergy());
+                $row[]   = sprintf('%03.1f V', $feature->getPowerMeterVoltage());
             } else {
                 $row[] = new TableCell('-', ['colspan' => 3]);
             }
@@ -108,7 +107,9 @@ class SmartDeviceList extends Smart
         }
 
         if (!$simpleOutput) {
-            $table->setHeaders(['Identifier', 'Name', 'Temp / Offset', 'Switch', 'Voltage', 'Power', 'Energy']);
+            $table->setHeaders(
+                ['Identifier', 'Name', 'Mfr', 'Firmware', 'Temp / Offset', 'Switch / Mode / Locks', 'Power', 'Energy', 'Voltage']
+            );
 //            $table->set
         } else {
             $borderless = new TableStyle();
@@ -124,9 +125,9 @@ class SmartDeviceList extends Smart
         $rightAligned = new TableStyle();
         $rightAligned->setPadType(STR_PAD_LEFT);
 
-        $table->setColumnStyle(5, $rightAligned);
-        $table->setColumnStyle(6, $rightAligned);
         $table->setColumnStyle(7, $rightAligned);
+        $table->setColumnStyle(8, $rightAligned);
+        $table->setColumnStyle(9, $rightAligned);
 
         $table->setFooterTitle(count($devices).' Devices found');
         $table->addRows($rows);
@@ -135,35 +136,28 @@ class SmartDeviceList extends Smart
         return 0;
     }
 
-    /**
-     * The command help is usually included in the configure() method, but when
-     * it's too long, it's better to define a separate method to maintain the
-     * code readability.
-     */
     private function getCommandHelp(): string
     {
         return <<<'HELP'
-The <info>%command.name%</info> command creates new users and saves them in the database:
+The <info>%command.name%</info> command will deliver basic information about all smart home devices:
 
-  <info>php %command.full_name%</info> <comment>username password email</comment>
-
-By default the command creates regular users. To create administrator users,
-add the <comment>--admin</comment> option:
-
-  <info>php %command.full_name%</info> username password email <comment>--admin</comment>
-
-If you omit any of the three required arguments, the command will ask you to
-provide the missing values:
-
-  # command will ask you for the email
-  <info>php %command.full_name%</info> <comment>username password</comment>
-
-  # command will ask you for the email and password
-  <info>php %command.full_name%</info> <comment>username</comment>
-
-  # command will ask you for all arguments
   <info>php %command.full_name%</info>
 
+By default the command will output a table with information about:
+- Identifier: aka AIN, if green the device is present
+- Name: custom name defined in your Fritz!Box
+- Mfr: hardware manufacturer
+- Firmware: current version
+- Temp / Offset: both values in Celsius
+- Switch: show state of the outlet / mode / locked by API / locked at device 
+- Power: current power consumption, updated approx. every 2 min
+- Energy: absolute consumption since first use or last reset
+- Voltage: current voltage, updated approx. every 2 min 
+
+You can also use the <comment>-s</comment> option to get a simplified output:
+
+  # command will simplify output
+  <info>php %command.full_name%</info> <comment>-s</comment>
 HELP;
     }
 }
