@@ -20,16 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
- * A console command to list all know outlets
- *
- * To use this command, open a terminal window, enter into your project
- * directory and execute the following:
- *
- *     $ php bin/console smart:switch:on
- *
- * To output detailed information, increase the command verbosity:
- *
- *     $ php bin/console smart:switch:on -vv
+ * A console command to turn on an outlet
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */

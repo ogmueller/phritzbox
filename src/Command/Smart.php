@@ -84,20 +84,22 @@ abstract class Smart extends Command
 
             if (!empty($devices)) {
                 $rows = [];
+                $availableAin = [];
 
                 /** @var Device $device */
                 foreach ($devices as $device) {
                     // check if this device matches the minimum required features
                     if (($this->requiredFeatures & $device->getFunctionBitMask()) == $this->requiredFeatures) {
-                        $identifier = $device->isPresent() ? '<fg=green>'.$device->getIdentifier().'</>' :
-                            $device->getIdentifier();
+                        $identifier = $device->getIdentifier();
+                        $display    = $device->isPresent() ? '<fg=green>'.$identifier.'</>' : $identifier;
                         $rows[]     = [
-                            $identifier,
+                            $display,
                             $device->getName(),
                             $device->hasTemperature() ? 'x' : '-',
                             $device->hasOutlet() ? 'x' : '-',
                             $device->hasPowerMeter() ? 'x' : '-',
                         ];
+                        $availableAin[] = $identifier;
                     }
                 }
 
@@ -115,7 +117,6 @@ abstract class Smart extends Command
                     $this->io->writeln('');
                 }
 
-                $availableAin = array_column($rows, 0);
                 $question->setAutocompleterValues($availableAin);
             }
 

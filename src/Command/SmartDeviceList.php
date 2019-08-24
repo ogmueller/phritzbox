@@ -56,7 +56,7 @@ class SmartDeviceList extends Smart
     ): int {
         $simpleOutput = $input->getOption('simple');
         $devices      = $this->ahaApi->getDeviceListInfos();
-//        dump($devices);
+        dump($devices);
 
         // cache devices to be used by other calls
         $cache     = new FilesystemAdapter();
@@ -158,12 +158,12 @@ class SmartDeviceList extends Smart
     private function getCommandHelp(): string
     {
         return <<<'HELP'
-The <info>%command.name%</info> command will deliver basic information about all smart home devices:
+The <info>%command.name%</info> command will deliver basic information about all SmartHome devices:
 
   <info>php %command.full_name%</info>
 
 By default the command will output a table with information about:
-- Identifier: aka AIN, if green the device is present
+- Identifier (AIN): device identification number, if green the device is present
 - Name: custom name defined in your Fritz!Box
 - Mfr: hardware manufacturer
 - Firmware: current version
@@ -177,6 +177,7 @@ You can also use the <comment>-s</comment> option to get a simplified output:
 
   # command will simplify output
   <info>php %command.full_name%</info> <comment>-s</comment>
+
 HELP;
     }
 }

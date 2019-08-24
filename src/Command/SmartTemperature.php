@@ -87,7 +87,7 @@ class SmartTemperature extends Smart
         $ain     = $input->getArgument('ain');
         $celsius = $this->ahaApi->getTemperature($ain);
 
-        if (!empty($celsius)) {
+        if (is_numeric($celsius)) {
             $celsius = (int)$celsius / 10;
             if(!$input->getOption('simple')) {
                 $celsius .= ' C';
