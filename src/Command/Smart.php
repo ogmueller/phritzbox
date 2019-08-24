@@ -24,7 +24,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Contracts\Cache\ItemInterface;
 
 /**
  * Abstract class to provide general functionality
@@ -71,27 +70,25 @@ abstract class Smart extends Command
         // if command requires an AIN, but none give, we want to ask for it
         if ($input->hasArgument('ain') && empty($input->getArgument('ain'))) {
             // fetch all available AINs
-            $cache   = new FilesystemAdapter();
-            $devices = $cache->get(
-                'app.smart.devices',
-                function (ItemInterface $item) {
-                    // cache should expire after 15min
-                    $item->expiresAfter(900);
-
-                    return $this->ahaApi->getDeviceListInfos();
-                }
-            );
+            $cache     = new FilesystemAdapter();
+            $valueItem = $cache->getItem('app.smart.devices');
+            if (!$valueItem->isHit()) {
+                $valueItem->set($this->ahaApi->getDeviceListInfos())
+                          ->expiresAfter(900);
+                $cache->save($valueItem);
+            }
+            $devices = $valueItem->get();
 
             $helper   = $this->getHelper('question');
             $question = new Question('Please enter AIN of device: ');
 
             if (!empty($devices)) {
-                $table = new Table($output);
-                $rows  = [];
+                $rows = [];
 
                 /** @var Device $device */
                 foreach ($devices as $device) {
-                    if(($this->requiredFeatures & $device->getFunctionBitMask()) == $this->requiredFeatures ) {
+                    // check if this device matches the minimum required features
+                    if (($this->requiredFeatures & $device->getFunctionBitMask()) == $this->requiredFeatures) {
                         $identifier = $device->isPresent() ? '<fg=green>'.$device->getIdentifier().'</>' :
                             $device->getIdentifier();
                         $rows[]     = [
@@ -104,16 +101,19 @@ abstract class Smart extends Command
                     }
                 }
 
-                $table->setHeaders(['Identifier (AIN)', 'Name', 'Temp', 'Switch', 'Power']);
+                if (!empty($rows)) {
+                    $table = new Table($output);
+                    $table->setHeaders(['Identifier (AIN)', 'Name', 'Temp', 'Switch', 'Power']);
 
-                $centered = new TableStyle();
-                $centered->setPadType(STR_PAD_BOTH);
-                $table->setColumnStyle(2, $centered);
-                $table->setColumnStyle(3, $centered);
-                $table->setColumnStyle(4, $centered);
-                $table->addRows($rows);
-                $table->render();
-                $this->io->writeln('');
+                    $centered = new TableStyle();
+                    $centered->setPadType(STR_PAD_BOTH);
+                    $table->setColumnStyle(2, $centered);
+                    $table->setColumnStyle(3, $centered);
+                    $table->setColumnStyle(4, $centered);
+                    $table->addRows($rows);
+                    $table->render();
+                    $this->io->writeln('');
+                }
 
                 $availableAin = array_column($rows, 0);
                 $question->setAutocompleterValues($availableAin);

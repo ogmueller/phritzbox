@@ -12,6 +12,7 @@
 namespace App\Command;
 
 use App\Device;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableCell;
 use Symfony\Component\Console\Helper\TableStyle;
@@ -55,6 +56,14 @@ class SmartDeviceList extends Smart
     ): int {
         $simpleOutput = $input->getOption('simple');
         $devices      = $this->ahaApi->getDeviceListInfos();
+//        dump($devices);
+
+        // cache devices to be used by other calls
+        $cache     = new FilesystemAdapter();
+        $valueItem = $cache->getItem('app.smart.devices');
+        $valueItem->set($devices)
+                  ->expiresAfter(900);
+        $cache->save($valueItem);
 
         $table = new Table($output);
         $rows  = [];
@@ -62,7 +71,7 @@ class SmartDeviceList extends Smart
         /** @var Device $device */
         foreach ($devices as $device) {
             $identifier = $device->isPresent() ? '<fg=green>'.$device->getIdentifier().'</>' : $device->getIdentifier();
-            $row = [
+            $row        = [
                 $identifier,
                 $device->getName(),
                 $device->getManufacturer(),
@@ -108,7 +117,17 @@ class SmartDeviceList extends Smart
 
         if (!$simpleOutput) {
             $table->setHeaders(
-                ['Identifier', 'Name', 'Mfr', 'Firmware', 'Temp / Offset', 'Switch / Mode / Locks', 'Power', 'Energy', 'Voltage']
+                [
+                    'Identifier (AIN)',
+                    'Name',
+                    'Mfr',
+                    'Firmware',
+                    'Temp / Offset',
+                    'Switch / Mode / Locks',
+                    'Power',
+                    'Energy',
+                    'Voltage',
+                ]
             );
 //            $table->set
         } else {
