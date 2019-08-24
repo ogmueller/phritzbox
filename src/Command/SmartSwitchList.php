@@ -11,6 +11,7 @@
 
 namespace App\Command;
 
+use App\Device;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
@@ -34,6 +35,11 @@ class SmartSwitchList extends Smart
     // to make your command lazily loaded, configure the $defaultName static property,
     // so it will be instantiated only when the command is actually called.
     protected static $defaultName = 'smart:switch:list';
+
+    /**
+     * {@inheritdoc}
+     */
+    protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
     /**
      * {@inheritdoc}

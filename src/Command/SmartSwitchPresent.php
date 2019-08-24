@@ -11,6 +11,7 @@
 
 namespace App\Command;
 
+use App\Device;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -36,6 +37,11 @@ class SmartSwitchPresent extends Smart
     // to make your command lazily loaded, configure the $defaultName static property,
     // so it will be instantiated only when the command is actually called.
     protected static $defaultName = 'smart:switch:present';
+
+    /**
+     * {@inheritdoc}
+     */
+    protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
     /**
      * {@inheritdoc}

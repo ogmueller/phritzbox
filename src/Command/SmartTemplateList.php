@@ -43,6 +43,11 @@ class SmartTemplateList extends Smart
     /**
      * {@inheritdoc}
      */
+    protected $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
+
+    /**
+     * {@inheritdoc}
+     */
     protected function configure(): void
     {
         $this
@@ -79,7 +84,7 @@ class SmartTemplateList extends Smart
     {
         return <<<'HELP'
 The <info>%command.name%</info> command creates new users and saves them in the database:
-
+ 
   <info>php %command.full_name%</info> <comment>username password email</comment>
 
 By default the command creates regular users. To create administrator users,

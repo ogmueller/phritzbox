@@ -39,6 +39,16 @@ abstract class Smart extends Command
     protected $io;
 
     /**
+     * Minimum required feature of device
+     *
+     * Example: If we want to turn on/off a device, it has to be
+     * a \App\Device::FUNCTION_BIT_OUTLET.
+     *
+     * @var int
+     */
+    protected $requiredFeatures = -1;
+
+    /**
      * @var AhaApi
      */
     protected $ahaApi;
@@ -81,13 +91,17 @@ abstract class Smart extends Command
 
                 /** @var Device $device */
                 foreach ($devices as $device) {
-                    $rows[] = [
-                        $device->getIdentifier(),
-                        $device->getName(),
-                        $device->hasTemperature() ? 'x' : '-',
-                        $device->hasOutlet() ? 'x' : '-',
-                        $device->hasPowerMeter() ? 'x' : '-',
-                    ];
+                    if(($this->requiredFeatures & $device->getFunctionBitMask()) == $this->requiredFeatures ) {
+                        $identifier = $device->isPresent() ? '<fg=green>'.$device->getIdentifier().'</>' :
+                            $device->getIdentifier();
+                        $rows[]     = [
+                            $identifier,
+                            $device->getName(),
+                            $device->hasTemperature() ? 'x' : '-',
+                            $device->hasOutlet() ? 'x' : '-',
+                            $device->hasPowerMeter() ? 'x' : '-',
+                        ];
+                    }
                 }
 
                 $table->setHeaders(['Identifier (AIN)', 'Name', 'Temp', 'Switch', 'Power']);

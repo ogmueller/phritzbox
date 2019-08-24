@@ -12,6 +12,7 @@
 namespace App\Command;
 
 use App\Client\Helper;
+use App\Device;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -38,6 +39,11 @@ class SmartSwitchEnergy extends Smart
     // to make your command lazily loaded, configure the $defaultName static property,
     // so it will be instantiated only when the command is actually called.
     protected static $defaultName = 'smart:switch:energy';
+
+    /**
+     * {@inheritdoc}
+     */
+    protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
     /**
      * {@inheritdoc}
