@@ -107,7 +107,7 @@ class SmartSwitchPresent extends Smart
         return <<<'HELP'
 The <info>%command.name%</info> command determines availability of a SmartHome outlet:
 
-  <info>php %command.full_name%</info>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
 By default the command will output the AIN and state of the outlet or group.
 

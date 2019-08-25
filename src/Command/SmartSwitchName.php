@@ -102,7 +102,7 @@ class SmartSwitchName extends Smart
         return <<<'HELP'
 The <info>%command.name%</info> command gets the name of a SmartHome outlet or group:
 
-  <info>php %command.full_name%</info>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
 By default the command will output the AIN and name of the outlet or group.
 

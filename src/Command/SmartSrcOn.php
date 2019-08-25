@@ -20,16 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
- * A console command to list all know outlets
- *
- * To use this command, open a terminal window, enter into your project
- * directory and execute the following:
- *
- *     $ php bin/console smart:switch:on
- *
- * To output detailed information, increase the command verbosity:
- *
- *     $ php bin/console smart:switch:on -vv
+ * A console command to turn on a SmartHome smart radiator control
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
@@ -109,26 +100,16 @@ class SmartSrcOn extends Smart
     private function getCommandHelp(): string
     {
         return <<<'HELP'
-The <info>%command.name%</info> command creates new users and saves them in the database:
+The <info>%command.name%</info> command turns on a SmartHome smart radiator control:
 
-  <info>php %command.full_name%</info> <comment>username password email</comment>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
-By default the command creates regular users. To create administrator users,
-add the <comment>--admin</comment> option:
+By default the command will output the AIN and state of the smart radiator control.
 
-  <info>php %command.full_name%</info> username password email <comment>--admin</comment>
+You can also use the <comment>-s</comment> option to get a simplified output as binary:
 
-If you omit any of the three required arguments, the command will ask you to
-provide the missing values:
-
-  # command will ask you for the email
-  <info>php %command.full_name%</info> <comment>username password</comment>
-
-  # command will ask you for the email and password
-  <info>php %command.full_name%</info> <comment>username</comment>
-
-  # command will ask you for all arguments
-  <info>php %command.full_name%</info>
+  # command will simplify output
+  <info>php %command.full_name%</info> <comment>-s</comment>
 
 HELP;
     }

@@ -106,7 +106,7 @@ class SmartSwitchToggle extends Smart
         return <<<'HELP'
 The <info>%command.name%</info> command toggles power state of a SmartHome outlet or group:
 
-  <info>php %command.full_name%</info>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
 By default the command will output the AIN and state of the outlet or group.
 

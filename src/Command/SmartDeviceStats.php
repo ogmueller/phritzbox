@@ -102,7 +102,7 @@ class SmartDeviceStats extends Smart
                 );
 
                 $this->io->writeln(
-                    'Temperature [C] every '.$this->humanReadableTime(
+                    'Temperature [°C] every '.$this->humanReadableTime(
                         $data['interval']
                     ).' within last '.$this->timeRange(
                         $data['interval'],

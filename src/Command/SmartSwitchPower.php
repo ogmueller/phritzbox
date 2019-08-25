@@ -107,7 +107,7 @@ class SmartSwitchPower extends Smart
         return <<<'HELP'
 The <info>%command.name%</info> command read current power consumption of a SmartHome outlet:
 
-  <info>php %command.full_name%</info>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
 By default the command will output current power consumption in the best readable unit.
 

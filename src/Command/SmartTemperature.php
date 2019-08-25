@@ -41,7 +41,7 @@ class SmartTemperature extends Smart
     protected function configure(): void
     {
         $this
-            ->setDescription('Read temperature of a SmartHome device [C]')
+            ->setDescription('Read temperature of a SmartHome device [°C]')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(
@@ -81,7 +81,7 @@ class SmartTemperature extends Smart
         if (is_numeric($celsius)) {
             $celsius = (int)$celsius / 10;
             if(!$input->getOption('simple')) {
-                $celsius .= ' C';
+                $celsius .= '°C';
             }
             $this->io->writeln($celsius);
         } else {
@@ -102,11 +102,11 @@ class SmartTemperature extends Smart
         return <<<'HELP'
 The <info>%command.name%</info> command reads temperature of a SmartHome device:
 
-  <info>php %command.full_name%</info>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
-By default the command will output temperature with its unit.
+By default the command will output temperature with its unit. Temperature can be negative and positive in 0.1°C steps.
 
-You can also use the <comment>-s</comment> option to get a simplified output in [C]:
+You can also use the <comment>-s</comment> option to get a simplified output in [°C]:
 
   # command will simplify output
   <info>php %command.full_name%</info> <comment>-s</comment>

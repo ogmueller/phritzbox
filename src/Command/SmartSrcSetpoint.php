@@ -20,16 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
- * A console command to read out the temperature of a smart home device
- *
- * To use this command, open a terminal window, enter into your project
- * directory and execute the following:
- *
- *     $ php bin/console smart:device:temperature
- *
- * To output detailed information, increase the command verbosity:
- *
- *     $ php bin/console smart:device:temperature -vv
+ * A console command to read or set setpoint temperature of a SmartHome smart radiator control
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
@@ -50,7 +41,7 @@ class SmartSrcSetpoint extends Smart
     protected function configure(): void
     {
         $this
-            ->setDescription('Read or set setpoint temperature of a SmartHome smart radiator control [C]')
+            ->setDescription('Read or set setpoint temperature of a SmartHome smart radiator control [°C]')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addArgument('temperature', InputArgument::OPTIONAL, 'New setpoint temperature')
@@ -97,16 +88,20 @@ class SmartSrcSetpoint extends Smart
             if ($celsius < 253) {
                 $celsius = (int)$celsius / 2;
                 if (!$input->getOption('simple')) {
-                    $celsius .= ' C';
+                    $celsius .= '°C';
                 }
+                $this->io->writeln($celsius);
             } else {
                 if (!$input->getOption('simple')) {
-                    $this->io->writeln('Switch '.$ain.' is <fg=red>OFF</>');
+                    if($celsius == 253) {
+                        $this->io->writeln('Smart radiator control '.$ain.' is <fg=red>OFF</>');
+                    } else {
+                        $this->io->writeln('Smart radiator control '.$ain.' is <fg=green>ON</>');
+                    }
                 } else {
-                    $this->io->writeln('OFF');
+                    $this->io->writeln($celsius == 253 ? 'OFF' : 'ON');
                 }
             }
-            $this->io->writeln($celsius);
         } else {
             $errOutput->writeln('No temperature available on that device');
             $returnCode = 1;
@@ -123,26 +118,20 @@ class SmartSrcSetpoint extends Smart
     private function getCommandHelp(): string
     {
         return <<<'HELP'
-The <info>%command.name%</info> command creates new users and saves them in the database:
+The <info>%command.name%</info> command sets setpoint temperature of a SmartHome smart radiator control:
 
-  <info>php %command.full_name%</info> <comment>username password email</comment>
+  <info>php %command.full_name%</info> <comment>ain temperature</comment>
 
-By default the command creates regular users. To create administrator users,
-add the <comment>--admin</comment> option:
+The <info>%command.name%</info> command also reads setpoint temperature of a SmartHome smart radiator control:
 
-  <info>php %command.full_name%</info> username password email <comment>--admin</comment>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
-If you omit any of the three required arguments, the command will ask you to
-provide the missing values:
+By default the command will output temperature with its unit. Temperature range is 8 - 28°C in 0.5°C steps. 
 
-  # command will ask you for the email
-  <info>php %command.full_name%</info> <comment>username password</comment>
+You can also use the <comment>-s</comment> option to get a simplified output in [°C]:
 
-  # command will ask you for the email and password
-  <info>php %command.full_name%</info> <comment>username</comment>
-
-  # command will ask you for all arguments
-  <info>php %command.full_name%</info>
+  # command will simplify output
+  <info>php %command.full_name%</info> <comment>-s</comment>
 
 HELP;
     }

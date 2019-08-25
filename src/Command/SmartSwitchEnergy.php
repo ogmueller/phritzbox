@@ -107,7 +107,7 @@ class SmartSwitchEnergy extends Smart
         return <<<'HELP'
 The <info>%command.name%</info> command read energy quantity delivered over a SmartHome outlet:
 
-  <info>php %command.full_name%</info>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
 By default the command will output the energy consumption in the best readable unit. The value
 is the energy quantity since the first use of the device or last reset of energy statistic.

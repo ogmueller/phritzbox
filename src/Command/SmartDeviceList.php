@@ -83,7 +83,7 @@ class SmartDeviceList extends Smart
                 $feature     = $device->feature(Device::FEATURE_TEMPERATURE_SENSOR);
                 $offset      = $feature->getTemperatureOffset();
                 $temperature = $feature->getTemperatureCelsius() + $offset;
-                $row[]       = sprintf('%02.1fC / %02.1fC', $temperature, $offset);
+                $row[]       = sprintf('%02.1f°C / %02.1f°C', $temperature, $offset);
             } else {
                 $row[] = '-';
             }
