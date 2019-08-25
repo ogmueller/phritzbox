@@ -64,6 +64,7 @@ class Helper
 
             return null;
         }
+//dump($response->getContent());
 
         return $response;
     }

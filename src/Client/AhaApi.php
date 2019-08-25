@@ -10,6 +10,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 /**
  * Class AhaApi
  *
+ * The AVM Home Automation HTTP interface
+ *
  * @see     https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf
  * @package App\Client
  */
