@@ -72,7 +72,7 @@ class AhaApi
             $response     = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         }
 
-//        var_dump($response);
+//        dump($response, $response->getContent());
 
         return $response;
     }

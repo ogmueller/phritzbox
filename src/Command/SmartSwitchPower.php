@@ -23,15 +23,6 @@ use Symfony\Component\Stopwatch\Stopwatch;
 /**
  * A console command to read out the temperature of a smart home device
  *
- * To use this command, open a terminal window, enter into your project
- * directory and execute the following:
- *
- *     $ php bin/console smart:device:temperature
- *
- * To output detailed information, increase the command verbosity:
- *
- *     $ php bin/console smart:device:temperature -vv
- *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 class SmartSwitchPower extends Smart
@@ -114,26 +105,16 @@ class SmartSwitchPower extends Smart
     private function getCommandHelp(): string
     {
         return <<<'HELP'
-The <info>%command.name%</info> command creates new users and saves them in the database:
+The <info>%command.name%</info> command read current power consumption of a SmartHome outlet:
 
-  <info>php %command.full_name%</info> <comment>username password email</comment>
-
-By default the command creates regular users. To create administrator users,
-add the <comment>--admin</comment> option:
-
-  <info>php %command.full_name%</info> username password email <comment>--admin</comment>
-
-If you omit any of the three required arguments, the command will ask you to
-provide the missing values:
-
-  # command will ask you for the email
-  <info>php %command.full_name%</info> <comment>username password</comment>
-
-  # command will ask you for the email and password
-  <info>php %command.full_name%</info> <comment>username</comment>
-
-  # command will ask you for all arguments
   <info>php %command.full_name%</info>
+
+By default the command will output current power consumption in the best readable unit.
+
+You can also use the <comment>-s</comment> option to get a simplified output in [mW]:
+
+  # command will simplify output
+  <info>php %command.full_name%</info> <comment>-s</comment>
 
 HELP;
     }

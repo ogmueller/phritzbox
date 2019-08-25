@@ -20,7 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
- * A console command to list all know outlets
+ * A console command to get name of outlets or group
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
