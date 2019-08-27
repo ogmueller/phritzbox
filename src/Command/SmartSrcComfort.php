@@ -121,7 +121,7 @@ By default the command will output temperature with its unit. Temperature range 
 You can also use the <comment>-s</comment> option to get a simplified output in [°C]:
 
   # command will simplify output
-  <info>php %command.full_name%</info> <comment>-s</comment>
+  <info>php %command.full_name%</info> <comment>-s</comment> <comment>ain</comment>
 
 HELP;
     }

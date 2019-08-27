@@ -114,7 +114,7 @@ By default the command will output current power consumption in the best readabl
 You can also use the <comment>-s</comment> option to get a simplified output in [mW]:
 
   # command will simplify output
-  <info>php %command.full_name%</info> <comment>-s</comment>
+  <info>php %command.full_name%</info> <comment>-s</comment> <comment>ain</comment>
 
 HELP;
     }

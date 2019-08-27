@@ -115,7 +115,7 @@ is the energy quantity since the first use of the device or last reset of energy
 You can also use the <comment>-s</comment> option to get a simplified output in [Wh]:
 
   # command will simplify output
-  <info>php %command.full_name%</info> <comment>-s</comment>
+  <info>php %command.full_name%</info> <comment>-s</comment> <comment>ain</comment>
 
 HELP;
     }

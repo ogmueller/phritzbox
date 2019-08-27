@@ -25,15 +25,6 @@ use Symfony\Component\Stopwatch\Stopwatch;
 /**
  * A console command to read out all available smart home devices
  *
- * To use this command, open a terminal window, enter into your project
- * directory and execute the following:
- *
- *     $ php bin/console smart:device:list
- *
- * To output detailed information, increase the command verbosity:
- *
- *     $ php bin/console smart:device:list -vv
- *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 class SmartDeviceStats extends Smart
@@ -381,26 +372,22 @@ class SmartDeviceStats extends Smart
     private function getCommandHelp(): string
     {
         return <<<'HELP'
-The <info>%command.name%</info> command creates new users and saves them in the database:
+The <info>%command.name%</info> command shows basic information of a SmartHome device:
 
-  <info>php %command.full_name%</info> <comment>username password email</comment>
+  <info>php %command.full_name%</info> <comment>ain</comment>
 
-By default the command creates regular users. To create administrator users,
-add the <comment>--admin</comment> option:
+By default the command will output show graphs depending on the features of the device (e.g. temperature, power, energy, ...).
+Each graph has a headline with the type of information and its unit as well as the time range and interval it represents.
+The line from left to right is from older to newer values.
 
-  <info>php %command.full_name%</info> username password email <comment>--admin</comment>
+You can also use the <comment>-s</comment> option to get a simplified output. In this case the information will be shown
+as comma seperated values (CSV):
 
-If you omit any of the three required arguments, the command will ask you to
-provide the missing values:
+  # command will simplify output
+  <info>php %command.full_name%</info> <comment>-s</comment> <comment>ain</comment>
 
-  # command will ask you for the email
-  <info>php %command.full_name%</info> <comment>username password</comment>
-
-  # command will ask you for the email and password
-  <info>php %command.full_name%</info> <comment>username</comment>
-
-  # command will ask you for all arguments
-  <info>php %command.full_name%</info>
+The CSVs will always start with the following information: name, unit , number of values, time interval. 
+After that all the values will be appended in a descending time order (latest first, oldest last).
 
 HELP;
     }
