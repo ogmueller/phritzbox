@@ -16,12 +16,13 @@ use App\Entity\Tag;
 use App\Pagination\Paginator;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Common\Persistence\ManagerRegistry;
+use function Symfony\Component\String\u;
 
 /**
  * This custom Doctrine repository contains some methods which are useful when
  * querying for blog post information.
  *
- * See https://symfony.com/doc/current/doctrine/repository.html
+ * See https://symfony.com/doc/current/doctrine.html#querying-for-objects-the-repository
  *
  * @author Ryan Weaver <weaverryan@gmail.com>
  * @author Javier Eguiluz <javier.eguiluz@gmail.com>
@@ -56,9 +57,8 @@ class PostRepository extends ServiceEntityRepository
     /**
      * @return Post[]
      */
-    public function findBySearchQuery(string $rawQuery, int $limit = Post::NUM_ITEMS): array
+    public function findBySearchQuery(string $query, int $limit = Post::NUM_ITEMS): array
     {
-        $query = $this->sanitizeSearchQuery($rawQuery);
         $searchTerms = $this->extractSearchTerms($query);
 
         if (0 === \count($searchTerms)) {
@@ -82,22 +82,16 @@ class PostRepository extends ServiceEntityRepository
     }
 
     /**
-     * Removes all non-alphanumeric characters except whitespaces.
-     */
-    private function sanitizeSearchQuery(string $query): string
-    {
-        return trim(preg_replace('/[[:space:]]+/', ' ', $query));
-    }
-
-    /**
-     * Splits the search query into terms and removes the ones which are irrelevant.
+     * Transforms the search string into an array of search terms.
      */
     private function extractSearchTerms(string $searchQuery): array
     {
-        $terms = array_unique(explode(' ', $searchQuery));
+        $searchQuery = u($searchQuery)->replaceMatches('/[[:space:]]+/', ' ')->trim();
+        $terms = array_unique(u($searchQuery)->split(' '));
 
+        // ignore the search terms that are too short
         return array_filter($terms, function ($term) {
-            return 2 <= mb_strlen($term);
+            return 2 <= u($term)->length();
         });
     }
 }

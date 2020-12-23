@@ -26,7 +26,7 @@ class AddUserCommandTest extends KernelTestCase
         'full-name' => 'Chuck Norris',
     ];
 
-    protected function setUp()
+    protected function setUp(): void
     {
         exec('stty 2>&1', $output, $exitcode);
         $isSttySupported = 0 === $exitcode;
@@ -59,7 +59,8 @@ class AddUserCommandTest extends KernelTestCase
      * This test doesn't provide all the arguments required by the command, so
      * the command runs interactively and it will ask for the value of the missing
      * arguments.
-     * See https://symfony.com/doc/current/components/console/helpers/questionhelper.html#testing-a-command-that-expects-input
+     * See
+     * https://symfony.com/doc/current/components/console/helpers/questionhelper.html#testing-a-command-that-expects-input
      */
     public function testCreateUserInteractive(bool $isAdmin)
     {
@@ -71,7 +72,7 @@ class AddUserCommandTest extends KernelTestCase
             array_values($this->userData)
         );
 
-        $this->assertUserCreated($isAdmin);
+        self::assertUserCreated($isAdmin);
     }
 
     /**
@@ -94,20 +95,23 @@ class AddUserCommandTest extends KernelTestCase
 
         /** @var User $user */
         $user = $container->get('doctrine')->getRepository(User::class)->findOneByEmail($this->userData['email']);
-        $this->assertNotNull($user);
+        self::assertNotNull($user);
 
-        $this->assertSame($this->userData['full-name'], $user->getFullName());
-        $this->assertSame($this->userData['username'], $user->getUsername());
-        $this->assertTrue($container->get('security.password_encoder')->isPasswordValid($user, $this->userData['password']));
-        $this->assertSame($isAdmin ? ['ROLE_ADMIN'] : ['ROLE_USER'], $user->getRoles());
+        self::assertSame($this->userData['full-name'], $user->getFullName());
+        self::assertSame($this->userData['username'], $user->getUsername());
+        self::assertTrue(
+            $container->get('security.password_encoder')->isPasswordValid($user, $this->userData['password'])
+        );
+        self::assertSame($isAdmin ? ['ROLE_ADMIN'] : ['ROLE_USER'], $user->getRoles());
     }
 
     /**
      * This helper method abstracts the boilerplate code needed to test the
      * execution of a command.
      *
-     * @param array $arguments All the arguments passed when executing the command
-     * @param array $inputs    The (optional) answers given to the command when it asks for the value of the missing arguments
+     * @param  array  $arguments  All the arguments passed when executing the command
+     * @param  array  $inputs     The (optional) answers given to the command when it asks for the value of the missing
+     *                            arguments
      */
     private function executeCommand(array $arguments, array $inputs = [])
     {

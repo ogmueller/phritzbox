@@ -54,13 +54,13 @@ class Helper
         ) {
             $responseCode = $response->getStatusCode();
             if ($responseCode === 403) {
-                dump($response);
+//                dump($response);
                 $this->deleteSid();
                 throw new AccessDeniedHttpException('Access denied.');
             }
 
             // TODO: this should be logged
-            dump($e);
+//            dump($e);
 
             return null;
         }

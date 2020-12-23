@@ -1,0 +1,40 @@
+version: "3.7"
+
+services:
+    web:
+        image: nginx:latest
+        restart: unless-stopped
+        working_dir: /application
+        ports:
+            - "${NGINX_PORT:-8080}:80"
+        volumes:
+            - ../public:/application/public
+            - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+        networks:
+            - phritzbox
+        links:
+            - php
+
+    php:
+        build:
+            context: ./php
+        restart: unless-stopped
+        volumes:
+            - ../:/application/
+        networks:
+            - phritzbox
+
+    mail:
+        image: mailhog/mailhog:latest
+        restart: unless-stopped
+        ports:
+            - "${WEBMAIL_PORT:-8025}:8025"
+        networks:
+            - phritzbox
+
+networks:
+    phritzbox:
+        name: "${COMPOSE_PROJECT_NAME}"
+        external: false
+
+# vim: syntax=yaml ts=2 sw=2 et sr softtabstop=2 autoindent

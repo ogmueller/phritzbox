@@ -14,7 +14,7 @@ class Helper
     {
         /** @var MockObject|\App\Client\Helper $helper */
         $helper = $test->getMockBuilder(\App\Client\Helper::class)
-                       ->setMethods(['requestUrl', 'getSid'])
+                       ->onlyMethods(['requestUrl', 'getSid'])
                        ->getMock();
 
         $client = new MockHttpClient(new MockResponse($response));
@@ -25,7 +25,7 @@ class Helper
 
         $helper->expects($test->any())
                ->method('getSid')
-               ->willReturn(123);
+               ->willReturn('123');
 
         return new AhaApi($helper);
     }

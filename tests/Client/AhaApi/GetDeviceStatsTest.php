@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Client;
+namespace App\Tests\Client\AhaApi;
 
 use PHPUnit\Framework\TestCase;
 
@@ -17,7 +17,7 @@ class GetDeviceStatsTest extends TestCase
         $aha   = \App\Tests\Helper::mockClientHelper($this, $xml);
         $stats = $aha->getBasicDeviceStats('123');
 
-        $this->assertEquals($expected, $stats);
+        self::assertEquals($expected, $stats);
     }
 
     /**

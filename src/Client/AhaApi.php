@@ -13,7 +13,6 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * The AVM Home Automation HTTP interface
  *
  * @see     https://avm.de/fileadmin/user_upload/Global/Service/Schnittstellen/AHA-HTTP-Interface.pdf
- * @package App\Client
  */
 class AhaApi
 {
@@ -69,7 +68,7 @@ class AhaApi
             $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         } catch (AccessDeniedHttpException $e) {
             // cached/given SID seems to be invalid. Delete cache and try to get new SID
-            var_dump('Access denied. Request new SID...');
+//            var_dump('Access denied. Request new SID...');
             $query['sid'] = $this->helper->getSid();
             $response     = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         }
@@ -376,7 +375,6 @@ class AhaApi
         if (!$xml) {
             throw new InvalidResponseException('Templates not available');
         }
-
 
         return $xml;
     }

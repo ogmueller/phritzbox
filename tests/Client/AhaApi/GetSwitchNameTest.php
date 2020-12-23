@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Client;
+namespace App\Tests\Client\AhaApi;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,6 +15,6 @@ class GetSwitchNameTest extends TestCase
         $aha      = \App\Tests\Helper::mockClientHelper($this, $response);
         $return   = $aha->getSwitchName('123');
 
-        $this->assertEquals('FRITZ!DECT 200', $return);
+        self::assertEquals('FRITZ!DECT 200', $return);
     }
 }

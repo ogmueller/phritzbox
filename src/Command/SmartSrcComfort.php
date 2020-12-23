@@ -52,21 +52,6 @@ class SmartSrcComfort extends Smart
             );
     }
 
-    /**
-     * This optional method is the first one executed for a command after configure()
-     * and is useful to initialize properties based on the input arguments and options.
-     *
-     * @param  InputInterface   $input
-     * @param  OutputInterface  $output
-     */
-    protected function initialize(InputInterface $input, OutputInterface $output): void
-    {
-        // SymfonyStyle is an optional feature that Symfony provides so you can
-        // apply a consistent look to the commands of your application.
-        // See https://symfony.com/doc/current/console/style.html
-        $this->io = new SymfonyStyle($input, $output);
-    }
-
     protected function executeSmart(
         InputInterface $input,
         OutputInterface $output,
@@ -116,7 +101,7 @@ The <info>%command.name%</info> command reads setpoint for comfort temperature o
 
   <info>php %command.full_name%</info> <comment>ain</comment>
 
-By default the command will output temperature with its unit. Temperature range is 8 - 28°C in 0.5°C steps. 
+By default the command will output temperature with its unit. Temperature range is 8 - 28°C in 0.5°C steps.
 
 You can also use the <comment>-s</comment> option to get a simplified output in [°C]:
 

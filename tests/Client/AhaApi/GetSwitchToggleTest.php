@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Client;
+namespace App\Tests\Client\AhaApi;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,12 +15,12 @@ class GetSwitchToggleTest extends TestCase
         $aha      = \App\Tests\Helper::mockClientHelper($this, $response);
         $return   = $aha->setSwitchToggle('123');
 
-        $this->assertEquals('1', $return);
+        self::assertEquals('1', $return);
 
         $response = "0\n";
         $aha      = \App\Tests\Helper::mockClientHelper($this, $response);
         $return   = $aha->setSwitchToggle('123');
 
-        $this->assertEquals('0', $return);
+        self::assertEquals('0', $return);
     }
 }

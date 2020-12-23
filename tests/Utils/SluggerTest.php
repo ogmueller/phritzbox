@@ -31,7 +31,7 @@ class SluggerTest extends TestCase
      */
     public function testSlugify(string $string, string $slug)
     {
-        $this->assertSame($slug, Slugger::slugify($string));
+        self::assertSame($slug, Slugger::slugify($string));
     }
 
     public function getSlugs()

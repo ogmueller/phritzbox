@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Client;
+namespace App\Tests\Client\AhaApi;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,7 +15,7 @@ class GetSwitchListTest extends TestCase
         $aha      = \App\Tests\Helper::mockClientHelper($this, $response);
         $return   = $aha->getSwitchList();
 
-        $this->assertEquals(
+        self::assertEquals(
             [
                 '087610372823',
                 'grp1DA951-3A2C30F97',

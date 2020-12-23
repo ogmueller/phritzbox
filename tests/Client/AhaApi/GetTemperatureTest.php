@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Client;
+namespace App\Tests\Client\AhaApi;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,6 +15,6 @@ class GetTemperatureTest extends TestCase
         $aha      = \App\Tests\Helper::mockClientHelper($this, $response);
         $return   = $aha->getTemperature('123');
 
-        $this->assertEquals('225', $return);
+        self::assertEquals('225', $return);
     }
 }

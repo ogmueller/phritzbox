@@ -386,7 +386,7 @@ as comma seperated values (CSV):
   # command will simplify output
   <info>php %command.full_name%</info> <comment>-s</comment> <comment>ain</comment>
 
-The CSVs will always start with the following information: name, unit , number of values, time interval. 
+The CSVs will always start with the following information: name, unit , number of values, time interval.
 After that all the values will be appended in a descending time order (latest first, oldest last).
 
 HELP;

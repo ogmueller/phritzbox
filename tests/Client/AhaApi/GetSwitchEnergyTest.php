@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Client;
+namespace App\Tests\Client\AhaApi;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,12 +15,12 @@ class GetSwitchEnergyTest extends TestCase
         $aha      = \App\Tests\Helper::mockClientHelper($this, $response);
         $return   = $aha->getSwitchEnergy('123');
 
-        $this->assertEquals('87521', $return);
+        self::assertEquals('87521', $return);
 
         $response = "0\n";
         $aha      = \App\Tests\Helper::mockClientHelper($this, $response);
         $return   = $aha->getSwitchEnergy('123');
 
-        $this->assertEquals('0', $return);
+        self::assertEquals('0', $return);
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Client;
+namespace App\Tests\Client\AhaApi;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,6 +15,6 @@ class GetSwitchOnTest extends TestCase
         $aha      = \App\Tests\Helper::mockClientHelper($this, $response);
         $return   = $aha->setSwitchOn('123');
 
-        $this->assertEquals('1', $return);
+        self::assertEquals('1', $return);
     }
 }

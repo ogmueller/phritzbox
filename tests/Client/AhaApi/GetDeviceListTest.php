@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Client;
+namespace App\Tests\Client\AhaApi;
 
 use App\Client\AhaApi;
 use App\Client\Helper;
@@ -23,11 +23,11 @@ class GetDeviceListTest extends TestCase
         $aha = \App\Tests\Helper::mockClientHelper($this, $deviceXml);
         $devices = $aha->getDeviceListInfos();
 
-        $this->assertCount(1, $devices);
+        self::assertCount(1, $devices);
 
         /** @var Device $device */
         $device = reset($devices);
-        $this->assertSame($expected, $device->toArray());
+        self::assertSame($expected, $device->toArray());
     }
 
     /**
@@ -127,7 +127,7 @@ class GetDeviceListTest extends TestCase
         // FRITZ!Powerline 546E
         yield [
             '<devicelist version="1">
-                <device identifier="24:65:11:CA:3F:43" id="20000" functionbitmask="640" fwversion="06.92" 
+                <device identifier="24:65:11:CA:3F:43" id="20000" functionbitmask="640" fwversion="06.92"
                         manufacturer="AVM" productname="FRITZ!Powerline 546E">
                     <present>1</present>
                     <name>FRITZ!Powerline 546E</name>

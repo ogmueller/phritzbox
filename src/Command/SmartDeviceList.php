@@ -144,9 +144,9 @@ class SmartDeviceList extends Smart
         $rightAligned = new TableStyle();
         $rightAligned->setPadType(STR_PAD_LEFT);
 
+        $table->setColumnStyle(6, $rightAligned);
         $table->setColumnStyle(7, $rightAligned);
         $table->setColumnStyle(8, $rightAligned);
-        $table->setColumnStyle(9, $rightAligned);
 
         $table->setFooterTitle(count($devices).' Devices found');
         $table->addRows($rows);
@@ -168,10 +168,10 @@ By default the command will output a table with information about:
 - Mfr: hardware manufacturer
 - Firmware: current version
 - Temp / Offset: both values in Celsius
-- Switch: show state of the outlet / mode / locked by API / locked at device 
+- Switch: show state of the outlet / mode / locked by API / locked at device
 - Power: current power consumption, updated approx. every 2 min
 - Energy: absolute consumption since first use or last reset
-- Voltage: current voltage, updated approx. every 2 min 
+- Voltage: current voltage, updated approx. every 2 min
 
 You can also use the <comment>-s</comment> option to get a simplified output:
 

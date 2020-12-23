@@ -13,6 +13,8 @@ namespace App\Command;
 
 use App\Client\AhaApi;
 use App\Device;
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressIndicator;
@@ -52,11 +54,23 @@ abstract class Smart extends Command
      */
     protected $ahaApi;
 
-    public function __construct(AhaApi $ahaApi)
+    /**
+     * @var EntityManager
+     */
+    protected $entityManager;
+
+    /**
+     * Smart constructor.
+     *
+     * @param  AhaApi         $ahaApi
+     * @param  EntityManager  $entityManager
+     */
+    public function __construct(AhaApi $ahaApi, EntityManagerInterface $entityManager)
     {
         parent::__construct();
 
-        $this->ahaApi = $ahaApi;
+        $this->ahaApi        = $ahaApi;
+        $this->entityManager = $entityManager;
     }
 
     /**
@@ -83,16 +97,17 @@ abstract class Smart extends Command
             $question = new Question('Please enter AIN of device: ');
 
             if (!empty($devices)) {
-                $rows = [];
+                $rows         = [];
                 $availableAin = [];
 
                 /** @var Device $device */
                 foreach ($devices as $device) {
                     // check if this device matches the minimum required features
-                    if (($this->requiredFeatures & $device->getFunctionBitMask()) == $this->requiredFeatures) {
-                        $identifier = $device->getIdentifier();
-                        $display    = $device->isPresent() ? '<fg=green>'.$identifier.'</>' : $identifier;
-                        $rows[]     = [
+                    if ($this->requiredFeatures <= 0 || ($this->requiredFeatures & $device->getFunctionBitMask(
+                            )) == $this->requiredFeatures) {
+                        $identifier     = $device->getIdentifier();
+                        $display        = $device->isPresent() ? '<fg=green>'.$identifier.'</>' : $identifier;
+                        $rows[]         = [
                             $display,
                             $device->getName(),
                             $device->hasTemperature() ? 'x' : '-',
@@ -157,7 +172,7 @@ abstract class Smart extends Command
         OutputInterface $output
     ): int {
         $stopwatch = new Stopwatch();
-        $stopwatch->start(self::$defaultName);
+        $stopwatch->start(self::getDefaultName());
 
         /** @var ConsoleOutput $output */
         $errOutput  = $output->getErrorOutput();
@@ -171,12 +186,12 @@ abstract class Smart extends Command
         $this->executeSmart($input, $output, $errOutput, $stopwatch);
 
         $output->isVerbose() && $progress->finish('Done');
-        $event = $stopwatch->stop(self::$defaultName);
+        $event = $stopwatch->stop(self::getDefaultName());
 
         if ($output->isVeryVerbose()) {
             $this->io->comment(
                 sprintf(
-                    'Command '.self::$defaultName.': Elapsed time: %.2f ms / Consumed memory: %.2f MB',
+                    'Command '.self::getDefaultName().': Elapsed time: %.2f ms / Consumed memory: %.2f MB',
                     $event->getDuration(),
                     $event->getMemory() / (1024 ** 2)
                 )

@@ -52,21 +52,6 @@ class SmartSwitchPresent extends Smart
             );
     }
 
-    /**
-     * This optional method is the first one executed for a command after configure()
-     * and is useful to initialize properties based on the input arguments and options.
-     *
-     * @param  InputInterface   $input
-     * @param  OutputInterface  $output
-     */
-    protected function initialize(InputInterface $input, OutputInterface $output): void
-    {
-        // SymfonyStyle is an optional feature that Symfony provides so you can
-        // apply a consistent look to the commands of your application.
-        // See https://symfony.com/doc/current/console/style.html
-        $this->io = new SymfonyStyle($input, $output);
-    }
-
     protected function executeSmart(
         InputInterface $input,
         OutputInterface $output,

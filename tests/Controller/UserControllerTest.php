@@ -41,8 +41,8 @@ class UserControllerTest extends WebTestCase
         $client->request($httpMethod, $url);
 
         $response = $client->getResponse();
-        $this->assertSame(Response::HTTP_FOUND, $response->getStatusCode());
-        $this->assertSame(
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        self::assertSame(
             'http://localhost/en/login',
             $response->getTargetUrl(),
             sprintf('The %s secure URL redirects to the login form.', $url)
@@ -69,14 +69,14 @@ class UserControllerTest extends WebTestCase
         ]);
         $client->submit($form);
 
-        $this->assertSame(Response::HTTP_FOUND, $client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_FOUND, $client->getResponse()->getStatusCode());
 
         /** @var User $user */
         $user = $client->getContainer()->get('doctrine')->getRepository(User::class)->findOneBy([
             'email' => $newUserEmail,
         ]);
-        $this->assertNotNull($user);
-        $this->assertSame($newUserEmail, $user->getEmail());
+        self::assertNotNull($user);
+        self::assertSame($newUserEmail, $user->getEmail());
     }
 
     public function testChangePassword()
@@ -96,8 +96,8 @@ class UserControllerTest extends WebTestCase
         $client->submit($form);
 
         $response = $client->getResponse();
-        $this->assertSame(Response::HTTP_FOUND, $response->getStatusCode());
-        $this->assertSame(
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        self::assertSame(
             '/en/logout',
             $response->getTargetUrl(),
             'Changing password logout the user.'

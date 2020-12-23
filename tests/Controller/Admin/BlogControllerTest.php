@@ -43,7 +43,7 @@ class BlogControllerTest extends WebTestCase
         ]);
 
         $client->request($httpMethod, $url);
-        $this->assertSame(Response::HTTP_FORBIDDEN, $client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_FORBIDDEN, $client->getResponse()->getStatusCode());
     }
 
     public function getUrlsForRegularUsers()
@@ -62,9 +62,9 @@ class BlogControllerTest extends WebTestCase
         ]);
 
         $crawler = $client->request('GET', '/en/admin/post/');
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
 
-        $this->assertGreaterThanOrEqual(
+        self::assertGreaterThanOrEqual(
             1,
             $crawler->filter('body#admin_post_index #main tbody tr')->count(),
             'The backend homepage displays all the available posts.'
@@ -95,14 +95,14 @@ class BlogControllerTest extends WebTestCase
         ]);
         $client->submit($form);
 
-        $this->assertSame(Response::HTTP_FOUND, $client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_FOUND, $client->getResponse()->getStatusCode());
 
         $post = $client->getContainer()->get('doctrine')->getRepository(Post::class)->findOneBy([
             'title' => $postTitle,
         ]);
-        $this->assertNotNull($post);
-        $this->assertSame($postSummary, $post->getSummary());
-        $this->assertSame($postContent, $post->getContent());
+        self::assertNotNull($post);
+        self::assertSame($postSummary, $post->getSummary());
+        self::assertSame($postContent, $post->getContent());
     }
 
     public function testAdminShowPost()
@@ -113,7 +113,7 @@ class BlogControllerTest extends WebTestCase
         ]);
         $client->request('GET', '/en/admin/post/1');
 
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
     }
 
     /**
@@ -136,11 +136,11 @@ class BlogControllerTest extends WebTestCase
         ]);
         $client->submit($form);
 
-        $this->assertSame(Response::HTTP_FOUND, $client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_FOUND, $client->getResponse()->getStatusCode());
 
         /** @var Post $post */
         $post = $client->getContainer()->get('doctrine')->getRepository(Post::class)->find(1);
-        $this->assertSame($newBlogPostTitle, $post->getTitle());
+        self::assertSame($newBlogPostTitle, $post->getTitle());
     }
 
     /**
@@ -158,10 +158,10 @@ class BlogControllerTest extends WebTestCase
         $crawler = $client->request('GET', '/en/admin/post/1');
         $client->submit($crawler->filter('#delete-form')->form());
 
-        $this->assertSame(Response::HTTP_FOUND, $client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_FOUND, $client->getResponse()->getStatusCode());
 
         $post = $client->getContainer()->get('doctrine')->getRepository(Post::class)->find(1);
-        $this->assertNull($post);
+        self::assertNull($post);
     }
 
     private function generateRandomString(int $length): string
