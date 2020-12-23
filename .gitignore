@@ -2,6 +2,9 @@
 /public/build/fonts/glyphicons-*
 /public/build/images/glyphicons-*
 
+# docker
+/docker/.env
+
 # IDE
 /.idea/
 
