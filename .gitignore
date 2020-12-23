@@ -1,10 +1,10 @@
+/data/
 /public/build/fonts/glyphicons-*
 /public/build/images/glyphicons-*
 
 # IDE
 /.idea/
 
-/data/
 
 ###> symfony/framework-bundle ###
 /.env.local

@@ -126,6 +126,9 @@
             ".php_cs.dist"
         ]
     },
+    "friendsofphp/proxy-manager-lts": {
+        "version": "v1.0.0"
+    },
     "laminas/laminas-code": {
         "version": "3.4.1"
     },
@@ -232,6 +235,9 @@
     },
     "roave/security-advisories": {
         "version": "dev-master"
+    },
+    "sebastian/cli-parser": {
+        "version": "1.0.1"
     },
     "sebastian/code-unit": {
         "version": "1.0.5"
