@@ -26,50 +26,50 @@ class TagArrayToStringTransformerTest extends TestCase
     /**
      * Ensures that tags are created correctly.
      */
-    public function testCreateTheRightAmountOfTags()
+    public function testCreateTheRightAmountOfTags(): void
     {
         $tags = $this->getMockedTransformer()->reverseTransform('Hello, Demo, How');
 
-        self::assertCount(3, $tags);
-        self::assertSame('Hello', $tags[0]->getName());
+        $this->assertCount(3, $tags);
+        $this->assertSame('Hello', $tags[0]->getName());
     }
 
     /**
      * Ensures that empty tags and errors in the number of commas are
      * dealt correctly.
      */
-    public function testCreateTheRightAmountOfTagsWithTooManyCommas()
+    public function testCreateTheRightAmountOfTagsWithTooManyCommas(): void
     {
         $transformer = $this->getMockedTransformer();
 
-        self::assertCount(3, $transformer->reverseTransform('Hello, Demo,, How'));
-        self::assertCount(3, $transformer->reverseTransform('Hello, Demo, How,'));
+        $this->assertCount(3, $transformer->reverseTransform('Hello, Demo,, How'));
+        $this->assertCount(3, $transformer->reverseTransform('Hello, Demo, How,'));
     }
 
     /**
      * Ensures that leading/trailing spaces are ignored for tag names.
      */
-    public function testTrimNames()
+    public function testTrimNames(): void
     {
         $tags = $this->getMockedTransformer()->reverseTransform('   Hello   ');
 
-        self::assertSame('Hello', $tags[0]->getName());
+        $this->assertSame('Hello', $tags[0]->getName());
     }
 
     /**
      * Ensures that duplicated tag names are ignored.
      */
-    public function testDuplicateNames()
+    public function testDuplicateNames(): void
     {
         $tags = $this->getMockedTransformer()->reverseTransform('Hello, Hello, Hello');
 
-        self::assertCount(1, $tags);
+        $this->assertCount(1, $tags);
     }
 
     /**
      * Ensures that the transformer uses tags already persisted in the database.
      */
-    public function testUsesAlreadyDefinedTags()
+    public function testUsesAlreadyDefinedTags(): void
     {
         $persistedTags = [
             $this->createTag('Hello'),
@@ -77,16 +77,16 @@ class TagArrayToStringTransformerTest extends TestCase
         ];
         $tags = $this->getMockedTransformer($persistedTags)->reverseTransform('Hello, World, How, Are, You');
 
-        self::assertCount(5, $tags);
-        self::assertSame($persistedTags[0], $tags[0]);
-        self::assertSame($persistedTags[1], $tags[1]);
+        $this->assertCount(5, $tags);
+        $this->assertSame($persistedTags[0], $tags[0]);
+        $this->assertSame($persistedTags[1], $tags[1]);
     }
 
     /**
      * Ensures that the transformation from Tag instances to a simple string
      * works as expected.
      */
-    public function testTransform()
+    public function testTransform(): void
     {
         $persistedTags = [
             $this->createTag('Hello'),
@@ -94,7 +94,7 @@ class TagArrayToStringTransformerTest extends TestCase
         ];
         $transformed = $this->getMockedTransformer()->transform($persistedTags);
 
-        self::assertSame('Hello,World', $transformed);
+        $this->assertSame('Hello,World', $transformed);
     }
 
     /**

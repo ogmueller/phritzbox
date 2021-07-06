@@ -12,12 +12,13 @@
 namespace App\Tests\Controller;
 
 use App\Entity\Post;
+use App\Pagination\Paginator;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
  * Functional test for the controllers defined inside BlogController.
  *
- * See https://symfony.com/doc/current/book/testing.html#functional-tests
+ * See https://symfony.com/doc/current/testing.html#functional-tests
  *
  * Execute the application tests using this command (requires PHPUnit to be installed):
  *
@@ -26,30 +27,29 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  */
 class BlogControllerTest extends WebTestCase
 {
-    public function testIndex()
+    public function testIndex(): void
     {
         $client = static::createClient();
         $crawler = $client->request('GET', '/en/blog/');
 
-        self::assertCount(
-            Post::NUM_ITEMS,
+        $this->assertResponseIsSuccessful();
+
+        $this->assertCount(
+            Paginator::PAGE_SIZE,
             $crawler->filter('article.post'),
             'The homepage displays the right number of posts.'
         );
     }
 
-    public function testRss()
+    public function testRss(): void
     {
         $client = static::createClient();
         $crawler = $client->request('GET', '/en/blog/rss.xml');
 
-        self::assertSame(
-            'text/xml; charset=UTF-8',
-            $client->getResponse()->headers->get('Content-Type')
-        );
+        $this->assertResponseHeaderSame('Content-Type', 'text/xml; charset=UTF-8');
 
-        self::assertCount(
-            Post::NUM_ITEMS,
+        $this->assertCount(
+            Paginator::PAGE_SIZE,
             $crawler->filter('item'),
             'The xml file displays the right number of posts.'
         );
@@ -61,7 +61,7 @@ class BlogControllerTest extends WebTestCase
      * to the database are rolled back when this test completes. This means that
      * all the application tests begin with the same database contents.
      */
-    public function testNewComment()
+    public function testNewComment(): void
     {
         $client = static::createClient([], [
             'PHP_AUTH_USER' => 'john_user',
@@ -73,28 +73,26 @@ class BlogControllerTest extends WebTestCase
         $crawler = $client->request('GET', '/en/blog/');
         $postLink = $crawler->filter('article.post > h2 a')->link();
 
-        $crawler = $client->click($postLink);
-
-        $form = $crawler->selectButton('Publish comment')->form([
+        $client->click($postLink);
+        $crawler = $client->submitForm('Publish comment', [
             'comment[content]' => 'Hi, Symfony!',
         ]);
-        $crawler = $client->submit($form);
 
         $newComment = $crawler->filter('.post-comment')->first()->filter('div > p')->text();
 
-        self::assertSame('Hi, Symfony!', $newComment);
+        $this->assertSame('Hi, Symfony!', $newComment);
     }
 
-    public function testAjaxSearch()
+    public function testAjaxSearch(): void
     {
         $client = static::createClient();
         $client->xmlHttpRequest('GET', '/en/blog/search', ['q' => 'lorem']);
 
         $results = json_decode($client->getResponse()->getContent(), true);
 
-        self::assertSame('application/json', $client->getResponse()->headers->get('Content-Type'));
-        self::assertCount(1, $results);
-        self::assertSame('Lorem ipsum dolor sit amet consectetur adipiscing elit', $results[0]['title']);
-        self::assertSame('Jane Doe', $results[0]['author']);
+        $this->assertResponseHeaderSame('Content-Type', 'application/json');
+        $this->assertCount(1, $results);
+        $this->assertSame('Lorem ipsum dolor sit amet consectetur adipiscing elit', $results[0]['title']);
+        $this->assertSame('Jane Doe', $results[0]['author']);
     }
 }
