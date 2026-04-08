@@ -18,18 +18,16 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
  * A console command to turn off an outlet
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
+#[AsCommand(name: 'smart:switch:off')]
 class SmartSwitchOff extends Smart
 {
-    // to make your command lazily loaded, configure the $defaultName static property,
-    // so it will be instantiated only when the command is actually called.
-    protected static $defaultName = 'smart:switch:off';
-
     /**
      * {@inheritdoc}
      */

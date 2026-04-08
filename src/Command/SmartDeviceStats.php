@@ -21,18 +21,16 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
  * A console command to read out all available smart home devices
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
+#[AsCommand(name: 'smart:device:stats')]
 class SmartDeviceStats extends Smart
 {
-    // to make your command lazily loaded, configure the $defaultName static property,
-    // so it will be instantiated only when the command is actually called.
-    protected static $defaultName = 'smart:device:stats';
-
     /**
      * {@inheritdoc}
      */

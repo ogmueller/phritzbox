@@ -18,18 +18,16 @@ use noximo\PHPColoredAsciiLinechart\Settings;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
  * A console command to store all stats from all available devices
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
+#[AsCommand(name: 'cron:smart:savestats')]
 class CronSmartSaveStats extends Smart
 {
-    // to make your command lazily loaded, configure the $defaultName static property,
-    // so it will be instantiated only when the command is actually called.
-    protected static $defaultName = 'cron:smart:savestats';
-
     /**
      * {@inheritdoc}
      */

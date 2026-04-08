@@ -15,18 +15,16 @@ use App\Device;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
  * A console command to list all known outlets
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
+#[AsCommand(name: 'smart:switch:list')]
 class SmartSwitchList extends Smart
 {
-    // to make your command lazily loaded, configure the $defaultName static property,
-    // so it will be instantiated only when the command is actually called.
-    protected static $defaultName = 'smart:switch:list';
-
     /**
      * {@inheritdoc}
      */

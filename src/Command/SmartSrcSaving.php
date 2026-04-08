@@ -18,18 +18,16 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
  * A console command to read setpoint for saving temperature of a SmartHome smart radiator control
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
+#[AsCommand(name: 'smart:src:saving')]
 class SmartSrcSaving extends Smart
 {
-    // to make your command lazily loaded, configure the $defaultName static property,
-    // so it will be instantiated only when the command is actually called.
-    protected static $defaultName = 'smart:src:saving';
-
     /**
      * {@inheritdoc}
      */

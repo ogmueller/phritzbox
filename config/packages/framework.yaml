@@ -18,6 +18,8 @@ framework:
     esi: true
     fragments: true
 
+    handle_all_throwables: true
+
     php_errors:
         log: true
 

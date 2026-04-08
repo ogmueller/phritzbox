@@ -3,7 +3,6 @@
 namespace App\Client;
 
 use App\Device;
-use SensioLabs\Security\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -43,7 +42,7 @@ class AhaApi
      * @return ResponseInterface|null
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    protected function commandUrl(string $command, string $ain = null, string $param = null): ?ResponseInterface
+    protected function commandUrl(string $command, ?string $ain = null, ?string $param = null): ?ResponseInterface
     {
         try {
             $sid = $this->helper->getSid();
@@ -78,7 +77,7 @@ class AhaApi
         return $response;
     }
 
-    protected function basicCommand(string $command, string $ain = null, string $param = null): ?string
+    protected function basicCommand(string $command, ?string $ain = null, ?string $param = null): ?string
     {
         $response = $this->commandUrl($command, $ain, $param);
 
@@ -196,7 +195,7 @@ class AhaApi
 
             var_dump($response);
 
-            throw new HttpException('Unknown response for getdevicelistinfos');
+            throw new InvalidResponseException('Unknown response for getdevicelistinfos');
         }
 
         if (!$xml || !$xml->device) {
@@ -293,7 +292,7 @@ class AhaApi
 
             var_dump($response);
 
-            throw new HttpException('Unknown response for getbasicdevicestats');
+            throw new InvalidResponseException('Unknown response for getbasicdevicestats');
         }
 
         if (!$xml || $xml->getName() !== 'devicestats') {
@@ -369,7 +368,7 @@ class AhaApi
 
             var_dump($response);
 
-            throw new HttpException('Unknown response for gettemplatelistinfos');
+            throw new InvalidResponseException('Unknown response for gettemplatelistinfos');
         }
 
         if (!$xml) {

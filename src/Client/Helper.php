@@ -3,7 +3,7 @@
 namespace App\Client;
 
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\HttpClient\NativeHttpClient;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
@@ -32,11 +32,13 @@ class Helper
      */
     public function requestUrl(string $url, array $options = []): ?ResponseInterface
     {
-        $httpClient = HttpClient::create(
+        // NativeHttpClient (PHP streams) instead of CurlHttpClient because curl/OpenSSL 3.x
+        // treats the Fritz!Box's missing TLS close_notify as a fatal error, while PHP streams
+        // handle it as a normal EOF.
+        $httpClient = new NativeHttpClient(
             [
-                'http_version' => '2.0',
-                'timeout'      => 30,
-                'headers'      => [
+                'timeout' => 30,
+                'headers' => [
                     'User-Agent' => 'phritzbox',
                 ],
             ]
@@ -47,24 +49,20 @@ class Helper
             // do a getContent to actually wait for the request to finish
             // and catch its exceptions
             $response->getContent();
-        } catch (TransportExceptionInterface    // When a network error occurs
-        | RedirectionExceptionInterface         // On a 3xx and the "max_redirects" option has been reached
-        | ClientExceptionInterface              // On a 4xx
-        | ServerExceptionInterface $e           // On a 5xx
-        ) {
-            $responseCode = $response->getStatusCode();
-            if ($responseCode === 403) {
-//                dump($response);
+        } catch (TransportExceptionInterface $e) {
+            // Network-level failure (DNS, connection refused, SSL, timeout)
+            throw new \RuntimeException('Could not reach Fritz!Box at '.$url.': '.$e->getMessage(), 0, $e);
+        } catch (ClientExceptionInterface $e) {
+            // 4xx response
+            if ($response->getStatusCode() === 403) {
                 $this->deleteSid();
                 throw new AccessDeniedHttpException('Access denied.');
             }
 
-            // TODO: this should be logged
-//            dump($e);
-
+            return null;
+        } catch (RedirectionExceptionInterface | ServerExceptionInterface $e) {
             return null;
         }
-//dump($response->getContent());
 
         return $response;
     }
@@ -98,7 +96,10 @@ class Helper
             function (ItemInterface $item) {
                 // send initial request
                 $response = $this->requestUrl($_ENV['APP_API_URL_LOGIN']);
-                $xml      = simplexml_load_string($response->getContent());
+                if ($response === null) {
+                    throw new InvalidResponseException('Could not connect to Fritz!Box at '.$_ENV['APP_API_URL_LOGIN']);
+                }
+                $xml = simplexml_load_string($response->getContent());
                 if (!$xml || !isset($xml->Challenge)) {
                     throw new InvalidResponseException('Unexpected HTTP response');
                 }
@@ -119,7 +120,9 @@ class Helper
                         'response' => $challengeResponse,
                     ];
                     $response = $this->requestUrl($_ENV['APP_API_URL_LOGIN'], ['query' => $query]);
-
+                    if ($response === null) {
+                        throw new InvalidResponseException('Could not connect to Fritz!Box at '.$_ENV['APP_API_URL_LOGIN']);
+                    }
                     $xml = simplexml_load_string($response->getContent());
                     if (!$xml || !isset($xml->SID)) {
                         throw new InvalidResponseException('Unexpected HTTP response');
