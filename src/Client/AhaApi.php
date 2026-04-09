@@ -1,5 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
+/*
+ * Phritzbox
+ *
+ * (c) Oliver G. Mueller <oliver@teqneers.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace App\Client;
 
 use App\Device;
@@ -7,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Class AhaApi
+ * Class AhaApi.
  *
  * The AVM Home Automation HTTP interface
  *
@@ -15,31 +26,20 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 class AhaApi
 {
-    /**
-     * @var string
-     */
-    protected $sid;
+    protected string $sid;
 
-    /**
-     * @var Helper
-     */
-    private $helper;
+    private Helper $helper;
 
-    /**
-     * AhaApi constructor.
-     *
-     * @param  Helper  $helper
-     */
     public function __construct(Helper $helper)
     {
         $this->helper = $helper;
     }
 
     /**
-     * @param  string       $command  AHA command
-     * @param  string|null  $ain      Actor identification number
-     * @param  string|null  $param    Set value
-     * @return ResponseInterface|null
+     * @param string      $command AHA command
+     * @param string|null $ain     Actor identification number
+     * @param string|null $param   Set value
+     *
      * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function commandUrl(string $command, ?string $ain = null, ?string $param = null): ?ResponseInterface
@@ -53,7 +53,7 @@ class AhaApi
         }
 
         $query = [
-            'sid'       => $sid,
+            'sid' => $sid,
             'switchcmd' => $command,
         ];
         if (!empty($ain)) {
@@ -67,12 +67,9 @@ class AhaApi
             $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         } catch (AccessDeniedHttpException $e) {
             // cached/given SID seems to be invalid. Delete cache and try to get new SID
-//            var_dump('Access denied. Request new SID...');
             $query['sid'] = $this->helper->getSid();
-            $response     = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
+            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
         }
-
-//        dump($response, $response->getContent());
 
         return $response;
     }
@@ -81,27 +78,25 @@ class AhaApi
     {
         $response = $this->commandUrl($command, $ain, $param);
 
-        if ($response === null) {
+        if (null === $response) {
             return null;
         }
 
-        $content = trim($response->getContent());
-
-        return $content;
+        return mb_trim($response->getContent());
     }
 
     /**
-     * Delivers AIN/MAC of all SmartHome outlets
+     * Delivers AIN/MAC of all SmartHome outlets.
      */
     public function getSwitchList(): ?array
     {
         $response = $this->commandUrl('getswitchlist');
 
-        if ($response === null) {
+        if (null === $response) {
             return null;
         }
 
-        $content = trim($response->getContent());
+        $content = mb_trim($response->getContent());
         if (!empty($content)) {
             $content = explode(',', $content);
         } else {
@@ -112,73 +107,75 @@ class AhaApi
     }
 
     /**
-     * Switch on a SmartHome outlet
+     * Switch on a SmartHome outlet.
      */
-    public function setSwitchOn(string $ain)
+    public function setSwitchOn(string $ain): ?string
     {
         return $this->basicCommand('setswitchon', $ain);
     }
 
     /**
-     * Switch off a SmartHome outlet
+     * Switch off a SmartHome outlet.
      */
-    public function setSwitchOff(string $ain)
+    public function setSwitchOff(string $ain): ?string
     {
         return $this->basicCommand('setswitchoff', $ain);
     }
 
     /**
-     * Toggle power state off a SmartHome outlet
+     * Toggle power state off a SmartHome outlet.
      */
-    public function setSwitchToggle(string $ain)
+    public function setSwitchToggle(string $ain): ?string
     {
         return $this->basicCommand('setswitchtoggle', $ain);
     }
 
     /**
-     * Determine availability of a SmartHome outlet
+     * Determine availability of a SmartHome outlet.
      *
      * If a device gets disconnected it state might need
      * a couple of minutes to be recognized.
      */
-    public function getSwitchPresent(string $ain)
+    public function getSwitchPresent(string $ain): ?string
     {
         return $this->basicCommand('getswitchpresent', $ain);
     }
 
     /**
-     * Get current power consumption off a SmartHome outlet
+     * Get current power consumption off a SmartHome outlet.
      *
      * Value reading is delayed by a few seconds.
      */
-    public function getSwitchPower(string $ain)
+    public function getSwitchPower(string $ain): ?string
     {
         return $this->basicCommand('getswitchpower', $ain);
     }
 
     /**
-     * Get energy quantity delivered over a SmartHome outlet
+     * Get energy quantity delivered over a SmartHome outlet.
      *
      * Value reflects consumption since first use of outlet
      * or last reset of energy statistics.
      */
-    public function getSwitchEnergy(string $ain)
+    public function getSwitchEnergy(string $ain): ?string
     {
         return $this->basicCommand('getswitchenergy', $ain);
     }
 
     /**
-     * Get name of a SmartHome outlet
+     * Get name of a SmartHome outlet.
      */
-    public function getSwitchName(string $ain)
+    public function getSwitchName(string $ain): ?string
     {
         return $this->basicCommand('getswitchname', $ain);
     }
 
     /**
-     * Deliver basic information about all SmartHome devices
+     * Deliver basic information about all SmartHome devices.
+     *
+     * @return Device[]
      */
-    public function getDeviceListInfos()
+    public function getDeviceListInfos(): array
     {
         $response = $this->commandUrl('getdevicelistinfos');
 
@@ -190,10 +187,8 @@ class AhaApi
             dump($response);
             throw $e;
         }
-        if ($xml === false) {
+        if (false === $xml) {
             $this->helper->deleteSid();
-
-            var_dump($response);
 
             throw new InvalidResponseException('Unknown response for getdevicelistinfos');
         }
@@ -211,107 +206,102 @@ class AhaApi
     }
 
     /**
-     * Deliver basic information about all SmartHome devices
+     * Deliver basic information about all SmartHome devices.
      */
-    public function getTemperature(string $ain)
+    public function getTemperature(string $ain): ?string
     {
         return $this->basicCommand('gettemperature', $ain);
     }
 
     /**
-     * Get setpoint temperature of a SmartHome smart radiator control
+     * Get setpoint temperature of a SmartHome smart radiator control.
      */
-    public function getSrcSetpoint(string $ain)
+    public function getSrcSetpoint(string $ain): ?string
     {
         return $this->basicCommand('gethkrtsoll', $ain);
     }
 
     /**
-     * Get setpoint for comfort temperature of a SmartHome smart radiator control
+     * Get setpoint for comfort temperature of a SmartHome smart radiator control.
      */
-    public function getSrcComfort(string $ain)
+    public function getSrcComfort(string $ain): ?string
     {
         return $this->basicCommand('gethkrkomfort', $ain);
     }
 
     /**
-     * Get setpoint for saving temperature of a SmartHome smart radiator control
+     * Get setpoint for saving temperature of a SmartHome smart radiator control.
      */
-    public function getSrcSaving(string $ain)
+    public function getSrcSaving(string $ain): ?string
     {
         return $this->basicCommand('gethkrabsenk', $ain);
     }
 
     /**
-     * Set setpoint temperature of a SmartHome smart radiator control
+     * Set setpoint temperature of a SmartHome smart radiator control.
      */
-    public function setSrcSetpoint(string $ain, $setpoint)
+    public function setSrcSetpoint(string $ain, float|int $setpoint): ?string
     {
-        $setpoint = max(8, min(28, (float)$setpoint));
-
-        $setpoint = round($setpoint * 2);
+        $setpoint = max(8, min(28, (float) $setpoint));
+        $setpoint = (string) round($setpoint * 2);
 
         return $this->basicCommand('sethkrtsoll', $ain, $setpoint);
     }
 
     /**
-     * Turn on a SmartHome smart radiator control
+     * Turn on a SmartHome smart radiator control.
      */
-    public function setSrcOn(string $ain)
+    public function setSrcOn(string $ain): ?string
     {
-        return $this->basicCommand('sethkrtsoll', $ain, 254);
+        return $this->basicCommand('sethkrtsoll', $ain, '254');
     }
 
     /**
-     * Turn off a SmartHome smart radiator control
+     * Turn off a SmartHome smart radiator control.
      */
-    public function setSrcOff(string $ain)
+    public function setSrcOff(string $ain): ?string
     {
-        return $this->basicCommand('sethkrtsoll', $ain, 253);
+        return $this->basicCommand('sethkrtsoll', $ain, '253');
     }
 
     /**
-     * Deliver basic information of a SmartHome device
+     * Deliver basic information of a SmartHome device.
      */
-    public function getBasicDeviceStats(string $ain)
+    public function getBasicDeviceStats(string $ain): array
     {
         $response = $this->commandUrl('getbasicdevicestats', $ain);
-//        dump($response->getContent());
 
         try {
             $xml = simplexml_load_string($response->getContent());
-//            dump($xml);
         } catch (\Exception $e) {
             $this->helper->deleteSid();
 
             dump($response);
             throw $e;
         }
-        if ($xml === false) {
+        if (false === $xml) {
             $this->helper->deleteSid();
-
-            var_dump($response);
 
             throw new InvalidResponseException('Unknown response for getbasicdevicestats');
         }
 
-        if (!$xml || $xml->getName() !== 'devicestats') {
+        if (!$xml || 'devicestats' !== $xml->getName()) {
             throw new InvalidResponseException('Device not available');
         }
 
         $statistics = [];
-        $convert    = [
+        $convert = [
             'temperature' => 10,
-            'voltage'     => 1,
-            'power'       => 1,
-            'energy'      => 1,
+            'voltage' => 1,
+            'power' => 1,
+            'energy' => 1,
         ];
 
         $unit = [
             'temperature' => ['name' => 'C', 'factor' => 1],        // raw data in C
-            'voltage'     => ['name' => 'V', 'factor' => 1000],     // raw data in mV
-            'power'       => ['name' => 'W', 'factor' => 100],      // raw data in cW
-            'energy'      => ['name' => 'Wh', 'factor' => 1],       // raw data in Wh
+            'voltage' => ['name' => 'V', 'factor' => 1000],     // raw data in mV
+            'power' => ['name' => 'W', 'factor' => 100],      // raw data in cW
+            'energy' => ['name' => 'Wh', 'factor' => 1],       // raw data in Wh
         ];
 
         foreach ($xml->children() as $category) {
@@ -321,19 +311,20 @@ class AhaApi
                     $factor = $convert[$name];
 
                     $attr = $stats->attributes();
+                    $arr = [];
                     // number of elements
-                    $arr['count'] = (int)$attr['count'];
+                    $arr['count'] = (int) $attr['count'];
                     // time resolution in seconds
-                    $arr['interval'] = (int)$attr['grid'];
-                    $arr['unit']     = $unit[$name]['name'];
-                    $arr['factor']   = $unit[$name]['factor'];
-                    $arr['values']   = explode(',', (string)$stats);
+                    $arr['interval'] = (int) $attr['grid'];
+                    $arr['unit'] = $unit[$name]['name'];
+                    $arr['factor'] = $unit[$name]['factor'];
+                    $arr['values'] = explode(',', (string) $stats);
 
                     // some values are delivered with an unusual factor, e.g. tenth part of celsius (0.1)
                     // we convert them into most common representation, e.g. celsius (1) and
                     // force all entries to be floats
-                    $arr['values']       = array_map(
-                        function ($value) use ($factor) {
+                    $arr['values'] = array_map(
+                        static function ($value) use ($factor) {
                             return $value / $factor;
                         },
                         $arr['values']
@@ -347,16 +338,14 @@ class AhaApi
     }
 
     /**
-     * Deliver basic information of all SmartHome templates
+     * Deliver basic information of all SmartHome templates.
      */
-    public function getTemplateListInfos()
+    public function getTemplateListInfos(): \SimpleXMLElement
     {
         $response = $this->commandUrl('gettemplatelistinfos');
-        dump($response->getContent());
 
         try {
             $xml = simplexml_load_string($response->getContent());
-//            dump($xml);
         } catch (\Exception $e) {
             $this->helper->deleteSid();
 
@@ -365,8 +354,6 @@ class AhaApi
         }
         if ($xml === false) {
             $this->helper->deleteSid();
-
-            var_dump($response);
 
             throw new InvalidResponseException('Unknown response for gettemplatelistinfos');
         }

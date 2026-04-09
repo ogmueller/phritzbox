@@ -1,38 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
+/*
+ * Phritzbox
+ *
+ * (c) Oliver G. Mueller <oliver@teqneers.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace App\Device\Feature;
 
-use App\Device;
 use App\Device\Feature;
 
 class PowerMeter extends Feature
 {
-    /**
-     * @var float
-     */
-    protected $powerMeterVoltage;
+    protected float $powerMeterVoltage;
 
-    /**
-     * @var float
-     */
-    protected $powerMeterPower;
+    protected float $powerMeterPower;
 
-    /**
-     * @var float
-     */
-    protected $powerMeterEnergy;
+    protected float $powerMeterEnergy;
 
-    public function setXml(\SimpleXMLElement $xml)
+    public function setXml(\SimpleXMLElement $xml): void
     {
         if ($node = $xml->powermeter) {
             if (isset($node->voltage)) {
-                $this->setPowerMeterVoltage((float)$node->voltage / 1000);
+                $this->setPowerMeterVoltage((float) $node->voltage / 1000);
             }
             if (isset($node->power)) {
-                $this->setPowerMeterPower((float)$node->power / 1000);
+                $this->setPowerMeterPower((float) $node->power / 1000);
             }
             if (isset($node->energy)) {
-                $this->setPowerMeterEnergy((float)$node->energy / 1000);
+                $this->setPowerMeterEnergy((float) $node->energy / 1000);
             }
         }
     }
@@ -40,63 +41,42 @@ class PowerMeter extends Feature
     public function toArray(): array
     {
         return [
-            'powerMeterEnergy'  => $this->getPowerMeterEnergy(),
-            'powerMeterPower'   => $this->getPowerMeterPower(),
+            'powerMeterEnergy' => $this->getPowerMeterEnergy(),
+            'powerMeterPower' => $this->getPowerMeterPower(),
             'powerMeterVoltage' => $this->getPowerMeterVoltage(),
         ];
     }
 
-    /**
-     * @return float
-     */
     public function getPowerMeterVoltage(): float
     {
         return $this->powerMeterVoltage;
     }
 
-    /**
-     * @param  float  $powerMeterVoltage
-     * @return Device
-     */
-    public function setPowerMeterVoltage(float $powerMeterVoltage): PowerMeter
+    public function setPowerMeterVoltage(float $powerMeterVoltage): self
     {
         $this->powerMeterVoltage = $powerMeterVoltage;
 
         return $this;
     }
 
-    /**
-     * @return float
-     */
     public function getPowerMeterPower(): float
     {
         return $this->powerMeterPower;
     }
 
-    /**
-     * @param  float  $powerMeterPower
-     * @return Device
-     */
-    public function setPowerMeterPower(float $powerMeterPower): PowerMeter
+    public function setPowerMeterPower(float $powerMeterPower): self
     {
         $this->powerMeterPower = $powerMeterPower;
 
         return $this;
     }
 
-    /**
-     * @return float
-     */
     public function getPowerMeterEnergy(): float
     {
         return $this->powerMeterEnergy;
     }
 
-    /**
-     * @param  float  $powerMeterEnergy
-     * @return Device
-     */
-    public function setPowerMeterEnergy(float $powerMeterEnergy): PowerMeter
+    public function setPowerMeterEnergy(float $powerMeterEnergy): self
     {
         $this->powerMeterEnergy = $powerMeterEnergy;
 

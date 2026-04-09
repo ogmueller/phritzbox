@@ -1,50 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
+/*
+ * Phritzbox
+ *
+ * (c) Oliver G. Mueller <oliver@teqneers.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace App\Device\Feature;
 
-use App\Device;
 use App\Device\Feature;
-use UnexpectedValueException;
 
 class Outlet extends Feature
 {
-    /**
-     * @var bool
-     */
-    protected $switchState;
+    protected bool $switchState;
 
-    /**
-     * @var string
-     */
-    protected $switchMode;
+    protected ?string $switchMode = null;
 
-    /**
-     * @var bool
-     */
-    protected $switchLock;
+    protected bool $switchLock;
 
-    /**
-     * @var bool
-     */
-    protected $switchDeviceLock;
+    protected bool $switchDeviceLock;
 
-    /**
-     * @param  \SimpleXMLElement  $xml
-     */
-    public function setXml(\SimpleXMLElement $xml)
+    public function setXml(\SimpleXMLElement $xml): void
     {
         if ($node = $xml->switch) {
             if (isset($node->state)) {
-                $this->setSwitchState((bool)(string)($node->state));
+                $this->setSwitchState((bool) (string) $node->state);
             }
             if (isset($node->mode)) {
-                $this->setSwitchMode((string)$node->mode);
+                $this->setSwitchMode((string) $node->mode);
             }
             if (isset($node->lock)) {
-                $this->setSwitchLock((bool)(string)$node->lock);
+                $this->setSwitchLock((bool) (string) $node->lock);
             }
             if (isset($node->devicelock)) {
-                $this->setSwitchDeviceLock((bool)(string)$node->devicelock);
+                $this->setSwitchDeviceLock((bool) (string) $node->devicelock);
             }
         }
     }
@@ -53,52 +47,39 @@ class Outlet extends Feature
     {
         return [
             'switchDeviceLock' => $this->isSwitchDeviceLock(),
-            'switchLock'       => $this->isSwitchLock(),
-            'switchMode'       => $this->getSwitchMode(),
-            'switchState'      => $this->isSwitchState(),
+            'switchLock' => $this->isSwitchLock(),
+            'switchMode' => $this->getSwitchMode(),
+            'switchState' => $this->isSwitchState(),
         ];
     }
 
-    /**
-     * @return bool
-     */
     public function isSwitchState(): bool
     {
         return $this->switchState;
     }
 
-    /**
-     * @param  bool  $switchState
-     * @return Device
-     */
-    public function setSwitchState(bool $switchState): Outlet
+    public function setSwitchState(bool $switchState): self
     {
         $this->switchState = $switchState;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getSwitchMode()
+    public function getSwitchMode(): ?string
     {
         return $this->switchMode;
     }
 
     /**
-     * Mode is "auto" or "manual"
-     *
-     * @param  string  $switchMode
-     * @return Device
+     * Mode is "auto" or "manual".
      */
-    public function setSwitchMode(string $switchMode): Outlet
+    public function setSwitchMode(string $switchMode): self
     {
-        $switchMode = strtolower($switchMode);
+        $switchMode = mb_strtolower($switchMode);
 
         $validSwitchModes = ['auto', 'manuell', 'manual', ''];
-        if (!in_array($switchMode, $validSwitchModes)) {
-            throw new UnexpectedValueException('Unknown switch mode "'.$switchMode.'"');
+        if (!\in_array($switchMode, $validSwitchModes, true)) {
+            throw new \UnexpectedValueException('Unknown switch mode "'.$switchMode.'"');
         }
 
         // translate into english
@@ -111,38 +92,24 @@ class Outlet extends Feature
         return $this;
     }
 
-    /**
-     * @return bool
-     */
     public function isSwitchLock(): bool
     {
         return $this->switchLock;
     }
 
-    /**
-     * @param  bool  $switchLock
-     * @return Device
-     */
-    public function setSwitchLock(bool $switchLock): Outlet
+    public function setSwitchLock(bool $switchLock): self
     {
         $this->switchLock = $switchLock;
 
         return $this;
     }
 
-    /**
-     * @return bool
-     */
     public function isSwitchDeviceLock(): bool
     {
         return $this->switchDeviceLock;
     }
 
-    /**
-     * @param  bool  $switchDeviceLock
-     * @return Device
-     */
-    public function setSwitchDeviceLock(bool $switchDeviceLock): Outlet
+    public function setSwitchDeviceLock(bool $switchDeviceLock): self
     {
         $this->switchDeviceLock = $switchDeviceLock;
 

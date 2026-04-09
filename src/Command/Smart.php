@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -13,7 +15,6 @@ namespace App\Command;
 
 use App\Client\AhaApi;
 use App\Device;
-use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Command\Command;
@@ -28,63 +29,43 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
- * Abstract class to provide general functionality
+ * Abstract class to provide general functionality.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 abstract class Smart extends Command
 {
-    /**
-     * @var SymfonyStyle
-     */
-    protected $io;
+    protected SymfonyStyle $io;
 
     /**
-     * Minimum required feature of device
+     * Minimum required feature of device.
      *
      * Example: If we want to turn on/off a device, it has to be
      * a \App\Device::FUNCTION_BIT_OUTLET.
-     *
-     * @var int
      */
-    protected $requiredFeatures = -1;
+    protected int $requiredFeatures = -1;
 
-    /**
-     * @var AhaApi
-     */
-    protected $ahaApi;
+    protected AhaApi $ahaApi;
 
-    /**
-     * @var EntityManager
-     */
-    protected $entityManager;
+    protected EntityManagerInterface $entityManager;
 
-    /**
-     * Smart constructor.
-     *
-     * @param  AhaApi         $ahaApi
-     * @param  EntityManager  $entityManager
-     */
     public function __construct(AhaApi $ahaApi, EntityManagerInterface $entityManager)
     {
         parent::__construct();
 
-        $this->ahaApi        = $ahaApi;
+        $this->ahaApi = $ahaApi;
         $this->entityManager = $entityManager;
     }
 
     /**
-     * Prevent failure in case necessary arguments are missing
-     *
-     * @param  InputInterface   $input
-     * @param  OutputInterface  $output
+     * Prevent failure in case necessary arguments are missing.
      */
     protected function interact(InputInterface $input, OutputInterface $output): void
     {
         // if command requires an AIN, but none give, we want to ask for it
         if ($input->hasArgument('ain') && empty($input->getArgument('ain'))) {
             // fetch all available AINs
-            $cache     = new FilesystemAdapter();
+            $cache = new FilesystemAdapter();
             $valueItem = $cache->getItem('app.smart.devices');
             if (!$valueItem->isHit()) {
                 $valueItem->set($this->ahaApi->getDeviceListInfos())
@@ -93,21 +74,21 @@ abstract class Smart extends Command
             }
             $devices = $valueItem->get();
 
-            $helper   = $this->getHelper('question');
+            $helper = $this->getHelper('question');
             $question = new Question('Please enter AIN of device: ');
 
             if (!empty($devices)) {
-                $rows         = [];
+                $rows = [];
                 $availableAin = [];
 
                 /** @var Device $device */
                 foreach ($devices as $device) {
                     // check if this device matches the minimum required features
                     if ($this->requiredFeatures <= 0 || ($this->requiredFeatures & $device->getFunctionBitMask(
-                            )) == $this->requiredFeatures) {
-                        $identifier     = $device->getIdentifier();
-                        $display        = $device->isPresent() ? '<fg=green>'.$identifier.'</>' : $identifier;
-                        $rows[]         = [
+                    )) === $this->requiredFeatures) {
+                        $identifier = $device->getIdentifier();
+                        $display = $device->isPresent() ? '<fg=green>'.$identifier.'</>' : $identifier;
+                        $rows[] = [
                             $display,
                             $device->getName(),
                             $device->hasTemperature() ? 'x' : '-',
@@ -123,7 +104,7 @@ abstract class Smart extends Command
                     $table->setHeaders(['Identifier (AIN)', 'Name', 'Temp', 'Switch', 'Power']);
 
                     $centered = new TableStyle();
-                    $centered->setPadType(STR_PAD_BOTH);
+                    $centered->setPadType(\STR_PAD_BOTH);
                     $table->setColumnStyle(2, $centered);
                     $table->setColumnStyle(3, $centered);
                     $table->setColumnStyle(4, $centered);
@@ -145,13 +126,10 @@ abstract class Smart extends Command
     /**
      * This optional method is the first one executed for a command after configure()
      * and is useful to initialize properties based on the input arguments and options.
-     *
-     * @param  InputInterface   $input
-     * @param  OutputInterface  $output
      */
     protected function initialize(
         InputInterface $input,
-        OutputInterface $output
+        OutputInterface $output,
     ): void {
         // SymfonyStyle is an optional feature that Symfony provides so you can
         // apply a consistent look to the commands of your application.
@@ -162,20 +140,16 @@ abstract class Smart extends Command
     /**
      * This method is executed after interact() and initialize(). It usually
      * contains the logic to execute to complete this command task.
-     *
-     * @param  InputInterface   $input
-     * @param  OutputInterface  $output
-     * @return int
      */
     protected function execute(
         InputInterface $input,
-        OutputInterface $output
+        OutputInterface $output,
     ): int {
         $stopwatch = new Stopwatch();
         $stopwatch->start(self::getDefaultName());
 
         /** @var ConsoleOutput $output */
-        $errOutput  = $output->getErrorOutput();
+        $errOutput = $output->getErrorOutput();
         $returnCode = 0;
 
         if ($output->isVerbose()) {
@@ -190,7 +164,7 @@ abstract class Smart extends Command
 
         if ($output->isVeryVerbose()) {
             $this->io->comment(
-                sprintf(
+                \sprintf(
                     'Command '.self::getDefaultName().': Elapsed time: %.2f ms / Consumed memory: %.2f MB',
                     $event->getDuration(),
                     $event->getMemory() / (1024 ** 2)
@@ -205,6 +179,6 @@ abstract class Smart extends Command
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int;
 }

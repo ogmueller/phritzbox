@@ -1,29 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
+/*
+ * Phritzbox
+ *
+ * (c) Oliver G. Mueller <oliver@teqneers.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace App\Device\Feature;
 
-use App\Device;
+use App\Device\Feature;
 
-class Temperature extends Device\Feature
+class Temperature extends Feature
 {
-    /**
-     * @var float
-     */
-    protected $temperatureCelsius;
+    protected float $temperatureCelsius;
 
-    /**
-     * @var float
-     */
-    protected $temperatureOffset;
+    protected float $temperatureOffset;
 
-    public function setXml(\SimpleXMLElement $xml)
+    public function setXml(\SimpleXMLElement $xml): void
     {
         if ($node = $xml->temperature) {
             if (isset($node->celsius)) {
-                $this->setTemperatureCelsius((float)$node->celsius / 10);
+                $this->setTemperatureCelsius((float) $node->celsius / 10);
             }
             if (isset($node->offset)) {
-                $this->setTemperatureOffset((float)$node->offset / 10);
+                $this->setTemperatureOffset((float) $node->offset / 10);
             }
         }
     }
@@ -32,42 +37,28 @@ class Temperature extends Device\Feature
     {
         return [
             'temperatureCelsius' => $this->getTemperatureCelsius(),
-            'temperatureOffset'  => $this->getTemperatureOffset(),
+            'temperatureOffset' => $this->getTemperatureOffset(),
         ];
     }
 
-    /**
-     * @return float
-     */
     public function getTemperatureCelsius(): float
     {
-        return (float)$this->temperatureCelsius;
+        return $this->temperatureCelsius;
     }
 
-    /**
-     * @param  float  $temperatureCelsius
-     * @return Device
-     */
-    public function setTemperatureCelsius(float $temperatureCelsius): Temperature
+    public function setTemperatureCelsius(float $temperatureCelsius): self
     {
         $this->temperatureCelsius = $temperatureCelsius;
 
         return $this;
     }
 
-    /**
-     * @return float
-     */
     public function getTemperatureOffset(): float
     {
-        return (float)$this->temperatureOffset;
+        return $this->temperatureOffset;
     }
 
-    /**
-     * @param  float  $temperatureOffset
-     * @return Device
-     */
-    public function setTemperatureOffset(float $temperatureOffset): Temperature
+    public function setTemperatureOffset(float $temperatureOffset): self
     {
         $this->temperatureOffset = $temperatureOffset;
 

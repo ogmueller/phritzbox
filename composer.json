@@ -3,13 +3,8 @@
   "type": "project",
   "minimum-stability": "stable",
   "prefer-stable": true,
-  "replace": {
-    "symfony/polyfill-php70": "*",
-    "symfony/polyfill-php72": "*",
-    "symfony/polyfill-php73": "*"
-  },
   "require": {
-    "php": "^8.3",
+    "php": "^8.5",
     "ext-pdo_sqlite": "*",
     "ext-simplexml": "*",
     "doctrine/doctrine-bundle": "^2.0",

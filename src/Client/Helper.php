@@ -1,5 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
+/*
+ * Phritzbox
+ *
+ * (c) Oliver G. Mueller <oliver@teqneers.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace App\Client;
 
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -14,21 +25,15 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class Helper
 {
-    const session_cache_name = 'sid';
+    public const session_cache_name = 'sid';
+
+    protected string $sid;
 
     /**
-     * @var string
-     */
-    protected $sid;
-
-    /**
-     * Make HTTP request
+     * Make HTTP request.
      *
-     * @param  string  $url
-     * @param  array   $options
-     * @return bool|string
      * @throws \Psr\Cache\InvalidArgumentException
-     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+     * @throws TransportExceptionInterface
      */
     public function requestUrl(string $url, array $options = []): ?ResponseInterface
     {
@@ -60,7 +65,7 @@ class Helper
             }
 
             return null;
-        } catch (RedirectionExceptionInterface | ServerExceptionInterface $e) {
+        } catch (RedirectionExceptionInterface|ServerExceptionInterface $e) {
             return null;
         }
 
@@ -68,11 +73,11 @@ class Helper
     }
 
     /**
-     * Remove existing session ID if exists
+     * Remove existing session ID if exists.
      *
      * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function deleteSid()
+    public function deleteSid(): void
     {
         // if something went wrong, we delete the session ID, just in case
         $cache = new FilesystemAdapter();
@@ -80,18 +85,19 @@ class Helper
     }
 
     /**
-     * Request fritzbox session ID using challenge response method
+     * Request fritzbox session ID using challenge response method.
      *
-     * @return string|null                  A fritzbox session ID
-     * @throws HttpRequestException         Basic connection problems
-     * @throws InvalidResponseException     Response is not as expected
-     * @throws InvalidResponseException     Login is blocked for x seconds
+     * @throws InvalidResponseException            Basic connection problems
+     * @throws InvalidResponseException            Response is not as expected
+     * @throws InvalidResponseException            Login is blocked for x seconds
      * @throws \Psr\Cache\InvalidArgumentException
+     *
+     * @return string|null A fritzbox session ID
      */
     public function getSid(): ?string
     {
         $cache = new FilesystemAdapter();
-        $sid   = $cache->get(
+        $sid = $cache->get(
             self::session_cache_name,
             function (ItemInterface $item) {
                 // send initial request
@@ -105,17 +111,17 @@ class Helper
                 }
 
                 // extract challenge and SID
-                $challenge = (string)$xml->Challenge;
-                $sid       = (string)$xml->SID;
+                $challenge = (string) $xml->Challenge;
+                $sid = (string) $xml->SID;
                 if (preg_match('(^0+$)', $sid) && !empty($challenge)) {
                     // combine challenge with password to create cleartext password
                     $pass = $challenge.'-'.$_ENV['APP_API_PASSWORD'];
 
                     // hash UTF-16LE encoded password
-                    $pass              = md5(mb_convert_encoding($pass, 'UTF-16LE'));
+                    $pass = md5(mb_convert_encoding($pass, 'UTF-16LE'));
                     $challengeResponse = $challenge.'-'.$pass;
                     // send response to fritzbox
-                    $query    = [
+                    $query = [
                         'username' => $_ENV['APP_API_USERNAME'],
                         'response' => $challengeResponse,
                     ];
@@ -128,17 +134,15 @@ class Helper
                         throw new InvalidResponseException('Unexpected HTTP response');
                     }
 
-                    $sid       = (string)$xml->SID;
-                    $blockTime = (string)$xml->BlockTime;
+                    $sid = (string) $xml->SID;
+                    $blockTime = (string) $xml->BlockTime;
                     if (!preg_match('(^0+$)', $sid) && !empty($sid)) {
                         // valid SID received
                         return $sid;
                     }
 
-                    if ($blockTime > 0) {
-                        throw new InvalidResponseException(
-                            'Challenge response failed. You are blocked for '.$blockTime.' seconds.'
-                        );
+                    if ((int) $blockTime > 0) {
+                        throw new InvalidResponseException('Challenge response failed. You are blocked for '.$blockTime.' seconds.');
                     }
                 } else {
                     // we already have a valid SID
@@ -153,9 +157,7 @@ class Helper
     }
 
     /**
-     * Invalidate and set SID
-     *
-     * @param  string  $sid
+     * Invalidate and set SID.
      */
     public function setSid(string $sid): void
     {
@@ -164,11 +166,10 @@ class Helper
     }
 
     /**
-     * Calulate best representation of a number using unit prefixes
+     * Calculate best representation of a number using unit prefixes.
      *
-     * @param  float   $milliValue      Unit has to be given in its milli (0.001) representation
-     * @param  string  $unit            Unit name e.g. V, W, m, ...
-     * @return array
+     * @param float  $milliValue Unit has to be given in its milli (0.001) representation
+     * @param string $unit       Unit name e.g. V, W, m, ...
      */
     public function bestFactor(float $milliValue, string $unit): array
     {
@@ -177,12 +178,12 @@ class Helper
         $milliValue /= 2;
 
         $prefix = ['m', '', 'k', 'M', 'G', 'T', 'P'];
-        $base   = 0;
+        $base = 0;
         if ($milliValue > 0) {
-            $base       = floor(log($milliValue, 1000));
-            $milliValue = round($milliValue / pow(1000, $base), 3);
+            $base = floor(log($milliValue, 1000));
+            $milliValue = round($milliValue / 1000 ** $base, 3);
         }
 
-        return ['value' => $milliValue * 2, 'unit' => $prefix[$base].$unit, 'factor' => pow(1000, $base)];
+        return ['value' => $milliValue * 2, 'unit' => $prefix[$base].$unit, 'factor' => 1000 ** $base];
     }
 }

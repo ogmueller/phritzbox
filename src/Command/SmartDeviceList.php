@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -13,6 +15,7 @@ namespace App\Command;
 
 use App\Device;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableCell;
 use Symfony\Component\Console\Helper\TableStyle;
@@ -20,19 +23,15 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to read out all available smart home devices
+ * A console command to read out all available smart home devices.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:device:list')]
 class SmartDeviceList extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -50,26 +49,26 @@ class SmartDeviceList extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $simpleOutput = $input->getOption('simple');
-        $devices      = $this->ahaApi->getDeviceListInfos();
+        $devices = $this->ahaApi->getDeviceListInfos();
         dump($devices);
 
         // cache devices to be used by other calls
-        $cache     = new FilesystemAdapter();
+        $cache = new FilesystemAdapter();
         $valueItem = $cache->getItem('app.smart.devices');
         $valueItem->set($devices)
                   ->expiresAfter(900);
         $cache->save($valueItem);
 
         $table = new Table($output);
-        $rows  = [];
+        $rows = [];
 
         /** @var Device $device */
         foreach ($devices as $device) {
             $identifier = $device->isPresent() ? '<fg=green>'.$device->getIdentifier().'</>' : $device->getIdentifier();
-            $row        = [
+            $row = [
                 $identifier,
                 $device->getName(),
                 $device->getManufacturer(),
@@ -78,10 +77,10 @@ class SmartDeviceList extends Smart
 
             if ($device->hasTemperature()) {
                 /** @var Device\Feature\Temperature $feature */
-                $feature     = $device->feature(Device::FEATURE_TEMPERATURE_SENSOR);
-                $offset      = $feature->getTemperatureOffset();
+                $feature = $device->feature(Device::FEATURE_TEMPERATURE_SENSOR);
+                $offset = $feature->getTemperatureOffset();
                 $temperature = $feature->getTemperatureCelsius() + $offset;
-                $row[]       = sprintf('%02.1f°C / %02.1f°C', $temperature, $offset);
+                $row[] = \sprintf('%02.1f°C / %02.1f°C', $temperature, $offset);
             } else {
                 $row[] = '-';
             }
@@ -89,13 +88,13 @@ class SmartDeviceList extends Smart
             if ($device->hasOutlet()) {
                 /** @var Device\Feature\Outlet $feature */
                 $feature = $device->feature(Device::FEATURE_OUTLET);
-                $tmp     = [
+                $tmp = [
                     $feature->isSwitchState() ? 'On ' : 'Off',
                     $feature->getSwitchMode() ?? ' ',
                     $feature->isSwitchLock() ? 'x' : '-',
                     $feature->isSwitchDeviceLock() ? 'x' : '-',
                 ];
-                $row[]   = implode(' / ', $tmp);
+                $row[] = implode(' / ', $tmp);
             } else {
                 $row[] = '-';
             }
@@ -103,9 +102,9 @@ class SmartDeviceList extends Smart
             if ($device->hasPowerMeter()) {
                 /** @var Device\Feature\PowerMeter $feature */
                 $feature = $device->feature(Device::FEATURE_POWER_METER);
-                $row[]   = sprintf('%03.1f W', $feature->getPowerMeterPower());
-                $row[]   = sprintf('%03.1f Wh', $feature->getPowerMeterEnergy());
-                $row[]   = sprintf('%03.1f V', $feature->getPowerMeterVoltage());
+                $row[] = \sprintf('%03.1f W', $feature->getPowerMeterPower());
+                $row[] = \sprintf('%03.1f Wh', $feature->getPowerMeterEnergy());
+                $row[] = \sprintf('%03.1f V', $feature->getPowerMeterVoltage());
             } else {
                 $row[] = new TableCell('-', ['colspan' => 3]);
             }
@@ -127,7 +126,7 @@ class SmartDeviceList extends Smart
                     'Voltage',
                 ]
             );
-//            $table->set
+        //            $table->set
         } else {
             $borderless = new TableStyle();
             $borderless
@@ -140,13 +139,13 @@ class SmartDeviceList extends Smart
         }
 
         $rightAligned = new TableStyle();
-        $rightAligned->setPadType(STR_PAD_LEFT);
+        $rightAligned->setPadType(\STR_PAD_LEFT);
 
         $table->setColumnStyle(6, $rightAligned);
         $table->setColumnStyle(7, $rightAligned);
         $table->setColumnStyle(8, $rightAligned);
 
-        $table->setFooterTitle(count($devices).' Devices found');
+        $table->setFooterTitle(\count($devices).' Devices found');
         $table->addRows($rows);
         $table->render();
 

@@ -1,18 +1,23 @@
 <?php
 
+/*
+ * Phritzbox
+ *
+ * (c) Oliver G. Mueller <oliver@teqneers.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace App\Tests\Client\AhaApi;
 
 use App\Client\AhaApi;
-use App\Client\Helper;
 use App\Device;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpClient\MockHttpClient;
-use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
- * AhaApi tests with mocks
+ * AhaApi tests with mocks.
  */
 class GetDeviceListTest extends TestCase
 {
@@ -59,23 +64,23 @@ class GetDeviceListTest extends TestCase
                 </device>
             </devicelist>',
             [
-                'firmwareVersion'    => '04.16',
-                'functionBitMask'    => 2944,
-                'id'                 => '16',
-                'identifier'         => '08761 0372830',
-                'manufacturer'       => 'AVM',
-                'name'               => 'FRITZ!DECT 200 (Fan)',
-                'present'            => true,
-                'productName'        => 'FRITZ!DECT 200',
-                'powerMeterEnergy'   => 12345.678,
-                'powerMeterPower'    => 123.456,
-                'powerMeterVoltage'  => 1.234,
-                'switchDeviceLock'   => true,
-                'switchLock'         => true,
-                'switchMode'         => 'manual',
-                'switchState'        => true,
+                'firmwareVersion' => '04.16',
+                'functionBitMask' => 2944,
+                'id' => '16',
+                'identifier' => '08761 0372830',
+                'manufacturer' => 'AVM',
+                'name' => 'FRITZ!DECT 200 (Fan)',
+                'present' => true,
+                'productName' => 'FRITZ!DECT 200',
+                'powerMeterEnergy' => 12345.678,
+                'powerMeterPower' => 123.456,
+                'powerMeterVoltage' => 1.234,
+                'switchDeviceLock' => true,
+                'switchLock' => true,
+                'switchMode' => 'manual',
+                'switchState' => true,
                 'temperatureCelsius' => 12.3,
-                'temperatureOffset'  => 0.5,
+                'temperatureOffset' => 0.5,
             ],
         ];
 
@@ -103,23 +108,23 @@ class GetDeviceListTest extends TestCase
                 </device>
             </devicelist>',
             [
-                'firmwareVersion'    => '04.16',
-                'functionBitMask'    => 2944,
-                'id'                 => '16',
-                'identifier'         => '08761 0372830',
-                'manufacturer'       => 'AVM',
-                'name'               => 'FRITZ!DECT 200 (Fan)',
-                'present'            => false,
-                'productName'        => 'FRITZ!DECT 200',
-                'powerMeterEnergy'   => 0.0,
-                'powerMeterPower'    => 0.0,
-                'powerMeterVoltage'  => 0.0,
-                'switchDeviceLock'   => false,
-                'switchLock'         => false,
-                'switchMode'         => 'manual',
-                'switchState'        => false,
+                'firmwareVersion' => '04.16',
+                'functionBitMask' => 2944,
+                'id' => '16',
+                'identifier' => '08761 0372830',
+                'manufacturer' => 'AVM',
+                'name' => 'FRITZ!DECT 200 (Fan)',
+                'present' => false,
+                'productName' => 'FRITZ!DECT 200',
+                'powerMeterEnergy' => 0.0,
+                'powerMeterPower' => 0.0,
+                'powerMeterVoltage' => 0.0,
+                'switchDeviceLock' => false,
+                'switchLock' => false,
+                'switchMode' => 'manual',
+                'switchState' => false,
                 'temperatureCelsius' => 0.0,
-                'temperatureOffset'  => -1.0,
+                'temperatureOffset' => -1.0,
             ],
         ];
 
@@ -144,21 +149,21 @@ class GetDeviceListTest extends TestCase
                 </device>
             </devicelist>',
             [
-                'firmwareVersion'   => '06.92',
-                'functionBitMask'   => 640,
-                'id'                => '20000',
-                'identifier'        => '24:65:11:CA:3F:43',
-                'manufacturer'      => 'AVM',
-                'name'              => 'FRITZ!Powerline 546E',
-                'present'           => true,
-                'productName'       => 'FRITZ!Powerline 546E',
-                'powerMeterEnergy'  => 0.008,
-                'powerMeterPower'   => 0.0,
+                'firmwareVersion' => '06.92',
+                'functionBitMask' => 640,
+                'id' => '20000',
+                'identifier' => '24:65:11:CA:3F:43',
+                'manufacturer' => 'AVM',
+                'name' => 'FRITZ!Powerline 546E',
+                'present' => true,
+                'productName' => 'FRITZ!Powerline 546E',
+                'powerMeterEnergy' => 0.008,
+                'powerMeterPower' => 0.0,
                 'powerMeterVoltage' => 229.075,
-                'switchDeviceLock'  => false,
-                'switchLock'        => false,
-                'switchMode'        => 'manual',
-                'switchState'       => true,
+                'switchDeviceLock' => false,
+                'switchLock' => false,
+                'switchMode' => 'manual',
+                'switchState' => true,
             ],
         ];
     }

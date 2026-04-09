@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -15,22 +17,19 @@ use App\Device;
 use App\Entity\SmartDeviceData;
 use noximo\PHPColoredAsciiLinechart\Linechart;
 use noximo\PHPColoredAsciiLinechart\Settings;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to store all stats from all available devices
+ * A console command to store all stats from all available devices.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'cron:smart:savestats')]
 class CronSmartSaveStats extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -42,39 +41,39 @@ class CronSmartSaveStats extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $devices = $this->ahaApi->getDeviceListInfos();
-        $now     = new \DateTime();
+        $now = new \DateTime();
 
         /** @var Device $device */
         foreach ($devices as $device) {
             $stats = $this->ahaApi->getBasicDeviceStats($device->getIdentifier());
-//            dump($stats);
+            //            dump($stats);
 
             $output->isVerbose() && $this->io->writeln("\nDevice ".$device->getName().' ['.$device->getIdentifier().']');
 
             foreach ($stats as $category => $statsList) {
-                if (count($statsList) > 1) {
+                if (\count($statsList) > 1) {
                     // find values with shortest interval
                     $tmp = 0;
                     foreach ($statsList as $key => $data) {
                         if (empty($tmp) || $data['interval'] < $tmp) {
-                            $tmp   = $data['interval'];
+                            $tmp = $data['interval'];
                             $index = $key;
                         }
                     }
                 } else {
                     $index = 0;
                 }
-                $data     = $statsList[$index];
+                $data = $statsList[$index];
                 $interval = $data['interval'];
 
                 // calculate current interval starting point
                 // go to the beginning of the last full time slot
-                $end   = clone $now;
+                $end = clone $now;
                 $seconds = $end->format('U');
-                $back    = $interval + $seconds % $interval;
+                $back = $interval + $seconds % $interval;
                 $end->modify('-'.$back.' seconds');
                 $start = clone $end;
                 $start->modify('-'.$interval * ($data['count'] - 1).' seconds');
@@ -90,8 +89,8 @@ class CronSmartSaveStats extends Smart
                                             ->getQuery()
                                             ->getArrayResult();
 
-                $interval         = new \DateInterval('PT'.$interval.'S');
-//                $interval->invert = 1;
+                $interval = new \DateInterval('PT'.$interval.'S');
+                //                $interval->invert = 1;
 
                 $sdd = new SmartDeviceData();
                 $sdd->setType($category);
@@ -113,41 +112,34 @@ class CronSmartSaveStats extends Smart
                 }
                 $this->entityManager->flush();
                 $output->isVerbose() && $this->io->writeln('- saved '.$count.' new '.$category.' entries');
-
             }
         }
 
         return 0;
     }
 
-    /**
-     * @param  array     $values
-     * @param  int       $factor
-     * @param  Settings  $settings
-     * @return array
-     */
     protected function createChart(array $values, int $factor, Settings $settings): array
     {
-        $terminalWidth   = getenv('COLUMNS');
-        $chartWidth      = $terminalWidth - $settings->getOffset() - 6;
+        $terminalWidth = getenv('COLUMNS');
+        $chartWidth = $terminalWidth - $settings->getOffset() - 6;
         $maxXScaleHeight = 20;
 
-        if (count($values) > $chartWidth) {
+        if (\count($values) > $chartWidth) {
             // get most current values printable at given console width
-            $values = array_slice($values, 0, $chartWidth);
+            $values = \array_slice($values, 0, $chartWidth);
         }
 
-        if ($factor != 0) {
+        if (0 !== $factor) {
             // convert values to best readable unit
             $values = array_map(
-                function ($value) use ($factor) {
+                static function ($value) use ($factor) {
                     return $value / $factor;
                 },
                 $values
             );
         }
 
-        $chart  = new Linechart();
+        $chart = new Linechart();
         $height = ceil(max($values)) - floor(min($values));
         $settings->setHeight(max(1, min($maxXScaleHeight, $height)));
         $chart->setSettings($settings);
@@ -156,26 +148,25 @@ class CronSmartSaveStats extends Smart
     }
 
     /**
-     * Convert seconds into e.g. 5days 3h 40sec
+     * Convert seconds into e.g. 5days 3h 40sec.
      *
-     * @param  int  $value  Seconds
-     * @return string
+     * @param int $value Seconds
      */
     protected function humanReadableTime(int $value): string
     {
         $prefixList = [
-            'yr'  => 32140800,
-            'mo'  => 2678400,
-            'wk'  => 604800,
-            'd'   => 86400,
-            'hr'  => 3600,
+            'yr' => 32140800,
+            'mo' => 2678400,
+            'wk' => 604800,
+            'd' => 86400,
+            'hr' => 3600,
             'min' => 60,
             'sec' => 1,
         ];
 
         $ret = [];
         foreach ($prefixList as $prefix => $factor) {
-            $mod   = $value % $factor;
+            $mod = $value % $factor;
             $value /= $factor;
             if ($value >= 1) {
                 $ret[] = floor($value).$prefix;
@@ -186,11 +177,6 @@ class CronSmartSaveStats extends Smart
         return implode(' ', $ret);
     }
 
-    /**
-     * @param  int  $resolution
-     * @param  int  $count
-     * @return string
-     */
     protected function timeRange(int $resolution, int $count): string
     {
         $seconds = $count * $resolution;

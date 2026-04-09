@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -12,30 +14,23 @@
 namespace App\Command;
 
 use App\Device;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to determine availability of a SmartHome outlet
+ * A console command to determine availability of a SmartHome outlet.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:switch:present')]
 class SmartSwitchPresent extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -54,11 +49,11 @@ class SmartSwitchPresent extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $returnCode = 0;
 
-        $ain   = $input->getArgument('ain');
+        $ain = $input->getArgument('ain');
         $state = $this->ahaApi->getSwitchPresent($ain);
 
         if (is_numeric($state)) {
@@ -84,8 +79,7 @@ class SmartSwitchPresent extends Smart
      * it's too long, it's better to define a separate method to maintain the
      * code readability.
      */
-    private
-    function getCommandHelp(): string
+    private function getCommandHelp(): string
     {
         return <<<'HELP'
 The <info>%command.name%</info> command determines availability of a SmartHome outlet:

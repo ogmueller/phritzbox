@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -12,27 +14,21 @@
 namespace App\Command;
 
 use App\Device;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to list all known outlets
+ * A console command to list all known outlets.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:switch:list')]
 class SmartSwitchList extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -44,11 +40,11 @@ class SmartSwitchList extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $list = $this->ahaApi->getSwitchList();
 
-        if (count($list)) {
+        if (\count($list)) {
             foreach ($list as $ain) {
                 $this->io->writeln($ain);
             }

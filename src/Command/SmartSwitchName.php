@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -12,30 +14,23 @@
 namespace App\Command;
 
 use App\Device;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to get name of outlets or group
+ * A console command to get name of outlets or group.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:switch:name')]
 class SmartSwitchName extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -54,15 +49,15 @@ class SmartSwitchName extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $returnCode = 0;
 
-        $ain  = $input->getArgument('ain');
+        $ain = $input->getArgument('ain');
         $name = $this->ahaApi->getSwitchName($ain);
 
         if (!empty($name)) {
-            if($input->getOption('simple')) {
+            if ($input->getOption('simple')) {
                 $this->io->writeln($name);
             } else {
                 $this->io->writeln('Switch '.$ain.' is called "'.$name.'"');

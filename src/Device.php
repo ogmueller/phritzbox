@@ -1,118 +1,90 @@
 <?php
 
+declare(strict_types=1);
+
+/*
+ * Phritzbox
+ *
+ * (c) Oliver G. Mueller <oliver@teqneers.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace App;
 
 use App\Device\Feature;
 
 class Device
 {
-    const FUNCTION_BIT_HANFUN_DEVICE = 1 << 0;
+    public const FUNCTION_BIT_HANFUN_DEVICE = 1 << 0;
 
-    const FUNCTION_BIT_ALARM = 1 << 4;
+    public const FUNCTION_BIT_ALARM = 1 << 4;
 
-    const FUNCTION_BIT_THERMOSTAT = 1 << 6;
+    public const FUNCTION_BIT_THERMOSTAT = 1 << 6;
 
-    const FUNCTION_BIT_POWER_METER = 1 << 7;
+    public const FUNCTION_BIT_POWER_METER = 1 << 7;
 
-    const FUNCTION_BIT_TEMPERATURE_SENSOR = 1 << 8;
+    public const FUNCTION_BIT_TEMPERATURE_SENSOR = 1 << 8;
 
-    const FUNCTION_BIT_OUTLET = 1 << 9;
+    public const FUNCTION_BIT_OUTLET = 1 << 9;
 
-    const FUNCTION_BIT_DECT_REPEATER = 1 << 10;
+    public const FUNCTION_BIT_DECT_REPEATER = 1 << 10;
 
-    const FUNCTION_BIT_MICROFON = 1 << 11;
+    public const FUNCTION_BIT_MICROFON = 1 << 11;
 
-    const FUNCTION_BIT_HANFUN_UNIT = 1 << 13;
+    public const FUNCTION_BIT_HANFUN_UNIT = 1 << 13;
 
-    const FEATURE_ALARM = 'alarm';
+    public const FEATURE_ALARM = 'alarm';
 
-    const FEATURE_POWER_METER = 'power';
+    public const FEATURE_POWER_METER = 'power';
 
-    const FEATURE_TEMPERATURE_SENSOR = 'temp';
+    public const FEATURE_TEMPERATURE_SENSOR = 'temp';
 
-    const FEATURE_OUTLET = 'outlet';
+    public const FEATURE_OUTLET = 'outlet';
 
-    /**
-     * @var array
-     */
-    protected static $mapping;
+    protected static array $mapping = [];
 
-    /**
-     * @var bool
-     */
-    protected $present = false;
+    protected bool $present = false;
 
-    /**
-     * @var string
-     */
-    protected $name;
+    protected string $name;
 
-    /**
-     * @var string
-     */
-    protected $identifier;
+    protected string $identifier;
 
-    /**
-     * @var string
-     */
-    protected $id;
+    protected string $id;
 
-    /**
-     * @var int
-     */
-    protected $functionBitMask;
+    protected int $functionBitMask;
 
-    /**
-     * @var string
-     */
-    protected $firmwareVersion;
+    protected string $firmwareVersion;
 
-    /**
-     * @var string
-     */
-    protected $manufacturer;
+    protected string $manufacturer;
 
-    /**
-     * @var string
-     */
-    protected $productName;
+    protected string $productName;
 
-    /**
-     * @var Feature[]
-     */
-    protected $featureList = [];
+    /** @var Feature[] */
+    protected array $featureList = [];
 
-    public function __construct()
+    public function feature(string $name): ?Feature
     {
+        return $this->featureList[$name] ?? null;
     }
 
     /**
-     * @return Feature|null
-     */
-    public function feature($name): ?Feature
-    {
-        return isset($this->featureList[$name]) ? $this->featureList[$name] : null;
-    }
-
-    /**
-     * Return all important values in array
-     *
-     * @return array
+     * Return all important values in array.
      */
     public function toArray(): array
     {
         $array = [
             'firmwareVersion' => $this->getFirmwareVersion(),
             'functionBitMask' => $this->getFunctionBitMask(),
-            'id'              => $this->getId(),
-            'identifier'      => $this->getIdentifier(),
-            'manufacturer'    => $this->getManufacturer(),
-            'name'            => $this->getName(),
-            'present'         => $this->isPresent(),
-            'productName'     => $this->getProductName(),
+            'id' => $this->getId(),
+            'identifier' => $this->getIdentifier(),
+            'manufacturer' => $this->getManufacturer(),
+            'name' => $this->getName(),
+            'present' => $this->isPresent(),
+            'productName' => $this->getProductName(),
         ];
 
-        /** @var Feature $feature */
         foreach ($this->featureList as $feature) {
             $array += $feature->toArray();
         }
@@ -121,174 +93,111 @@ class Device
     }
 
     /**
-     * Setup device using fritzbox XML response
-     *
-     * @param  \SimpleXMLElement  $xml
+     * Setup device using fritzbox XML response.
      */
-    public function setXml(\SimpleXMLElement $xml)
+    public function setXml(\SimpleXMLElement $xml): void
     {
         if ($attributes = $xml->attributes()) {
             if (isset($attributes['identifier'])) {
-                $this->setIdentifier((string)$attributes['identifier']);
+                $this->setIdentifier((string) $attributes['identifier']);
             }
             if (isset($attributes['id'])) {
-                $this->setId((string)$attributes['id']);
+                $this->setId((string) $attributes['id']);
             }
             if (isset($attributes['functionbitmask'])) {
-                $this->setFunctionBitMask((int)$attributes['functionbitmask']);
+                $this->setFunctionBitMask((int) $attributes['functionbitmask']);
             }
             if (isset($attributes['fwversion'])) {
-                $this->setFirmwareVersion((string)$attributes['fwversion']);
+                $this->setFirmwareVersion((string) $attributes['fwversion']);
             }
             if (isset($attributes['manufacturer'])) {
-                $this->setManufacturer((string)$attributes['manufacturer']);
+                $this->setManufacturer((string) $attributes['manufacturer']);
             }
             if (isset($attributes['productname'])) {
-                $this->setProductName((string)$attributes['productname']);
+                $this->setProductName((string) $attributes['productname']);
             }
         }
 
         if ($xml->present) {
-            $this->setPresent((bool)(string)$xml->present);
+            $this->setPresent((bool) (string) $xml->present);
         }
 
         if ($xml->name) {
-            $this->setName((string)$xml->name);
+            $this->setName((string) $xml->name);
         }
 
-        /** @var Feature $feature */
         foreach ($this->featureList as $feature) {
             $feature->setXml($xml);
         }
     }
 
     /**
-     * Instantiate and return a device related to the XML element
-     *
-     * @param  \SimpleXMLElement  $xml
-     * @return Device
+     * Instantiate and return a device related to the XML element.
      */
-    static public function xmlFactory(\SimpleXMLElement $xml): Device
+    public static function xmlFactory(\SimpleXMLElement $xml): self
     {
-//        if (empty(self::$mapping)) {
-//            $yaml          = new Parser();
-//            self::$mapping = $yaml->parse(file_get_contents(__DIR__.'/../config/devices.yaml'));
-//        }
-
-        // analyse XML to identify device
-//        $attr = $xml->attributes();
-
-//        $className = '\App\Device';
-//        if (isset($attr['manufacturer']) && isset($attr['productname'])) {
-//            $manufacturer = strtolower($attr['manufacturer']);
-//            $productName  = strtolower($attr['productname']);
-//            if (!empty(self::$mapping[$manufacturer][$productName])) {
-//                $className = self::$mapping[$manufacturer][$productName];
-//            }
-//        }
-
-        /** @var Device $device */
-        $device = new Device();
+        $device = new self();
         $device->setXml($xml);
 
         return $device;
     }
 
-    /**
-     * @return bool
-     */
     public function isPresent(): bool
     {
         return $this->present;
     }
 
-    /**
-     * @param  bool  $present
-     * @return Device
-     */
-    public function setPresent(bool $present): Device
+    public function setPresent(bool $present): self
     {
         $this->present = $present;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @param  string  $name
-     * @return Device
-     */
-    public function setName(string $name): Device
+    public function setName(string $name): self
     {
         $this->name = $name;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getIdentifier(): string
     {
         return $this->identifier;
     }
 
-    /**
-     * @param  string  $identifier
-     * @return Device
-     */
-    public function setIdentifier(string $identifier): Device
+    public function setIdentifier(string $identifier): self
     {
         $this->identifier = $identifier;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getId(): string
     {
         return $this->id;
     }
 
-    /**
-     * @param  string  $id
-     * @return Device
-     */
-    public function setId(string $id): Device
+    public function setId(string $id): self
     {
         $this->id = $id;
 
         return $this;
     }
 
-    /**
-     * @return int
-     */
     public function getFunctionBitMask(): int
     {
         return $this->functionBitMask;
     }
 
-    /**
-     * @param  int  $functionBitMask
-     * @return Device
-     */
-    public function setFunctionBitMask(int $functionBitMask): Device
+    public function setFunctionBitMask(int $functionBitMask): self
     {
         $this->functionBitMask = $functionBitMask;
-
-//        if( $this->hasAlarm() ) {
-//            $this->featureList[self::FEATURE_ALARM] = new Feature\Alarm();
-//        }
 
         if ($this->hasPowerMeter()) {
             $this->featureList[self::FEATURE_POWER_METER] = new Feature\PowerMeter();
@@ -305,79 +214,58 @@ class Device
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getFirmwareVersion(): string
     {
         return $this->firmwareVersion;
     }
 
-    /**
-     * @param  string  $firmwareVersion
-     * @return Device
-     */
-    public function setFirmwareVersion(string $firmwareVersion): Device
+    public function setFirmwareVersion(string $firmwareVersion): self
     {
         $this->firmwareVersion = $firmwareVersion;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getManufacturer(): string
     {
         return $this->manufacturer;
     }
 
-    /**
-     * @param  string  $manufacturer
-     * @return Device
-     */
-    public function setManufacturer(string $manufacturer): Device
+    public function setManufacturer(string $manufacturer): self
     {
         $this->manufacturer = $manufacturer;
 
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getProductName(): string
     {
         return $this->productName;
     }
 
-    /**
-     * @param  string  $productName
-     * @return Device
-     */
-    public function setProductName(string $productName): Device
+    public function setProductName(string $productName): self
     {
         $this->productName = $productName;
 
         return $this;
     }
 
-    public function hasAlarm()
+    public function hasAlarm(): bool
     {
         return ($this->functionBitMask & self::FUNCTION_BIT_ALARM) > 0;
     }
 
-    public function hasTemperature()
+    public function hasTemperature(): bool
     {
         return ($this->functionBitMask & self::FUNCTION_BIT_TEMPERATURE_SENSOR) > 0;
     }
 
-    public function hasOutlet()
+    public function hasOutlet(): bool
     {
         return ($this->functionBitMask & self::FUNCTION_BIT_OUTLET) > 0;
     }
 
-    public function hasPowerMeter()
+    public function hasPowerMeter(): bool
     {
         return ($this->functionBitMask & self::FUNCTION_BIT_POWER_METER) > 0;
     }

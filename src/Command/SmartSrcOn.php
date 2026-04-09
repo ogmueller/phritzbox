@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -12,30 +14,23 @@
 namespace App\Command;
 
 use App\Device;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to turn on a SmartHome smart radiator control
+ * A console command to turn on a SmartHome smart radiator control.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:src:on')]
 class SmartSrcOn extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -54,11 +49,11 @@ class SmartSrcOn extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $returnCode = 0;
 
-        $ain   = $input->getArgument('ain');
+        $ain = $input->getArgument('ain');
         $state = $this->ahaApi->setSrcOn($ain);
 
         if ($state === '1') {

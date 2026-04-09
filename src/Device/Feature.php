@@ -1,12 +1,21 @@
 <?php
 
-namespace App\Device;
+declare(strict_types=1);
 
-use App\Device;
+/*
+ * Phritzbox
+ *
+ * (c) Oliver G. Mueller <oliver@teqneers.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace App\Device;
 
 abstract class Feature
 {
-    abstract public function setXml(\SimpleXMLElement $xml);
+    abstract public function setXml(\SimpleXMLElement $xml): void;
 
     abstract public function toArray(): array;
 }

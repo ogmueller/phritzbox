@@ -1,9 +1,9 @@
 <?php
 
 $fileHeaderComment = <<<COMMENT
-This file is part of the Symfony package.
+Phritzbox
 
-(c) Fabien Potencier <fabien@symfony.com>
+(c) Oliver G. Mueller <oliver@teqneers.de>
 
 For the full copyright and license information, please view the LICENSE
 file that was distributed with this source code.
@@ -32,7 +32,6 @@ return (new PhpCsFixer\Config())
         'no_unreachable_default_argument_value' => true,
         'no_useless_else' => true,
         'no_useless_return' => true,
-        'php_unit_strict' => true,
         'phpdoc_order' => true,
         'strict_comparison' => true,
         'strict_param' => true,

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -12,30 +14,23 @@
 namespace App\Command;
 
 use App\Device;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to read out the temperature of a smart home device
+ * A console command to read out the temperature of a smart home device.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:temperature')]
 class SmartTemperature extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected $requiredFeatures = Device::FUNCTION_BIT_TEMPERATURE_SENSOR;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -54,16 +49,16 @@ class SmartTemperature extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $returnCode = 0;
 
-        $ain     = $input->getArgument('ain');
+        $ain = $input->getArgument('ain');
         $celsius = $this->ahaApi->getTemperature($ain);
 
         if (is_numeric($celsius)) {
-            $celsius = (int)$celsius / 10;
-            if(!$input->getOption('simple')) {
+            $celsius = (int) $celsius / 10;
+            if (!$input->getOption('simple')) {
                 $celsius .= '°C';
             }
             $this->io->writeln($celsius);

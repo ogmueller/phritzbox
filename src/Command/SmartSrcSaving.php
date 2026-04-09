@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -12,30 +14,23 @@
 namespace App\Command;
 
 use App\Device;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to read setpoint for saving temperature of a SmartHome smart radiator control
+ * A console command to read setpoint for saving temperature of a SmartHome smart radiator control.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:src:saving')]
 class SmartSrcSaving extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -54,29 +49,29 @@ class SmartSrcSaving extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $returnCode = 0;
 
-        $ain     = $input->getArgument('ain');
+        $ain = $input->getArgument('ain');
         $celsius = $this->ahaApi->getSrcSaving($ain);
 
         if (!empty($celsius)) {
             if ($celsius < 253) {
-                $celsius = (int)$celsius / 2;
+                $celsius = (int) $celsius / 2;
                 if (!$input->getOption('simple')) {
                     $celsius .= '°C';
                 }
                 $this->io->writeln($celsius);
             } else {
                 if (!$input->getOption('simple')) {
-                    if($celsius == 253) {
+                    if($celsius === 253) {
                         $this->io->writeln('Smart radiator control '.$ain.' is <fg=red>OFF</>');
                     } else {
                         $this->io->writeln('Smart radiator control '.$ain.' is <fg=green>ON</>');
                     }
                 } else {
-                    $this->io->writeln($celsius == 253 ? 'OFF' : 'ON');
+                    $this->io->writeln(253 === $celsius ? 'OFF' : 'ON');
                 }
             }
         } else {

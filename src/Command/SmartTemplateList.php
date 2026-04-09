@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -12,17 +14,14 @@
 namespace App\Command;
 
 use App\Device;
-use Symfony\Component\Console\Helper\Table;
-use Symfony\Component\Console\Helper\TableCell;
-use Symfony\Component\Console\Helper\TableStyle;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to read out all available smart home devices
+ * A console command to read out all available smart home devices.
  *
  * To use this command, open a terminal window, enter into your project
  * directory and execute the following:
@@ -38,14 +37,8 @@ use Symfony\Component\Console\Attribute\AsCommand;
 #[AsCommand(name: 'smart:template:list')]
 class SmartTemplateList extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -63,7 +56,7 @@ class SmartTemplateList extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $simpleOutput = $input->getOption('simple');
         $templateList = $this->ahaApi->getTemplateListInfos();

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Phritzbox
  *
@@ -13,30 +15,23 @@ namespace App\Command;
 
 use App\Client\Helper;
 use App\Device;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Symfony\Component\Console\Attribute\AsCommand;
 
 /**
- * A console command to read out the temperature of a smart home device
+ * A console command to read out the temperature of a smart home device.
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:switch:power')]
 class SmartSwitchPower extends Smart
 {
-    /**
-     * {@inheritdoc}
-     */
     protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -55,21 +50,21 @@ class SmartSwitchPower extends Smart
         InputInterface $input,
         OutputInterface $output,
         OutputInterface $errOutput,
-        Stopwatch $stopwatch
+        Stopwatch $stopwatch,
     ): int {
         $returnCode = 0;
 
-        $ain       = $input->getArgument('ain');
+        $ain = $input->getArgument('ain');
         $milliWatt = $this->ahaApi->getSwitchPower($ain);
 
         if (!empty($milliWatt) || is_numeric($milliWatt)) {
-            $milliWatt = (int)$milliWatt;
+            $milliWatt = (int) $milliWatt;
 
             if (!$input->getOption('simple')) {
-                $helper    = new Helper();
-                $best      = $helper->bestFactor($milliWatt, 'W');
+                $helper = new Helper();
+                $best = $helper->bestFactor($milliWatt, 'W');
                 $milliWatt = $best['value'].' '.$best['unit'];
-//                $milliWatt = $milliWatt.' '.$prefix[$base].'W';
+                //                $milliWatt = $milliWatt.' '.$prefix[$base].'W';
             }
             $this->io->writeln($milliWatt);
         } else {
