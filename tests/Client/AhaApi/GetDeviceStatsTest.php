@@ -2,6 +2,7 @@
 
 namespace App\Tests\Client\AhaApi;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -9,9 +10,7 @@ use PHPUnit\Framework\TestCase;
  */
 class GetDeviceStatsTest extends TestCase
 {
-    /**
-     * @dataProvider provideDevices
-     */
+    #[DataProvider('provideDevices')]
     public function testDevices($xml, $expected)
     {
         $aha   = \App\Tests\Helper::mockClientHelper($this, $xml);
@@ -23,7 +22,7 @@ class GetDeviceStatsTest extends TestCase
     /**
      * @return \Generator
      */
-    public function provideDevices()
+    public static function provideDevices()
     {
         // FRITZ!DECT 200
         yield [

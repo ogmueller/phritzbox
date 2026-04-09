@@ -5,6 +5,7 @@ namespace App\Tests\Client\AhaApi;
 use App\Client\AhaApi;
 use App\Client\Helper;
 use App\Device;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -15,9 +16,7 @@ use Symfony\Component\HttpClient\Response\MockResponse;
  */
 class GetDeviceListTest extends TestCase
 {
-    /**
-     * @dataProvider provideDevices
-     */
+    #[DataProvider('provideDevices')]
     public function testDevices($deviceXml, $expected)
     {
         $aha = \App\Tests\Helper::mockClientHelper($this, $deviceXml);
@@ -33,7 +32,7 @@ class GetDeviceListTest extends TestCase
     /**
      * @return \Generator
      */
-    public function provideDevices()
+    public static function provideDevices()
     {
         // FRITZ!DECT 200
         yield [

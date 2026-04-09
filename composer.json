@@ -16,29 +16,29 @@
     "doctrine/doctrine-migrations-bundle": "^3.0",
     "doctrine/orm": "^2.6",
     "noximo/php-colored-ascii-linechart": "dev-master",
-    "symfony/cache": "^6.4",
-    "symfony/console": "^6.4",
-    "symfony/dotenv": "^6.4",
+    "symfony/cache": "^7.4",
+    "symfony/console": "^7.4",
+    "symfony/dotenv": "^7.4",
     "symfony/flex": "^2.0",
-    "symfony/framework-bundle": "^6.4",
-    "symfony/http-client": "^6.4",
+    "symfony/framework-bundle": "^7.4",
+    "symfony/http-client": "^7.4",
     "symfony/monolog-bundle": "^3.1",
-    "symfony/runtime": "^6.4",
-    "symfony/string": "^6.4",
-    "symfony/yaml": "^6.4"
+    "symfony/runtime": "^7.4",
+    "symfony/string": "^7.4",
+    "symfony/yaml": "^7.4"
   },
   "require-dev": {
-    "dama/doctrine-test-bundle": "^6.2",
+    "dama/doctrine-test-bundle": "^8.0",
     "friendsofphp/php-cs-fixer": "^3.0",
     "phpmd/phpmd": "@stable",
-    "phpunit/phpunit": "^9.5",
+    "phpunit/phpunit": "^11.0",
     "roave/security-advisories": "dev-latest",
     "squizlabs/php_codesniffer": "*",
-    "symfony/debug-bundle": "^6.4",
+    "symfony/debug-bundle": "^7.4",
     "symfony/maker-bundle": "^1.11",
-    "symfony/phpunit-bridge": "^6.4",
-    "symfony/stopwatch": "^6.4",
-    "symfony/var-dumper": "^6.4"
+    "symfony/phpunit-bridge": "^7.4",
+    "symfony/stopwatch": "^7.4",
+    "symfony/var-dumper": "^7.4"
   },
   "config": {
     "platform": {
@@ -79,7 +79,7 @@
   },
   "extra": {
     "symfony": {
-      "require": "6.4.*",
+      "require": "7.4.*",
       "allow-contrib": true
     }
   }
