@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\SmartDeviceDataRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SmartDeviceDataRepository::class)]
@@ -21,36 +22,29 @@ class SmartDeviceData
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    private int $dataId;
+    #[ORM\Column(type: Types::INTEGER)]
+    private ?int $dataId = null;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(type: Types::STRING, length: 255)]
     private string $sid;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(type: Types::STRING, length: 255)]
     private string $type;
 
-    #[ORM\Column(type: 'datetime')]
-    private \DateTimeInterface $time;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    private \DateTimeImmutable $time;
 
-    #[ORM\Column(type: 'float')]
+    #[ORM\Column(type: Types::FLOAT)]
     private float $value;
 
     public function getDataId(): ?int
     {
-        return $this->dataId ?? null;
+        return $this->dataId;
     }
 
-    public function setDataId(int $dataId): self
+    public function getSid(): string
     {
-        $this->dataId = $dataId;
-
-        return $this;
-    }
-
-    public function getSid(): ?string
-    {
-        return $this->sid ?? null;
+        return $this->sid;
     }
 
     public function setSid(string $sid): self
@@ -60,9 +54,9 @@ class SmartDeviceData
         return $this;
     }
 
-    public function getType(): ?string
+    public function getType(): string
     {
-        return $this->type ?? null;
+        return $this->type;
     }
 
     public function setType(string $type): self
@@ -72,21 +66,21 @@ class SmartDeviceData
         return $this;
     }
 
-    public function getTime(): ?\DateTimeInterface
+    public function getTime(): \DateTimeImmutable
     {
-        return $this->time ?? null;
+        return $this->time;
     }
 
-    public function setTime(\DateTimeInterface $time): self
+    public function setTime(\DateTimeImmutable $time): self
     {
         $this->time = $time;
 
         return $this;
     }
 
-    public function getValue(): ?float
+    public function getValue(): float
     {
-        return $this->value ?? null;
+        return $this->value;
     }
 
     public function setValue(float $value): self

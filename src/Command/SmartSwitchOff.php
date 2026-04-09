@@ -26,15 +26,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:switch:off')]
+#[AsCommand(name: 'smart:switch:off', description: 'Turn off a SmartHome outlet')]
 class SmartSwitchOff extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
     protected function configure(): void
     {
         $this
-            ->setDescription('Turn off a SmartHome outlet')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(

@@ -26,15 +26,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:switch:toggle')]
+#[AsCommand(name: 'smart:switch:toggle', description: 'Toggle power state of a SmartHome outlet')]
 class SmartSwitchToggle extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
     protected function configure(): void
     {
         $this
-            ->setDescription('Toggle power state of a SmartHome outlet')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(

@@ -16,7 +16,7 @@ namespace App\Command;
 use App\Client\AhaApi;
 use App\Device;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressIndicator;
 use Symfony\Component\Console\Helper\Table;
@@ -26,6 +26,7 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
@@ -45,16 +46,13 @@ abstract class Smart extends Command
      */
     protected int $requiredFeatures = -1;
 
-    protected AhaApi $ahaApi;
-
-    protected EntityManagerInterface $entityManager;
-
-    public function __construct(AhaApi $ahaApi, EntityManagerInterface $entityManager)
-    {
+    public function __construct(
+        protected AhaApi $ahaApi,
+        protected EntityManagerInterface $entityManager,
+        #[Autowire(service: 'cache.app')]
+        protected CacheItemPoolInterface $cache,
+    ) {
         parent::__construct();
-
-        $this->ahaApi = $ahaApi;
-        $this->entityManager = $entityManager;
     }
 
     /**
@@ -65,12 +63,11 @@ abstract class Smart extends Command
         // if command requires an AIN, but none give, we want to ask for it
         if ($input->hasArgument('ain') && empty($input->getArgument('ain'))) {
             // fetch all available AINs
-            $cache = new FilesystemAdapter();
-            $valueItem = $cache->getItem('app.smart.devices');
+            $valueItem = $this->cache->getItem('app.smart.devices');
             if (!$valueItem->isHit()) {
                 $valueItem->set($this->ahaApi->getDeviceListInfos())
                           ->expiresAfter(900);
-                $cache->save($valueItem);
+                $this->cache->save($valueItem);
             }
             $devices = $valueItem->get();
 
@@ -145,8 +142,9 @@ abstract class Smart extends Command
         InputInterface $input,
         OutputInterface $output,
     ): int {
+        $commandName = $this->getName() ?? 'unknown';
         $stopwatch = new Stopwatch();
-        $stopwatch->start(self::getDefaultName());
+        $stopwatch->start($commandName);
 
         /** @var ConsoleOutput $output */
         $errOutput = $output->getErrorOutput();
@@ -160,12 +158,12 @@ abstract class Smart extends Command
         $this->executeSmart($input, $output, $errOutput, $stopwatch);
 
         $output->isVerbose() && $progress->finish('Done');
-        $event = $stopwatch->stop(self::getDefaultName());
+        $event = $stopwatch->stop($commandName);
 
         if ($output->isVeryVerbose()) {
             $this->io->comment(
                 \sprintf(
-                    'Command '.self::getDefaultName().': Elapsed time: %.2f ms / Consumed memory: %.2f MB',
+                    'Command '.$commandName.': Elapsed time: %.2f ms / Consumed memory: %.2f MB',
                     $event->getDuration(),
                     $event->getMemory() / (1024 ** 2)
                 )

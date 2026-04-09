@@ -27,14 +27,12 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'cron:smart:savestats')]
+#[AsCommand(name: 'cron:smart:savestats', description: 'Collect and store all stats from all available devices')]
 class CronSmartSaveStats extends Smart
 {
     protected function configure(): void
     {
-        $this
-            ->setDescription('Collect and store all stats from all available devices')
-            ->setHelp($this->getCommandHelp());
+        $this->setHelp($this->getCommandHelp());
     }
 
     protected function executeSmart(
@@ -44,12 +42,11 @@ class CronSmartSaveStats extends Smart
         Stopwatch $stopwatch,
     ): int {
         $devices = $this->ahaApi->getDeviceListInfos();
-        $now = new \DateTime();
+        $now = new \DateTimeImmutable();
 
         /** @var Device $device */
         foreach ($devices as $device) {
             $stats = $this->ahaApi->getBasicDeviceStats($device->getIdentifier());
-            //            dump($stats);
 
             $output->isVerbose() && $this->io->writeln("\nDevice ".$device->getName().' ['.$device->getIdentifier().']');
 
@@ -67,30 +64,28 @@ class CronSmartSaveStats extends Smart
                     $index = 0;
                 }
                 $data = $statsList[$index];
-                $interval = $data['interval'];
+                $intervalSeconds = $data['interval'];
 
                 // calculate current interval starting point
                 // go to the beginning of the last full time slot
-                $end = clone $now;
-                $seconds = $end->format('U');
-                $back = $interval + $seconds % $interval;
-                $end->modify('-'.$back.' seconds');
-                $start = clone $end;
-                $start->modify('-'.$interval * ($data['count'] - 1).' seconds');
+                $seconds = (int) $now->format('U');
+                $back = $intervalSeconds + $seconds % $intervalSeconds;
+                $end = $now->modify('-'.$back.' seconds');
+                $start = $end->modify('-'.($intervalSeconds * ($data['count'] - 1)).' seconds');
 
                 // get last data point of each device and category
-                $last = $this->entityManager->createQueryBuilder()
-                                            ->select('d.type, max(d.time) as last')
-                                            ->from(SmartDeviceData::class, 'd')
-                                            ->where('d.sid = :sid')
-                                            ->addGroupBy('d.type')
-                                            ->setParameter('sid', $device->getIdentifier())
-                                            ->indexBy('d', 'd.type')
-                                            ->getQuery()
-                                            ->getArrayResult();
+                $lastRaw = $this->entityManager->createQueryBuilder()
+                                               ->select('d.type, max(d.time) as last')
+                                               ->from(SmartDeviceData::class, 'd')
+                                               ->where('d.sid = :sid')
+                                               ->addGroupBy('d.type')
+                                               ->setParameter('sid', $device->getIdentifier())
+                                               ->getQuery()
+                                               ->getArrayResult();
 
-                $interval = new \DateInterval('PT'.$interval.'S');
-                //                $interval->invert = 1;
+                $last = array_column($lastRaw, null, 'type');
+
+                $step = new \DateInterval('PT'.$intervalSeconds.'S');
 
                 $sdd = new SmartDeviceData();
                 $sdd->setType($category);
@@ -101,14 +96,14 @@ class CronSmartSaveStats extends Smart
                     // only save newer data points
                     if (empty($last[$category]) || $start->format('Y-m-d H:i:s') > $last[$category]['last']) {
                         $insert = clone $sdd;
-                        $insert->setTime(clone $start);
+                        $insert->setTime($start);
                         $insert->setValue($value);
                         $this->entityManager->persist($insert);
                         ++$count;
                     }
 
                     // next interval
-                    $start->add($interval);
+                    $start = $start->add($step);
                 }
                 $this->entityManager->flush();
                 $output->isVerbose() && $this->io->writeln('- saved '.$count.' new '.$category.' entries');
@@ -192,11 +187,8 @@ class CronSmartSaveStats extends Smart
 
         $time = (-1 * $seconds).' seconds';
 
-        $latest = new \DateTime('NOW');
-        $oldest = new \DateTime($time);
-
-        $latest = $latest->format($format);
-        $oldest = $oldest->format($format);
+        $latest = (new \DateTimeImmutable('NOW'))->format($format);
+        $oldest = (new \DateTimeImmutable($time))->format($format);
 
         $unit = $this->humanReadableTime($resolution * $count);
 
@@ -225,7 +217,7 @@ as comma seperated values (CSV):
   # command will simplify output
   <info>php %command.full_name%</info> <comment>-s</comment> <comment>ain</comment>
 
-The CSVs will always start with the following information: name, unit , number of values, time interval. 
+The CSVs will always start with the following information: name, unit , number of values, time interval.
 After that all the values will be appended in a descending time order (latest first, oldest last).
 
 HELP;

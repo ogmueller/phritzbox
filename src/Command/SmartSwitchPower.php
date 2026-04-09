@@ -27,15 +27,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:switch:power')]
+#[AsCommand(name: 'smart:switch:power', description: 'Read current power consumption of a SmartHome outlet [mW]')]
 class SmartSwitchPower extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
     protected function configure(): void
     {
         $this
-            ->setDescription('Read current power consumption of a SmartHome outlet [mW]')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(
@@ -61,10 +60,8 @@ class SmartSwitchPower extends Smart
             $milliWatt = (int) $milliWatt;
 
             if (!$input->getOption('simple')) {
-                $helper = new Helper();
-                $best = $helper->bestFactor($milliWatt, 'W');
+                $best = Helper::bestFactor($milliWatt, 'W');
                 $milliWatt = $best['value'].' '.$best['unit'];
-                //                $milliWatt = $milliWatt.' '.$prefix[$base].'W';
             }
             $this->io->writeln($milliWatt);
         } else {

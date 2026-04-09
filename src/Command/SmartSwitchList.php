@@ -24,16 +24,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:switch:list')]
+#[AsCommand(name: 'smart:switch:list', description: 'List all known SmartHome outlets')]
 class SmartSwitchList extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
     protected function configure(): void
     {
-        $this
-            ->setDescription('List all known SmartHome outlets')
-            ->setHelp($this->getCommandHelp());
+        $this->setHelp($this->getCommandHelp());
     }
 
     protected function executeSmart(

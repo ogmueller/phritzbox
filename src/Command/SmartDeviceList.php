@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Device;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableCell;
@@ -29,13 +28,12 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:device:list')]
+#[AsCommand(name: 'smart:device:list', description: 'List all available SmartHome devices')]
 class SmartDeviceList extends Smart
 {
     protected function configure(): void
     {
         $this
-            ->setDescription('List all available SmartHome devices')
             ->setHelp($this->getCommandHelp())
             ->addOption(
                 'simple',
@@ -53,14 +51,12 @@ class SmartDeviceList extends Smart
     ): int {
         $simpleOutput = $input->getOption('simple');
         $devices = $this->ahaApi->getDeviceListInfos();
-        dump($devices);
 
         // cache devices to be used by other calls
-        $cache = new FilesystemAdapter();
-        $valueItem = $cache->getItem('app.smart.devices');
+        $valueItem = $this->cache->getItem('app.smart.devices');
         $valueItem->set($devices)
                   ->expiresAfter(900);
-        $cache->save($valueItem);
+        $this->cache->save($valueItem);
 
         $table = new Table($output);
         $rows = [];
@@ -126,7 +122,6 @@ class SmartDeviceList extends Smart
                     'Voltage',
                 ]
             );
-        //            $table->set
         } else {
             $borderless = new TableStyle();
             $borderless

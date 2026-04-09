@@ -26,15 +26,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:temperature')]
+#[AsCommand(name: 'smart:temperature', description: 'Read temperature of a SmartHome device [°C]')]
 class SmartTemperature extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_TEMPERATURE_SENSOR;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_TEMPERATURE_SENSOR;
 
     protected function configure(): void
     {
         $this
-            ->setDescription('Read temperature of a SmartHome device [°C]')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(

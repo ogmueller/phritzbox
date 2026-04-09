@@ -13,9 +13,10 @@ declare(strict_types=1);
 
 namespace App\Client;
 
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpClient\NativeHttpClient;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
@@ -25,9 +26,30 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class Helper
 {
-    public const session_cache_name = 'sid';
+    public const SESSION_CACHE_NAME = 'sid';
 
-    protected string $sid;
+    public function __construct(
+        #[Autowire(env: 'APP_API_URL_LOGIN')]
+        private readonly string $urlLogin,
+
+        #[Autowire(env: 'APP_API_URL_AHA')]
+        private readonly string $urlAha,
+
+        #[Autowire(env: 'APP_API_USERNAME')]
+        private readonly string $username,
+
+        #[Autowire(env: 'APP_API_PASSWORD')]
+        private readonly string $password,
+
+        #[Autowire(service: 'cache.app')]
+        private readonly CacheInterface $cache,
+    ) {
+    }
+
+    public function getUrlAha(): string
+    {
+        return $this->urlAha;
+    }
 
     /**
      * Make HTTP request.
@@ -80,8 +102,7 @@ class Helper
     public function deleteSid(): void
     {
         // if something went wrong, we delete the session ID, just in case
-        $cache = new FilesystemAdapter();
-        $cache->delete(self::session_cache_name);
+        $this->cache->delete(self::SESSION_CACHE_NAME);
     }
 
     /**
@@ -96,14 +117,13 @@ class Helper
      */
     public function getSid(): ?string
     {
-        $cache = new FilesystemAdapter();
-        $sid = $cache->get(
-            self::session_cache_name,
+        $sid = $this->cache->get(
+            self::SESSION_CACHE_NAME,
             function (ItemInterface $item) {
                 // send initial request
-                $response = $this->requestUrl($_ENV['APP_API_URL_LOGIN']);
+                $response = $this->requestUrl($this->urlLogin);
                 if ($response === null) {
-                    throw new InvalidResponseException('Could not connect to Fritz!Box at '.$_ENV['APP_API_URL_LOGIN']);
+                    throw new InvalidResponseException('Could not connect to Fritz!Box at '.$this->urlLogin);
                 }
                 $xml = simplexml_load_string($response->getContent());
                 if (!$xml || !isset($xml->Challenge)) {
@@ -115,19 +135,19 @@ class Helper
                 $sid = (string) $xml->SID;
                 if (preg_match('(^0+$)', $sid) && !empty($challenge)) {
                     // combine challenge with password to create cleartext password
-                    $pass = $challenge.'-'.$_ENV['APP_API_PASSWORD'];
+                    $pass = $challenge.'-'.$this->password;
 
                     // hash UTF-16LE encoded password
                     $pass = md5(mb_convert_encoding($pass, 'UTF-16LE'));
                     $challengeResponse = $challenge.'-'.$pass;
                     // send response to fritzbox
                     $query = [
-                        'username' => $_ENV['APP_API_USERNAME'],
+                        'username' => $this->username,
                         'response' => $challengeResponse,
                     ];
-                    $response = $this->requestUrl($_ENV['APP_API_URL_LOGIN'], ['query' => $query]);
+                    $response = $this->requestUrl($this->urlLogin, ['query' => $query]);
                     if ($response === null) {
-                        throw new InvalidResponseException('Could not connect to Fritz!Box at '.$_ENV['APP_API_URL_LOGIN']);
+                        throw new InvalidResponseException('Could not connect to Fritz!Box at '.$this->urlLogin);
                     }
                     $xml = simplexml_load_string($response->getContent());
                     if (!$xml || !isset($xml->SID)) {
@@ -162,7 +182,6 @@ class Helper
     public function setSid(string $sid): void
     {
         $this->deleteSid();
-        $this->sid = $sid;
     }
 
     /**
@@ -171,7 +190,7 @@ class Helper
      * @param float  $milliValue Unit has to be given in its milli (0.001) representation
      * @param string $unit       Unit name e.g. V, W, m, ...
      */
-    public function bestFactor(float $milliValue, string $unit): array
+    public static function bestFactor(float $milliValue, string $unit): array
     {
         // usually this method would round e.g. 1005 to 1.005k, which might get rounded to 1.00k.
         // In order to get more precision near prefix, we raise the barrier to 2000.

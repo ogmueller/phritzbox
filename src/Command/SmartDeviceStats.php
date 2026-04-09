@@ -30,13 +30,12 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:device:stats')]
+#[AsCommand(name: 'smart:device:stats', description: 'Show basic information of a SmartHome devices')]
 class SmartDeviceStats extends Smart
 {
     protected function configure(): void
     {
         $this
-            ->setDescription('Show basic information of a SmartHome devices')
             ->setHelp($this->getCommandHelp())
             ->addOption(
                 'simple',
@@ -56,7 +55,6 @@ class SmartDeviceStats extends Smart
         $simpleOutput = $input->getOption('simple');
         $ain = $input->getArgument('ain');
         $stats = $this->ahaApi->getBasicDeviceStats($ain);
-        $helper = new Helper();
 
         if (!$simpleOutput) {
             $settings = new Settings();
@@ -107,8 +105,7 @@ class SmartDeviceStats extends Smart
                 $data = $stats['voltage'][0];
                 $values = $data['values'];
                 $milli = 1000 / $data['factor'];
-                $unit = $helper->bestFactor(max($values) * $milli, $data['unit']);
-                // dump($unit, $data['factor'],max($values),max($values)/$data['factor']*1000);
+                $unit = Helper::bestFactor(max($values) * $milli, $data['unit']);
 
                 [$voltages, $values] = $this->createChart($data['values'], $unit['factor'] / $milli, $settings);
 
@@ -135,7 +132,7 @@ class SmartDeviceStats extends Smart
                 $data = $stats['power'][0];
                 $values = $data['values'];
                 $milli = 1000 / $data['factor'];
-                $unit = $helper->bestFactor(max($values) * $milli, $data['unit']);
+                $unit = Helper::bestFactor(max($values) * $milli, $data['unit']);
 
                 [$powers, $values] = $this->createChart($data['values'], $unit['factor'] / $milli, $settings);
 
@@ -162,7 +159,7 @@ class SmartDeviceStats extends Smart
                 $data = $stats['energy'][0];
                 $values = $data['values'];
                 $milli = 1000 / $data['factor'];
-                $unit = $helper->bestFactor(max($values) * $milli, $data['unit']);
+                $unit = Helper::bestFactor(max($values) * $milli, $data['unit']);
 
                 [$energyYear, $values] = $this->createChart($data['values'], $unit['factor'] / $milli, $settings);
 
@@ -189,7 +186,7 @@ class SmartDeviceStats extends Smart
                 $data = $stats['energy'][1];
                 $values = $data['values'];
                 $milli = 1000 / $data['factor'];
-                $unit = $helper->bestFactor(max($values) * $milli, $data['unit']);
+                $unit = Helper::bestFactor(max($values) * $milli, $data['unit']);
 
                 [$energyMonth, $values] = $this->createChart($data['values'], $unit['factor'] / $milli, $settings);
 
@@ -338,11 +335,8 @@ class SmartDeviceStats extends Smart
 
         $time = (-1 * $seconds).' seconds';
 
-        $latest = new \DateTime('NOW');
-        $oldest = new \DateTime($time);
-
-        $latest = $latest->format($format);
-        $oldest = $oldest->format($format);
+        $latest = (new \DateTimeImmutable('NOW'))->format($format);
+        $oldest = (new \DateTimeImmutable($time))->format($format);
 
         $unit = $this->humanReadableTime($resolution * $count);
 

@@ -25,7 +25,8 @@ class Helper extends TestCase
     {
         /** @var MockObject|\App\Client\Helper $helper */
         $helper = $test->getMockBuilder(\App\Client\Helper::class)
-                       ->onlyMethods(['requestUrl', 'getSid'])
+                       ->disableOriginalConstructor()
+                       ->onlyMethods(['requestUrl', 'getSid', 'getUrlAha'])
                        ->getMock();
 
         $client = new MockHttpClient(new MockResponse($response));
@@ -37,6 +38,10 @@ class Helper extends TestCase
         $helper->expects($test->any())
                ->method('getSid')
                ->willReturn('123');
+
+        $helper->expects($test->any())
+               ->method('getUrlAha')
+               ->willReturn('https://fritz.box');
 
         return new AhaApi($helper);
     }

@@ -27,15 +27,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:switch:energy')]
+#[AsCommand(name: 'smart:switch:energy', description: 'Read energy quantity delivered over a SmartHome outlet [Wh]')]
 class SmartSwitchEnergy extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_OUTLET;
 
     protected function configure(): void
     {
         $this
-            ->setDescription('Read energy quantity delivered over a SmartHome outlet [Wh]')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(
@@ -56,14 +55,12 @@ class SmartSwitchEnergy extends Smart
 
         $ain = $input->getArgument('ain');
         $wattHours = $this->ahaApi->getSwitchEnergy($ain);
-        //        dump($wattHours);
 
         if (!empty($wattHours) || is_numeric($wattHours)) {
             $wattHours = (int) $wattHours;
 
             if (!$input->getOption('simple')) {
-                $helper = new Helper();
-                $best = $helper->bestFactor($wattHours * 1000, 'Wh');
+                $best = Helper::bestFactor($wattHours * 1000, 'Wh');
                 $wattHours = $best['value'].' '.$best['unit'];
             }
             $this->io->writeln($wattHours);

@@ -34,15 +34,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:template:list')]
+#[AsCommand(name: 'smart:template:list', description: 'List all available SmartHome templates')]
 class SmartTemplateList extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
 
     protected function configure(): void
     {
         $this
-            ->setDescription('List all available SmartHome templates')
             ->setHelp($this->getCommandHelp())
             ->addOption(
                 'simple',
@@ -60,8 +59,6 @@ class SmartTemplateList extends Smart
     ): int {
         $simpleOutput = $input->getOption('simple');
         $templateList = $this->ahaApi->getTemplateListInfos();
-
-        dump($templateList);
 
         return 0;
     }

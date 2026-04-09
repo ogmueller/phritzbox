@@ -64,11 +64,11 @@ class AhaApi
         }
 
         try {
-            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
+            $response = $this->helper->requestUrl($this->helper->getUrlAha(), ['query' => $query]);
         } catch (AccessDeniedHttpException $e) {
             // cached/given SID seems to be invalid. Delete cache and try to get new SID
             $query['sid'] = $this->helper->getSid();
-            $response = $this->helper->requestUrl($_ENV['APP_API_URL_AHA'], ['query' => $query]);
+            $response = $this->helper->requestUrl($this->helper->getUrlAha(), ['query' => $query]);
         }
 
         return $response;

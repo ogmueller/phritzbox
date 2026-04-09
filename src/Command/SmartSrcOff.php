@@ -26,15 +26,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:src:off')]
+#[AsCommand(name: 'smart:src:off', description: 'Turn off a SmartHome smart radiator control')]
 class SmartSrcOff extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
 
     protected function configure(): void
     {
         $this
-            ->setDescription('Turn off a SmartHome smart radiator control')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(

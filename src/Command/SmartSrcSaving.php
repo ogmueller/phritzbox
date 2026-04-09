@@ -26,15 +26,14 @@ use Symfony\Component\Stopwatch\Stopwatch;
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
-#[AsCommand(name: 'smart:src:saving')]
+#[AsCommand(name: 'smart:src:saving', description: 'Read setpoint for saving temperature of a SmartHome smart radiator control [°C]')]
 class SmartSrcSaving extends Smart
 {
-    protected $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
+    protected int $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
 
     protected function configure(): void
     {
         $this
-            ->setDescription('Read setpoint for saving temperature of a SmartHome smart radiator control [°C]')
             ->setHelp($this->getCommandHelp())
             ->addArgument('ain', InputArgument::REQUIRED, 'Actor identification number')
             ->addOption(

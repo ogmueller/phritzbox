@@ -43,8 +43,6 @@ class Device
 
     public const FEATURE_OUTLET = 'outlet';
 
-    protected static array $mapping = [];
-
     protected bool $present = false;
 
     protected string $name;

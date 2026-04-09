@@ -18,10 +18,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @method SmartDeviceData|null find($id, $lockMode = null, $lockVersion = null)
- * @method SmartDeviceData|null findOneBy(array $criteria, array $orderBy = null)
- * @method SmartDeviceData[]    findAll()
- * @method SmartDeviceData[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @extends ServiceEntityRepository<SmartDeviceData>
  */
 class SmartDeviceDataRepository extends ServiceEntityRepository
 {

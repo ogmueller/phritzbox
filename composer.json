@@ -7,20 +7,20 @@
     "php": "^8.5",
     "ext-pdo_sqlite": "*",
     "ext-simplexml": "*",
-    "doctrine/doctrine-bundle": "^2.0",
-    "doctrine/doctrine-migrations-bundle": "^3.0",
-    "doctrine/orm": "^2.6",
+    "doctrine/doctrine-bundle": "^3.0",
+    "doctrine/doctrine-migrations-bundle": "^4.0",
+    "doctrine/orm": "^3.0",
     "noximo/php-colored-ascii-linechart": "dev-master",
-    "symfony/cache": "^7.4",
-    "symfony/console": "^7.4",
-    "symfony/dotenv": "^7.4",
+    "symfony/cache": "^8.0",
+    "symfony/console": "^8.0",
+    "symfony/dotenv": "^8.0",
     "symfony/flex": "^2.0",
-    "symfony/framework-bundle": "^7.4",
-    "symfony/http-client": "^7.4",
-    "symfony/monolog-bundle": "^3.1",
-    "symfony/runtime": "^7.4",
-    "symfony/string": "^7.4",
-    "symfony/yaml": "^7.4"
+    "symfony/framework-bundle": "^8.0",
+    "symfony/http-client": "^8.0",
+    "symfony/monolog-bundle": "^4.0",
+    "symfony/runtime": "^8.0",
+    "symfony/string": "^8.0",
+    "symfony/yaml": "^8.0"
   },
   "require-dev": {
     "dama/doctrine-test-bundle": "^8.0",
@@ -29,11 +29,11 @@
     "phpunit/phpunit": "^11.0",
     "roave/security-advisories": "dev-latest",
     "squizlabs/php_codesniffer": "*",
-    "symfony/debug-bundle": "^7.4",
+    "symfony/debug-bundle": "^8.0",
     "symfony/maker-bundle": "^1.11",
-    "symfony/phpunit-bridge": "^7.4",
-    "symfony/stopwatch": "^7.4",
-    "symfony/var-dumper": "^7.4"
+    "symfony/phpunit-bridge": "^8.0",
+    "symfony/stopwatch": "^8.0",
+    "symfony/var-dumper": "^8.0"
   },
   "config": {
     "platform": {
@@ -74,7 +74,7 @@
   },
   "extra": {
     "symfony": {
-      "require": "7.4.*",
+      "require": "8.0.*",
       "allow-contrib": true
     }
   }
