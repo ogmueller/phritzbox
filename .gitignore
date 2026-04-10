@@ -1,10 +1,5 @@
 .DS_Store
 */.DS_Store
-/data/
-/public/build/fonts/glyphicons-*
-/public/build/images/glyphicons-*
-/bin/*
-CLAUDE.md
 
 # docker
 /docker/.env
@@ -12,28 +7,28 @@ CLAUDE.md
 # IDE
 /.idea/
 
+# dynamic runtime directory (cache, logs)
+/var/
+
+# local data (databases)
+/data/
+/data.bak/
 
 ###> symfony/framework-bundle ###
 /.env.local
-/.env.local.php
 /.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
-/var/
-/vendor/
+/app/.env.local.php
+/app/config/secrets/prod/prod.decrypt.private.php
+/app/vendor/
 ###< symfony/framework-bundle ###
 
 ###> symfony/phpunit-bridge ###
 .phpunit
 .phpunit.result.cache
-/phpunit.xml
+/app/phpunit.xml
 ###< symfony/phpunit-bridge ###
 
 ###> friendsofphp/php-cs-fixer ###
-/.php-cs-fixer.php
-/.php-cs-fixer.cache
+/app/.php-cs-fixer.php
+/var/.php_cs.cache
 ###< friendsofphp/php-cs-fixer ###
-###> squizlabs/php_codesniffer ###
-/.phpcs-cache
-/phpcs.xml
-###< squizlabs/php_codesniffer ###

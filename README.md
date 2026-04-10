@@ -1,120 +1,134 @@
 Phritzbox
 =========
 
-This application is a companion to AVM's Fritz!Box and smart home devices.
+[![CI](https://github.com/teqneers/phritzbox/actions/workflows/ci.yml/badge.svg)](https://github.com/teqneers/phritzbox/actions/workflows/ci.yml)
+[![Security](https://github.com/teqneers/phritzbox/actions/workflows/security.yml/badge.svg)](https://github.com/teqneers/phritzbox/actions/workflows/security.yml)
+[![codecov](https://codecov.io/gh/teqneers/phritzbox/branch/master/graph/badge.svg)](https://codecov.io/gh/teqneers/phritzbox)
+[![PHP](https://img.shields.io/badge/PHP-8.5-blue.svg)](https://www.php.net/)
+[![Symfony](https://img.shields.io/badge/Symfony-8.0-black.svg)](https://symfony.com/)
+[![License](https://img.shields.io/badge/license-proprietary-lightgrey.svg)](LICENSE)
 
-Features
---------
+CLI companion for AVM Fritz!Box smart home devices. Collects, stores and monitors data from smart outlets, thermostats and temperature sensors via the AHA HTTP API.
 
-* Manage and monitor connected smart home devices via CLI
-* Collect, visualize and analyze smart home data (e.g. temperature, energy consumption, ...)
-
-
-CLI
----
-
-All devices can be managed via CLI using
-```bash
-$ bin/console COMMAND
-```
-
-The available COMMANDs are:
-
-```
-smart:device:list                       List all available SmartHome devices
-smart:device:stats                      Show basic information of a SmartHome devices
-smart:src:comfort                       Read setpoint for comfort temperature of a SmartHome smart radiator control [°C]
-smart:src:off                           Turn off a SmartHome smart radiator control
-smart:src:on                            Turn on a SmartHome smart radiator control
-smart:src:saving                        Read setpoint for saving temperature of a SmartHome smart radiator control [°C]
-smart:src:setpoint                      Read or set setpoint temperature of a SmartHome smart radiator control [°C]
-smart:switch:energy                     Read energy quantity delivered over a SmartHome outlet [Wh]
-smart:switch:list                       List all known SmartHome outlets
-smart:switch:name                       Get name of a SmartHome outlet
-smart:switch:off                        Turn off a SmartHome outlet
-smart:switch:on                         Turn on a SmartHome outlet
-smart:switch:power                      Read current power consumption of a SmartHome outlet [mW]
-smart:switch:present                    Determine availability of a SmartHome outlet
-smart:switch:toggle                     Toggle power state of a SmartHome outlet
-smart:temperature                       Read temperature of a SmartHome device [°C]
-smart:template:list                     List all available SmartHome templates
-```
-
-Collect data
-------------
-
-The best way to collect all data from all devices is using a cron task. It will automatically and regularly collect all necessary data and stores it to the database. The task itself is going to fetch new data only. So you can't execute this task too often. The Fritz!Box is caching smart home device data, but depending on the type of data, caching time is limited. Temperature for example is stored for 24h. If it hasn't been fetch by then, it is gone. So it is recommended to execute the cron at least every couple of hours. If you want to the most current data, the cron needs to be executed more often.
-
-Replace `path-to-phritzbox` with your phritzbox file system path and put the following content into your [crontab](https://tecadmin.net/crontab-in-linux-with-20-examples-of-cron-schedule/):
-```cron
-# collect smart home device data twice an hour
-*/30 *  * * *   /path-to-phritzbox/bin/console cron:smart:save
-```
-
-
-
-
-
-Symfony Demo Application
-========================
-
-The "Symfony Demo Application" is a reference application created to show how
-to develop applications following the [Symfony Best Practices][1].
 
 Requirements
 ------------
 
-  * PHP 7.1.3 or higher;
-  * PDO-SQLite PHP extension enabled;
-  * and the [usual Symfony application requirements][2].
+* PHP 8.5+
+* SQLite (`ext-pdo_sqlite`)
+* SimpleXML (`ext-simplexml`)
+* A Fritz!Box with smart home devices
+
 
 Installation
 ------------
 
-Install the [Symfony client][4] binary and run this command:
-
 ```bash
-$ symfony new --demo my_project
+git clone https://github.com/teqneers/phritzbox.git
+cd phritzbox/app && composer install && cd ..
+cp .env .env.local
 ```
 
-Alternatively, you can use Composer:
+Edit `.env.local` and set your Fritz!Box credentials and database path:
 
-```bash
+```dotenv
+APP_API_USERNAME=your-username
+APP_API_PASSWORD=your-password
+APP_API_DOMAIN=http://fritz.box          # or https://abcd1234.myfritz.net
 
-
-
-
-$ composer create-project symfony/symfony-demo my_project
+DATABASE_URL="sqlite:///%kernel.project_dir%/../data/database.sqlite"
 ```
 
-Usage
------
-
-There's no need to configure anything to run the application. If you have
-installed the [Symfony client][4] binary, run this command to run the built-in
-web server and access the application in your browser at <http://localhost:8000>:
+Run the initial database migration:
 
 ```bash
-$ cd my_project/
-$ symfony serve
+php app/bin/console doctrine:migrations:migrate
 ```
 
-If you don't have the Symfony client installed, run `php bin/console server:run`.
-Alternatively, you can [configure a web server][3] like Nginx or Apache to run
-the application.
 
-Tests
------
+CLI Commands
+------------
 
-Execute this command to run tests:
+All commands are run from the repo root:
 
 ```bash
-$ cd my_project/
-$ ./bin/phpunit
+php app/bin/console COMMAND [options]
 ```
 
-[1]: https://symfony.com/doc/current/best_practices/index.html
-[2]: https://symfony.com/doc/current/reference/requirements.html
-[3]: https://symfony.com/doc/current/cookbook/configuration/web_server_configuration.html
-[4]: https://symfony.com/download
-[5]: https://github.com/symfony/webpack-encore
+| Command | Description |
+|---------|-------------|
+| `smart:device:list` | List all available SmartHome devices |
+| `smart:device:stats` | Show statistics of a SmartHome device |
+| `smart:switch:list` | List all known SmartHome outlets |
+| `smart:switch:on <ain>` | Turn on a SmartHome outlet |
+| `smart:switch:off <ain>` | Turn off a SmartHome outlet |
+| `smart:switch:toggle <ain>` | Toggle power state of a SmartHome outlet |
+| `smart:switch:power <ain>` | Read current power consumption [mW] |
+| `smart:switch:energy <ain>` | Read energy delivered over outlet [Wh] |
+| `smart:switch:present <ain>` | Check availability of a SmartHome outlet |
+| `smart:switch:name <ain>` | Get name of a SmartHome outlet |
+| `smart:temperature <ain>` | Read temperature of a SmartHome device [°C] |
+| `smart:src:on <ain>` | Turn on a smart radiator control |
+| `smart:src:off <ain>` | Turn off a smart radiator control |
+| `smart:src:setpoint <ain>` | Read or set target temperature [°C] |
+| `smart:src:comfort <ain>` | Read comfort temperature setpoint [°C] |
+| `smart:src:saving <ain>` | Read saving temperature setpoint [°C] |
+| `smart:template:list` | List all available SmartHome templates |
+| `cron:smart:savestats` | Collect and persist all device data |
+
+
+Data Collection
+---------------
+
+The `cron:smart:savestats` command fetches all device data and stores new readings. Run it regularly via cron:
+
+```cron
+# collect smart home data twice an hour
+*/30 * * * *   /path-to-phritzbox/app/bin/console cron:smart:savestats
+```
+
+The Fritz!Box caches device data. Temperature readings are available for up to 24 hours — if not fetched in time they are lost. Running every 30 minutes is recommended for most current data.
+
+
+Development
+-----------
+
+**Run tests:**
+```bash
+php app/vendor/bin/phpunit --configuration app/phpunit.xml.dist
+```
+
+**Check code style:**
+```bash
+./app/vendor/bin/php-cs-fixer fix --diff --dry-run -v --config app/.php-cs-fixer.dist.php
+```
+
+**Auto-fix code style:**
+```bash
+./app/vendor/bin/php-cs-fixer fix --config app/.php-cs-fixer.dist.php
+```
+
+**Lint YAML config:**
+```bash
+php app/bin/console lint:yaml app/config --parse-tags
+```
+
+**Validate Doctrine mapping:**
+```bash
+php app/bin/console doctrine:schema:validate --skip-sync
+```
+
+**Check for security vulnerabilities:**
+```bash
+cd app && composer audit
+```
+
+
+Docker
+------
+
+```bash
+cd docker && docker-compose up
+```
+
+The PHP container mounts `app/` for code, `data/` for the database, and `var/` for cache and logs.

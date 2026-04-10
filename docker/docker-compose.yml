@@ -1,34 +1,18 @@
 version: "3.7"
 
 services:
-    web:
-        image: nginx:latest
-        restart: unless-stopped
-        working_dir: /application
-        ports:
-            - "${NGINX_PORT:-8080}:80"
-        volumes:
-            - ../public:/application/public
-            - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-        networks:
-            - phritzbox
-        links:
-            - php
-
     php:
         build:
             context: ./php
         restart: unless-stopped
+        env_file:
+            - ../.env
+            - path: ../.env.local
+              required: false
         volumes:
-            - ../:/application/
-        networks:
-            - phritzbox
-
-    mail:
-        image: mailhog/mailhog:latest
-        restart: unless-stopped
-        ports:
-            - "${WEBMAIL_PORT:-8025}:8025"
+            - ../app:/application/app
+            - ../data:/application/data
+            - ../var:/application/var
         networks:
             - phritzbox
 
