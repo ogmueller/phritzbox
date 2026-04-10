@@ -1,9 +1,9 @@
 Phritzbox
 =========
 
-[![CI](https://github.com/teqneers/phritzbox/actions/workflows/ci.yml/badge.svg)](https://github.com/teqneers/phritzbox/actions/workflows/ci.yml)
-[![Security](https://github.com/teqneers/phritzbox/actions/workflows/security.yml/badge.svg)](https://github.com/teqneers/phritzbox/actions/workflows/security.yml)
-[![codecov](https://codecov.io/gh/teqneers/phritzbox/branch/master/graph/badge.svg)](https://codecov.io/gh/teqneers/phritzbox)
+[![CI](https://github.com/ogmueller/phritzbox/actions/workflows/ci.yml/badge.svg)](https://github.com/ogmueller/phritzbox/actions/workflows/ci.yml)
+[![Security](https://github.com/ogmueller/phritzbox/actions/workflows/security.yml/badge.svg)](https://github.com/ogmueller/phritzbox/actions/workflows/security.yml)
+[![codecov](https://codecov.io/gh/ogmueller/phritzbox/branch/main/graph/badge.svg)](https://codecov.io/gh/ogmueller/phritzbox)
 [![PHP](https://img.shields.io/badge/PHP-8.5-blue.svg)](https://www.php.net/)
 [![Symfony](https://img.shields.io/badge/Symfony-8.0-black.svg)](https://symfony.com/)
 [![License](https://img.shields.io/badge/license-proprietary-lightgrey.svg)](LICENSE)
