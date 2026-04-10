@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite, simplexml
+          coverage: pcov
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: app/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('app/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Validate composer.json
+        run: composer validate --strict
+        working-directory: app
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+        working-directory: app
+
+      - name: Create data directory and migrate test database
+        run: |
+          mkdir -p ../data
+          php bin/console doctrine:migrations:migrate --no-interaction
+        working-directory: app
+        env:
+          APP_ENV: test
+
+      - name: Run tests with coverage
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-clover coverage.xml
+        working-directory: app
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: app/coverage.xml
+          fail_ci_if_error: false
+
+  code-style:
+    name: Code Style
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite, simplexml
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: app/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('app/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Cache php-cs-fixer
+        uses: actions/cache@v4
+        with:
+          path: var/.php_cs.cache
+          key: ${{ runner.os }}-php-cs-fixer-${{ hashFiles('app/src/**/*.php', 'app/tests/**/*.php') }}
+          restore-keys: ${{ runner.os }}-php-cs-fixer-
+
+      - name: Validate composer.json
+        run: composer validate --strict
+        working-directory: app
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+        working-directory: app
+
+      - name: Check code style
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --config .php-cs-fixer.dist.php
+        working-directory: app
+
+  lint:
+    name: Lint & Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite, simplexml
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: app/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('app/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Validate composer.json
+        run: composer validate --strict
+        working-directory: app
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+        working-directory: app
+
+      - name: Lint YAML config
+        run: php bin/console lint:yaml config --parse-tags
+        working-directory: app
+        env:
+          APP_ENV: test
+
+      - name: Validate Doctrine mapping
+        run: php bin/console doctrine:schema:validate --skip-sync
+        working-directory: app
+        env:
+          APP_ENV: test
+
+      - name: Run PHP Mess Detector
+        run: vendor/bin/phpmd src xml phpmd.xml --reportfile phpmd-report.xml || true
+        working-directory: app
+
+      - name: Publish PHPMD report
+        if: always()
+        uses: jwgmeligmeyling/pmd-github-action@v1
+        with:
+          path: app/phpmd-report.xml

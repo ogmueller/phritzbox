@@ -1,0 +1,28 @@
+# Normalize line endings for all text files
+* text=auto
+
+# PHP source files
+*.php text eol=lf
+
+# Config and data files
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.xml  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.env  text eol=lf
+*.dist text eol=lf
+
+# Binary files — do not diff or modify
+*.sqlite binary
+*.png    binary
+*.ico    binary
+
+# Exclude development files from git archive (e.g. composer create-project)
+/.github            export-ignore
+/app/tests          export-ignore
+/app/phpunit.xml.dist export-ignore
+/app/phpmd.xml      export-ignore
+/app/.php-cs-fixer.dist.php export-ignore
+/docker             export-ignore
+/CONTRIBUTING.md    export-ignore
