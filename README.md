@@ -77,6 +77,22 @@ php app/bin/console COMMAND [options]
 | `cron:smart:savestats` | Collect and persist all device data |
 
 
+Screenshots
+-----------
+
+**Device listing** (`smart:device:list`):
+
+![Device listing](app/files/device-listing.png)
+
+**Statistics** (`smart:device:stats`):
+
+![Temperature graph](app/files/temperature-graph-cli.png)
+![Voltage graph](app/files/voltage-graph-cli.png)
+![Power graph](app/files/power-graph-cli.png)
+![Energy per month over 1 year](app/files/energy-1yr-graph-cli.png)
+![Energy per day over 1 month](app/files/energy-1mo-graph-cli.png)
+
+
 Data Collection
 ---------------
 
