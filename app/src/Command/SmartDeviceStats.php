@@ -78,7 +78,7 @@ class SmartDeviceStats extends Smart
                 $values = $data['values'];
 
                 $temperatures = new Linechart();
-                $settings->setHeight(min(20, (max($values) - min($values)) * 2));
+                $settings->setHeight((int) min(20, (max($values) - min($values)) * 2));
                 $temperatures->setSettings($settings);
 
                 $temperatures->addMarkers(
@@ -95,7 +95,7 @@ class SmartDeviceStats extends Smart
                         \count($values)
                     )
                 );
-                $this->io->writeln($temperatures->chart());
+                $this->io->writeln($temperatures->chart()->__toString());
             }
 
             //
@@ -122,7 +122,7 @@ class SmartDeviceStats extends Smart
                         \count($values)
                     )
                 );
-                $this->io->writeln($voltages->chart());
+                $this->io->writeln($voltages->chart()->__toString());
             }
 
             //
@@ -149,7 +149,7 @@ class SmartDeviceStats extends Smart
                         \count($values)
                     )
                 );
-                $this->io->writeln($powers->chart());
+                $this->io->writeln($powers->chart()->__toString());
             }
 
             //
@@ -176,7 +176,7 @@ class SmartDeviceStats extends Smart
                         \count($values)
                     )
                 );
-                $this->io->writeln($energyYear->chart());
+                $this->io->writeln($energyYear->chart()->__toString());
             }
 
             //
@@ -203,7 +203,7 @@ class SmartDeviceStats extends Smart
                         \count($values)
                     )
                 );
-                $this->io->writeln($energyMonth->chart());
+                $this->io->writeln($energyMonth->chart()->__toString());
             }
         } else {
             // CSV header
@@ -261,7 +261,7 @@ class SmartDeviceStats extends Smart
         return 0;
     }
 
-    protected function createChart(array $values, int $factor, Settings $settings): array
+    protected function createChart(array $values, int|float $factor, Settings $settings): array
     {
         $terminalWidth = getenv('COLUMNS');
         $chartWidth = $terminalWidth - $settings->getOffset() - 6;
@@ -284,7 +284,7 @@ class SmartDeviceStats extends Smart
 
         $chart = new Linechart();
         $height = ceil(max($values)) - floor(min($values));
-        $settings->setHeight(max(1, min($maxXScaleHeight, $height)));
+        $settings->setHeight((int) max(1, min($maxXScaleHeight, $height)));
         $chart->setSettings($settings);
 
         return [$chart, $values];
