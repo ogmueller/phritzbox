@@ -29,12 +29,12 @@ final class Version20260409141044 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('DROP TABLE migration_versions');
-        $this->addSql('DROP TABLE symfony_demo_comment');
-        $this->addSql('DROP TABLE symfony_demo_post');
-        $this->addSql('DROP TABLE symfony_demo_post_tag');
-        $this->addSql('DROP TABLE symfony_demo_tag');
-        $this->addSql('DROP TABLE symfony_demo_user');
+        $this->addSql('DROP TABLE IF EXISTS migration_versions');
+        $this->addSql('DROP TABLE IF EXISTS symfony_demo_comment');
+        $this->addSql('DROP TABLE IF EXISTS symfony_demo_post');
+        $this->addSql('DROP TABLE IF EXISTS symfony_demo_post_tag');
+        $this->addSql('DROP TABLE IF EXISTS symfony_demo_tag');
+        $this->addSql('DROP TABLE IF EXISTS symfony_demo_user');
     }
 
     public function down(Schema $schema): void
