@@ -1,4 +1,6 @@
 {
+  "name": "ogmueller/phritzbox",
+  "description": "CLI companion for AVM Fritz!Box smart home devices",
   "license": "proprietary",
   "type": "project",
   "minimum-stability": "stable",
