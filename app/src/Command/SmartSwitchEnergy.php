@@ -61,9 +61,10 @@ class SmartSwitchEnergy extends Smart
 
             if (!$input->getOption('simple')) {
                 $best = Helper::bestFactor($wattHours * 1000, 'Wh');
-                $wattHours = $best['value'].' '.$best['unit'];
+                $this->io->writeln($best['value'].' '.$best['unit']);
+            } else {
+                $this->io->writeln((string) $wattHours);
             }
-            $this->io->writeln($wattHours);
         } else {
             $errOutput->writeln('No energy quantity available on that device');
             $returnCode = 1;

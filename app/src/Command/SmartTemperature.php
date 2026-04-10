@@ -59,8 +59,10 @@ class SmartTemperature extends Smart
             $celsius = (int) $celsius / 10;
             if (!$input->getOption('simple')) {
                 $celsius .= '°C';
+                $this->io->writeln($celsius);
+            } else {
+                $this->io->writeln((string) $celsius);
             }
-            $this->io->writeln($celsius);
         } else {
             $errOutput->writeln('No temperature available on that device');
             $returnCode = 1;

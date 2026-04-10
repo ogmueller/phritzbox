@@ -61,9 +61,10 @@ class SmartSwitchPower extends Smart
 
             if (!$input->getOption('simple')) {
                 $best = Helper::bestFactor($milliWatt, 'W');
-                $milliWatt = $best['value'].' '.$best['unit'];
+                $this->io->writeln($best['value'].' '.$best['unit']);
+            } else {
+                $this->io->writeln((string) $milliWatt);
             }
-            $this->io->writeln($milliWatt);
         } else {
             $errOutput->writeln('No energy quantity available on that device');
             $returnCode = 1;

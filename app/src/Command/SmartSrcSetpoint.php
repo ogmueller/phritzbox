@@ -54,7 +54,7 @@ class SmartSrcSetpoint extends Smart
         $returnCode = 0;
 
         $ain = $input->getArgument('ain');
-        if ($input->hasArgument('temperature')) {
+        if ($input->getArgument('temperature') !== null) {
             $setpoint = $input->getArgument('temperature');
             $celsius = $this->ahaApi->setSrcSetpoint($ain, $setpoint);
         } else {
@@ -62,12 +62,14 @@ class SmartSrcSetpoint extends Smart
         }
 
         if (!empty($celsius)) {
+            $celsius = (int) $celsius;
             if ($celsius < 253) {
-                $celsius = (int) $celsius / 2;
+                $celsiusDegrees = $celsius / 2;
                 if (!$input->getOption('simple')) {
-                    $celsius .= '°C';
+                    $this->io->writeln($celsiusDegrees.'°C');
+                } else {
+                    $this->io->writeln((string) $celsiusDegrees);
                 }
-                $this->io->writeln($celsius);
             } else {
                 if (!$input->getOption('simple')) {
                     if ($celsius === 253) {

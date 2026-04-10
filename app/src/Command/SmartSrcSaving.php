@@ -56,12 +56,14 @@ class SmartSrcSaving extends Smart
         $celsius = $this->ahaApi->getSrcSaving($ain);
 
         if (!empty($celsius)) {
+            $celsius = (int) $celsius;
             if ($celsius < 253) {
-                $celsius = (int) $celsius / 2;
+                $celsiusDegrees = $celsius / 2;
                 if (!$input->getOption('simple')) {
-                    $celsius .= '°C';
+                    $this->io->writeln($celsiusDegrees.'°C');
+                } else {
+                    $this->io->writeln((string) $celsiusDegrees);
                 }
-                $this->io->writeln($celsius);
             } else {
                 if (!$input->getOption('simple')) {
                     if ($celsius === 253) {

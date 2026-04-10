@@ -45,7 +45,7 @@ jobs:
           APP_ENV: test
 
       - name: Run tests with coverage
-        run: php vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-clover coverage.xml
+        run: php vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-clover coverage.xml --coverage-html coverage-html
         working-directory: app
 
       - name: Upload coverage to Codecov
@@ -53,6 +53,13 @@ jobs:
         with:
           files: app/coverage.xml
           fail_ci_if_error: false
+
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: app/coverage-html/
+          retention-days: 14
 
   code-style:
     name: Code Style
