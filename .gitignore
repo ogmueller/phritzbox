@@ -3,6 +3,7 @@
 /.env
 .claude
 CLAUDE.md
+.env.local
 
 # docker
 /docker/.env
