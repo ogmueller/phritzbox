@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace App\Client;
 
 use App\Device;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -30,9 +31,12 @@ class AhaApi
 
     private Helper $helper;
 
-    public function __construct(Helper $helper)
+    private LoggerInterface $logger;
+
+    public function __construct(Helper $helper, LoggerInterface $logger)
     {
         $this->helper = $helper;
+        $this->logger = $logger;
     }
 
     /**
@@ -47,7 +51,7 @@ class AhaApi
         try {
             $sid = $this->helper->getSid();
         } catch (\Exception $e) {
-            dump($e);
+            $this->logger->error('Failed to obtain Fritz!Box SID', ['exception' => $e->getMessage()]);
 
             return null;
         }
@@ -187,7 +191,7 @@ class AhaApi
         } catch (\Exception $e) {
             $this->helper->deleteSid();
 
-            dump($response);
+            $this->logger->error('Failed to parse Fritz!Box XML response', ['exception' => $e->getMessage()]);
             throw $e;
         }
         if ($xml === false) {
@@ -282,7 +286,7 @@ class AhaApi
         } catch (\Exception $e) {
             $this->helper->deleteSid();
 
-            dump($response);
+            $this->logger->error('Failed to parse Fritz!Box XML response', ['exception' => $e->getMessage()]);
             throw $e;
         }
         if ($xml === false) {
@@ -358,7 +362,7 @@ class AhaApi
         } catch (\Exception $e) {
             $this->helper->deleteSid();
 
-            dump($response);
+            $this->logger->error('Failed to parse Fritz!Box XML response', ['exception' => $e->getMessage()]);
             throw $e;
         }
         if ($xml === false) {

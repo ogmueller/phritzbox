@@ -1,5 +1,9 @@
 .DS_Store
 */.DS_Store
+.env
+.env.local
+.claude
+CLAUDE.md
 
 # docker
 /docker/.env
@@ -21,6 +25,10 @@
 /app/config/secrets/prod/prod.decrypt.private.php
 /app/vendor/
 ###< symfony/framework-bundle ###
+
+# frontend
+/app/frontend/node_modules/
+/app/public/frontend/
 
 ###> symfony/phpunit-bridge ###
 .phpunit

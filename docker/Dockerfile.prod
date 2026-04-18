@@ -1,0 +1,48 @@
+# Stage 1: Build frontend
+FROM node:22-alpine AS frontend
+WORKDIR /build/app/frontend
+COPY app/frontend/package.json app/frontend/package-lock.json ./
+RUN npm ci
+COPY app/frontend/ ./
+RUN npm run build
+# Output is at /build/app/public/frontend/
+
+# Stage 2: Install PHP dependencies
+FROM composer:2 AS composer
+WORKDIR /build
+COPY app/composer.json app/composer.lock app/symfony.lock ./
+RUN composer install --no-dev --no-scripts --prefer-dist --optimize-autoloader
+COPY app/ ./
+RUN composer dump-autoload --no-dev --optimize
+
+# Stage 3: Production image
+FROM dunglas/frankenphp:1-php8.5-bookworm
+
+RUN apt-get update && apt-get install -y \
+        libsqlite3-dev \
+    && install-php-extensions pdo_sqlite opcache \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/php/php-prod.ini /usr/local/etc/php/conf.d/app-prod.ini
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+
+WORKDIR /application
+
+# Copy application
+COPY app/ app/
+COPY --from=composer /build/vendor app/vendor/
+COPY --from=frontend /build/app/public/frontend/ app/public/frontend/
+
+# Create required directories and set permissions
+RUN mkdir -p data var/cache var/log app/config/jwt \
+    && chown -R www-data:www-data data var app/config/jwt
+
+COPY docker/php/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER www-data
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+    CMD curl -sf http://localhost:80/ > /dev/null || exit 1

@@ -7,6 +7,16 @@
         <ini name="error_reporting" value="-1"/>
         <env name="APP_ENV" value="test" force="true"/>
         <env name="KERNEL_CLASS" value="App\Kernel"/>
+
+        <!-- ###+ lexik/jwt-authentication-bundle ### -->
+        <env name="JWT_SECRET_KEY" value="%kernel.project_dir%/config/jwt/test/private.pem"/>
+        <env name="JWT_PUBLIC_KEY" value="%kernel.project_dir%/config/jwt/test/public.pem"/>
+        <env name="JWT_PASSPHRASE" value="9c431864556948aa462461d49f5de0cda90f001d27c12b88e7d869fd862c8db5"/>
+        <!-- ###- lexik/jwt-authentication-bundle ### -->
+
+        <!-- ###+ nelmio/cors-bundle ### -->
+        <env name="CORS_ALLOW_ORIGIN" value="'^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'"/>
+        <!-- ###- nelmio/cors-bundle ### -->
     </php>
 
     <testsuites>

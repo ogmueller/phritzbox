@@ -16,6 +16,7 @@ namespace App\Tests;
 use App\Client\AhaApi;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -43,6 +44,6 @@ class Helper extends TestCase
                ->method('getUrlAha')
                ->willReturn('https://fritz.box');
 
-        return new AhaApi($helper);
+        return new AhaApi($helper, new NullLogger());
     }
 }

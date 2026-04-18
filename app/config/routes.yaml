@@ -1,1 +1,14 @@
-# No web routes — this is a CLI-only application.
+controllers:
+    resource:
+        path: ../src/Controller
+        namespace: App\Controller
+    type: attribute
+
+frontend:
+    path: /{path}
+    defaults:
+        path: ''
+        _controller: App\Controller\FrontendController::index
+    requirements:
+        path: ^(?!api).*
+    methods: [GET]

@@ -18,6 +18,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SmartDeviceDataRepository::class)]
+#[ORM\Index(columns: ['sid', 'type', 'time'], name: 'idx_sid_type_time')]
 class SmartDeviceData
 {
     #[ORM\Id]

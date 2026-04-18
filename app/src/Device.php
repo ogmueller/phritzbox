@@ -253,6 +253,11 @@ class Device
         return ($this->functionBitMask & self::FUNCTION_BIT_ALARM) > 0;
     }
 
+    public function hasThermostat(): bool
+    {
+        return ($this->functionBitMask & self::FUNCTION_BIT_THERMOSTAT) > 0;
+    }
+
     public function hasTemperature(): bool
     {
         return ($this->functionBitMask & self::FUNCTION_BIT_TEMPERATURE_SENSOR) > 0;

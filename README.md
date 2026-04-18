@@ -2,57 +2,109 @@ Phritzbox
 =========
 
 [![CI](https://github.com/ogmueller/phritzbox/actions/workflows/ci.yml/badge.svg)](https://github.com/ogmueller/phritzbox/actions/workflows/ci.yml)
+[![Docker](https://github.com/ogmueller/phritzbox/actions/workflows/docker.yml/badge.svg)](https://github.com/ogmueller/phritzbox/actions/workflows/docker.yml)
 [![Security](https://github.com/ogmueller/phritzbox/actions/workflows/security.yml/badge.svg)](https://github.com/ogmueller/phritzbox/actions/workflows/security.yml)
 [![codecov](https://codecov.io/gh/ogmueller/phritzbox/branch/main/graph/badge.svg)](https://codecov.io/gh/ogmueller/phritzbox)
-[![PHP](https://img.shields.io/badge/PHP-8.5-blue.svg)](https://www.php.net/)
-[![Symfony](https://img.shields.io/badge/Symfony-8.0-black.svg)](https://symfony.com/)
-[![License](https://img.shields.io/badge/license-proprietary-lightgrey.svg)](LICENSE)
+[![ghcr.io](https://img.shields.io/badge/ghcr.io-phritzbox-blue?logo=docker)](https://ghcr.io/ogmueller/phritzbox)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-CLI companion for AVM Fritz!Box smart home devices. Collects, stores and monitors data from smart outlets, thermostats and temperature sensors via the AHA HTTP API.
+A self-hosted smart home dashboard for smart devices connected to AVM Fritz!Box. Monitor temperatures, power consumption, and energy usage with interactive charts. Control smart outlets and radiator thermostats from your browser or the command line.
 
-
-Requirements
-------------
-
-* PHP 8.5+
-* SQLite (`ext-pdo_sqlite`)
-* SimpleXML (`ext-simplexml`)
-* A Fritz!Box with smart home devices
+Built with Symfony 8, React 18, and [FrankenPHP](https://frankenphp.dev). Ships as a single Docker image.
 
 
-Installation
-------------
+Screenshots
+-----------
+
+**Dashboard** — live overview of all devices with status, temperature, power consumption, and toggle switches:
+
+![Dashboard](app/files/screenshots/web-dashboard.png)
+
+**Device detail** — product image, firmware info, and feature cards for switch state, power meter, and temperature sensor:
+
+![Device detail](app/files/screenshots/web-device-detail.png)
+
+**7-day charts** — interactive time-series charts for temperature, power, energy (kWh), and voltage with rolling daily averages:
+
+![Device detail charts](app/files/screenshots/web-device-detail-charts.png)
+
+**Reports** — query historical data for any device and date range, with selectable metric type and configurable averages:
+
+![Reports temperature](app/files/screenshots/web-reports-temp.png)
+![Reports energy](app/files/screenshots/web-reports-energy.png)
+
+
+Features
+--------
+
+- Live device status with 30-second auto-refresh
+- Interactive charts for temperature, power, energy, and voltage
+- Date-range reports with rolling averages
+- 18 CLI commands for device control and monitoring
+- User management with role-based access (admin only)
+- German and English interface
+- Automated data collection every 30 minutes (via [cronado](https://github.com/teqneers/cronado))
+- Single Docker image — no PHP, Node.js, or Composer required
+
+
+Quick Start
+-----------
+
+Requires [Docker](https://docs.docker.com/get-docker/) with Compose.
 
 ```bash
-git clone https://github.com/teqneers/phritzbox.git
-cd phritzbox/app && composer install && cd ..
-cp .env .env.local
+mkdir phritzbox && cd phritzbox
+curl -LO https://raw.githubusercontent.com/ogmueller/phritzbox/main/docker/docker-compose.prod.yml
+curl -L https://raw.githubusercontent.com/ogmueller/phritzbox/main/docker/.env.dist -o .env
 ```
 
-Edit `.env.local` and set your Fritz!Box credentials and database path:
-
-```dotenv
-APP_API_USERNAME=your-username
-APP_API_PASSWORD=your-password
-APP_API_DOMAIN=http://fritz.box          # or https://abcd1234.myfritz.net
-
-DATABASE_URL="sqlite:///%kernel.project_dir%/../data/database.sqlite"
-```
-
-Run the initial database migration:
+Edit `.env` with your Fritz!Box credentials, then start the application:
 
 ```bash
-php app/bin/console doctrine:migrations:migrate
+docker compose -f docker-compose.prod.yml up -d
 ```
+
+Visit `http://localhost` and log in with `admin` / `admin`.
+
+> **Important:** Change the default password immediately after your first login.
+
+To use a specific version instead of `latest`, edit the image tag in `docker-compose.prod.yml`:
+
+```yaml
+image: ghcr.io/ogmueller/phritzbox:1.0.0   # tagged release
+image: ghcr.io/ogmueller/phritzbox:nightly  # latest from main branch
+```
+
+
+Configuration
+-------------
+
+All settings are configured via environment variables in `.env`:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `APP_API_USERNAME` | Yes | — | Fritz!Box login username |
+| `APP_API_PASSWORD` | Yes | — | Fritz!Box login password |
+| `APP_API_DOMAIN` | No | `http://fritz.box` | Fritz!Box address (or MyFRITZ! URL) |
+| `APP_SECRET` | No | `change-me...` | Symfony application secret |
+| `JWT_PASSPHRASE` | No | `change-me` | Passphrase for JWT key encryption |
+| `SERVER_NAME` | No | `localhost` | Server hostname for Caddy |
+| `PHRITZBOX_PORT` | No | `80` | Port to expose the web UI |
 
 
 CLI Commands
 ------------
 
-All commands are run from the repo root:
+All commands can be run inside the Docker container:
 
 ```bash
-php app/bin/console COMMAND [options]
+docker compose exec app php /application/app/bin/console COMMAND
+```
+
+Or directly if running without Docker:
+
+```bash
+php app/bin/console COMMAND
 ```
 
 | Command | Description |
@@ -77,74 +129,112 @@ php app/bin/console COMMAND [options]
 | `cron:smart:savestats` | Collect and persist all device data |
 
 
-Screenshots
------------
-
-**Device listing** (`smart:device:list`):
-
-![Device listing](app/files/device-listing.png)
-
-**Statistics** (`smart:device:stats`):
-
-![Temperature graph](app/files/temperature-graph-cli.png)
-![Voltage graph](app/files/voltage-graph-cli.png)
-![Power graph](app/files/power-graph-cli.png)
-![Energy per month over 1 year](app/files/energy-1yr-graph-cli.png)
-![Energy per day over 1 month](app/files/energy-1mo-graph-cli.png)
-
-
 Data Collection
 ---------------
 
-The `cron:smart:savestats` command fetches all device data and stores new readings. Run it regularly via cron:
+In the Docker setup, data collection runs automatically every 30 minutes via [cronado](https://github.com/teqneers/cronado).
+
+For a bare-metal installation, set up a cron job:
 
 ```cron
-# collect smart home data twice an hour
 */30 * * * *   /path-to-phritzbox/app/bin/console cron:smart:savestats
 ```
 
-The Fritz!Box caches device data. Temperature readings are available for up to 24 hours — if not fetched in time they are lost. Running every 30 minutes is recommended for most current data.
+The Fritz!Box caches device data. Temperature readings are available for up to 24 hours — if not fetched in time they are lost. Running every 30 minutes is recommended.
 
 
 Development
 -----------
 
-**Run tests:**
+### Requirements
+
+* PHP 8.5+ with `pdo_sqlite` and `simplexml`
+* Node.js 22+ and npm
+* Composer 2
+* A Fritz!Box with smart home devices
+
+### Manual Installation
+
+```bash
+git clone https://github.com/ogmueller/phritzbox.git
+cd phritzbox/app && composer install && cd ..
+cp app/.env app/.env.local
+```
+
+Edit `app/.env.local` and set your Fritz!Box credentials:
+
+```dotenv
+APP_API_USERNAME=your-username
+APP_API_PASSWORD=your-password
+APP_API_DOMAIN=http://fritz.box
+DATABASE_URL="sqlite:///%kernel.project_dir%/../data/database.sqlite"
+```
+
+Run the initial database migration:
+
+```bash
+php app/bin/console doctrine:migrations:migrate
+```
+
+### Docker (Development)
+
+```bash
+cd docker && docker compose up
+```
+
+The container mounts `app/`, `data/`, and `var/` as volumes for live code editing.
+
+> **Note:** The Docker dev setup only runs the PHP backend. To work on the frontend, you need to start the Vite dev server separately (see below) or uncomment the `vite` service in `docker/docker-compose.yml`.
+
+### Frontend
+
+```bash
+cd app/frontend && npm install
+npm run dev     # dev server on :5173 (proxies /api to :80)
+npm run build   # production build → app/public/frontend/
+```
+
+### Tests
+
 ```bash
 php app/vendor/bin/phpunit --configuration app/phpunit.xml.dist
 ```
 
-**Check code style:**
+### Code Style
+
 ```bash
-./app/vendor/bin/php-cs-fixer fix --diff --dry-run -v --config app/.php-cs-fixer.dist.php
+./app/vendor/bin/php-cs-fixer fix --diff --dry-run -v --config app/.php-cs-fixer.dist.php   # check
+./app/vendor/bin/php-cs-fixer fix --config app/.php-cs-fixer.dist.php                       # fix
 ```
 
-**Auto-fix code style:**
-```bash
-./app/vendor/bin/php-cs-fixer fix --config app/.php-cs-fixer.dist.php
-```
+### Lint & Validate
 
-**Lint YAML config:**
 ```bash
 php app/bin/console lint:yaml app/config --parse-tags
-```
-
-**Validate Doctrine mapping:**
-```bash
 php app/bin/console doctrine:schema:validate --skip-sync
-```
-
-**Check for security vulnerabilities:**
-```bash
 cd app && composer audit
 ```
 
-
-Docker
-------
+### Building Docker Images Locally
 
 ```bash
-cd docker && docker-compose up
+docker build -f docker/Dockerfile.prod -t phritzbox .
 ```
 
-The PHP container mounts `app/` for code, `data/` for the database, and `var/` for cache and logs.
+
+<details>
+<summary>CLI Screenshots</summary>
+
+**Device listing** (`smart:device:list`):
+
+![Device listing](app/files/screenshots/device-listing.png)
+
+**Statistics** (`smart:device:stats`):
+
+![Temperature graph](app/files/screenshots/temperature-graph-cli.png)
+![Voltage graph](app/files/screenshots/voltage-graph-cli.png)
+![Power graph](app/files/screenshots/power-graph-cli.png)
+![Energy per month over 1 year](app/files/screenshots/energy-1yr-graph-cli.png)
+![Energy per day over 1 month](app/files/screenshots/energy-1mo-graph-cli.png)
+
+</details>

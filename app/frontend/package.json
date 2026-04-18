@@ -1,0 +1,28 @@
+{
+  "name": "phritzbox-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "i18n:check": "node scripts/check-i18n.mjs"
+  },
+  "dependencies": {
+    "echarts": "^5.6.0",
+    "echarts-for-react": "^3.0.2",
+    "i18next": "^26.0.5",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-i18next": "^17.0.3",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

@@ -28,6 +28,8 @@ class Helper
 {
     public const SESSION_CACHE_NAME = 'sid';
 
+    private readonly NativeHttpClient $httpClient;
+
     public function __construct(
         #[Autowire(env: 'APP_API_URL_LOGIN')]
         private readonly string $urlLogin,
@@ -44,6 +46,13 @@ class Helper
         #[Autowire(service: 'cache.app')]
         private readonly CacheInterface $cache,
     ) {
+        // NativeHttpClient (PHP streams) instead of CurlHttpClient because curl/OpenSSL 3.x
+        // treats the Fritz!Box's missing TLS close_notify as a fatal error, while PHP streams
+        // handle it as a normal EOF. One shared instance avoids a new TCP handshake per call.
+        $this->httpClient = new NativeHttpClient([
+            'timeout' => 30,
+            'headers' => ['User-Agent' => 'phritzbox'],
+        ]);
     }
 
     public function getUrlAha(): string
@@ -59,20 +68,8 @@ class Helper
      */
     public function requestUrl(string $url, array $options = []): ?ResponseInterface
     {
-        // NativeHttpClient (PHP streams) instead of CurlHttpClient because curl/OpenSSL 3.x
-        // treats the Fritz!Box's missing TLS close_notify as a fatal error, while PHP streams
-        // handle it as a normal EOF.
-        $httpClient = new NativeHttpClient(
-            [
-                'timeout' => 30,
-                'headers' => [
-                    'User-Agent' => 'phritzbox',
-                ],
-            ]
-        );
-
         try {
-            $response = $httpClient->request('GET', $url, $options);
+            $response = $this->httpClient->request('GET', $url, $options);
             // do a getContent to actually wait for the request to finish
             // and catch its exceptions
             $response->getContent();

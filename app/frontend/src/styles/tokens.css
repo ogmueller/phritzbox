@@ -1,0 +1,64 @@
+:root {
+  /* ── Fritz!Box exact colour palette (FRITZ!OS 8.25) ────── */
+  --color-primary:       #1577cf;
+  --color-primary-dark:  #004482;
+  --color-primary-light: #4f99db;
+  --color-primary-10:    rgba(21, 119, 207, 0.1);
+  --color-primary-20:    rgba(21, 119, 207, 0.2);
+  --color-accent:        #f7d200;
+  --color-success:       #87c63f;
+  --color-success-dark:  #5a9216;
+  --color-danger:        #cc0000;
+  --color-danger-dark:   #940006;
+  --color-warning:       #f7d200;
+
+  /* ── Surfaces ────────────────────────────────────────────── */
+  --color-bg:        #ffffff;
+  --color-surface:   #ffffff;
+  --color-surface-2: #f9f9f9;
+  --color-surface-3: rgba(63, 70, 76, 0.03);
+  --color-border:    rgba(63, 70, 76, 0.2);
+  --color-border-solid: #d9dadb;
+
+  /* ── Topbar ──────────────────────────────────────────────── */
+  --topbar-bg:     #1577cf;
+  --topbar-title:  #ffffff;
+  --topbar-height: 64px;
+
+  /* ── Sidebar ─────────────────────────────────────────────── */
+  --sidebar-width:             240px;
+  --color-sidebar-bg:          #ffffff;
+  --color-sidebar-border:      rgba(63, 70, 76, 0.12);
+  --color-sidebar-text:        #3f464c;
+  --color-sidebar-muted:       rgba(63, 70, 76, 0.45);
+  --color-sidebar-active-bg:   #1577cf;
+  --color-sidebar-active-text: #ffffff;
+  --color-sidebar-hover-bg:    rgba(21, 119, 207, 0.1);
+
+  /* ── Text (charcoal-gray scale) ──────────────────────────── */
+  --color-text:       #3f464c;
+  --color-text-muted: rgba(63, 70, 76, 0.73);
+  --color-text-inv:   #ffffff;
+
+  /* ── Login ───────────────────────────────────────────────── */
+  --login-outer-bg:     #ece8dd;
+  --login-banner-start: #1577cf;
+  --login-banner-end:   #1577cf;
+
+  /* ── Toggle switch ───────────────────────────────────────── */
+  --toggle-track-on:   rgba(135, 198, 63, 0.4);
+  --toggle-track-off:  rgba(63, 70, 76, 0.3);
+  --toggle-thumb-on:   #87c63f;
+  --toggle-thumb-off:  #dcdee0;
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.12);
+
+  /* ── Radius ──────────────────────────────────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 4px;
+
+  /* ── Transition ──────────────────────────────────────────── */
+  --transition: 150ms ease;
+}

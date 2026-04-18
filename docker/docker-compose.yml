@@ -1,13 +1,14 @@
-version: "3.7"
-
 services:
-    php:
+    app:
         build:
-            context: ./php
+            context: .
+            dockerfile: Dockerfile.dev
         restart: unless-stopped
+        ports:
+            - "80:80"
         env_file:
-            - ../.env
-            - path: ../.env.local
+            - ../app/.env
+            - path: ../app/.env.local
               required: false
         volumes:
             - ../app:/application/app
@@ -15,6 +16,17 @@ services:
             - ../var:/application/var
         networks:
             - phritzbox
+
+#    vite:
+#        image: node:22-alpine
+#        working_dir: /application/app/frontend
+#        command: sh -c "npm install && npm run dev -- --host"
+#        ports:
+#            - "5173:5173"
+#        volumes:
+#            - ../app:/application/app
+#        networks:
+#            - phritzbox
 
 networks:
     phritzbox:

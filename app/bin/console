@@ -4,9 +4,6 @@
 use App\Kernel;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 
-// Tell Symfony Runtime to load .env from the project root (one level above app/)
-$_SERVER['APP_RUNTIME_OPTIONS'] = ['dotenv_path' => '../.env'];
-
 if (!is_file(dirname(__DIR__).'/vendor/autoload_runtime.php')) {
     throw new LogicException('Symfony Runtime is missing. Try running "composer require symfony/runtime".');
 }

@@ -28,15 +28,15 @@ class HelperTest extends TestCase
         // but plain int 0 for the zero-input path (base never enters the floor() branch).
         return [
             // 0 → base stays int 0, factor = 1000 ** 0 = 1 (int)
-            'zero value'     => [0.0,             'W', 0.0,   'mW', 1],
+            'zero value' => [0.0,             'W', 0.0,   'mW', 1],
             // 500 mW → base=0.0 (float), factor = 1000 ** 0.0 = 1.0 (float)
-            'stays milli'    => [500.0,           'W', 500.0, 'mW', 1.0],
+            'stays milli' => [500.0,           'W', 500.0, 'mW', 1.0],
             // 2000 mW → base=1.0, factor = 1000.0
             'steps to watts' => [2000.0,          'W', 2.0,   'W',  1000.0],
             // 2,000,000 mW → base=2.0, factor = 1_000_000.0
-            'kilo range'     => [2_000_000.0,     'W', 2.0,   'kW', 1_000_000.0],
+            'kilo range' => [2_000_000.0,     'W', 2.0,   'kW', 1_000_000.0],
             // 2,000,000,000 mW → base=3.0, factor = 1_000_000_000.0
-            'mega range'     => [2_000_000_000.0, 'W', 2.0,   'MW', 1_000_000_000.0],
+            'mega range' => [2_000_000_000.0, 'W', 2.0,   'MW', 1_000_000_000.0],
         ];
     }
 

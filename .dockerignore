@@ -1,0 +1,16 @@
+*.md
+.DS_Store
+.claude
+.git
+.github
+.idea
+.phpcs-cache
+.phpunit.result.cache
+app/coverage-html/
+app/coverage.xml
+app/files/
+app/frontend/node_modules/
+app/vendor/
+data/
+docker/.env
+var/
