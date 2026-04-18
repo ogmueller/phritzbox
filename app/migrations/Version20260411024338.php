@@ -25,16 +25,16 @@ final class Version20260411024338 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('CREATE TABLE "user" (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username VARCHAR(180) NOT NULL, email VARCHAR(255) NOT NULL, roles CLOB NOT NULL --(DC2Type:json)
+        $this->addSql('CREATE TABLE IF NOT EXISTS "user" (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username VARCHAR(180) NOT NULL, email VARCHAR(255) NOT NULL, roles CLOB NOT NULL --(DC2Type:json)
 , password VARCHAR(255) NOT NULL, created_at DATETIME NOT NULL --(DC2Type:datetime_immutable)
 )');
-        $this->addSql('CREATE UNIQUE INDEX UNIQ_8D93D649F85E0677 ON "user" (username)');
-        $this->addSql('CREATE UNIQUE INDEX UNIQ_8D93D649E7927C74 ON "user" (email)');
+        $this->addSql('CREATE UNIQUE INDEX IF NOT EXISTS UNIQ_8D93D649F85E0677 ON "user" (username)');
+        $this->addSql('CREATE UNIQUE INDEX IF NOT EXISTS UNIQ_8D93D649E7927C74 ON "user" (email)');
 
         // Default admin user — change the password after first login
         $hash = password_hash('admin', \PASSWORD_BCRYPT, ['cost' => 12]);
         $this->addSql(
-            'INSERT INTO "user" (username, email, roles, password, created_at) VALUES (?, ?, ?, ?, ?)',
+            'INSERT OR IGNORE INTO "user" (username, email, roles, password, created_at) VALUES (?, ?, ?, ?, ?)',
             ['admin', 'admin@localhost', '["ROLE_ADMIN","ROLE_USER"]', $hash, (new \DateTimeImmutable())->format('Y-m-d H:i:s')],
         );
     }

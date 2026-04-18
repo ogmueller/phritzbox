@@ -25,7 +25,7 @@ final class Version20260416120000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('CREATE TABLE smart_device (ain VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL DEFAULT \'\', manufacturer VARCHAR(255) NOT NULL DEFAULT \'\', product_name VARCHAR(255) NOT NULL DEFAULT \'\', firmware_version VARCHAR(50) NOT NULL DEFAULT \'\', function_bit_mask INTEGER NOT NULL DEFAULT 0, first_seen_at DATETIME NOT NULL --(DC2Type:datetime_immutable)
+        $this->addSql('CREATE TABLE IF NOT EXISTS smart_device (ain VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL DEFAULT \'\', manufacturer VARCHAR(255) NOT NULL DEFAULT \'\', product_name VARCHAR(255) NOT NULL DEFAULT \'\', firmware_version VARCHAR(50) NOT NULL DEFAULT \'\', function_bit_mask INTEGER NOT NULL DEFAULT 0, first_seen_at DATETIME NOT NULL --(DC2Type:datetime_immutable)
 , last_seen_at DATETIME NOT NULL --(DC2Type:datetime_immutable)
 , PRIMARY KEY(ain))');
 
