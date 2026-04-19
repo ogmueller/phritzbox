@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# Phritzbox CLI — runs Symfony console commands inside the Docker container.
+#
+# Usage:
+#   ./console smart:device:list
+#   ./console smart:switch:toggle 12345678901
+#   ./console                          # shows all available commands
+#
+
+set -e
+
+COMPOSE_FILE="$(dirname "$0")/compose.yaml"
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+    COMPOSE_FILE="$(dirname "$0")/compose.prod.yaml"
+fi
+
+exec docker compose -f "$COMPOSE_FILE" exec app php /application/app/bin/console "$@"

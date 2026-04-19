@@ -52,23 +52,34 @@ Quick Start
 
 Requires [Docker](https://docs.docker.com/get-docker/) with Compose.
 
+**Option A — Download the release zip** (recommended):
+
+Download the latest `phritzbox-*.zip` from [Releases](https://github.com/ogmueller/phritzbox/releases), extract it, and copy `.env.dist` to `.env`:
+
+```bash
+unzip phritzbox-*.zip && cd phritzbox
+cp .env.dist .env
+```
+
+**Option B — Fetch files manually:**
+
 ```bash
 mkdir phritzbox && cd phritzbox
-curl -LO https://raw.githubusercontent.com/ogmueller/phritzbox/main/docker/docker-compose.prod.yml
+curl -L https://raw.githubusercontent.com/ogmueller/phritzbox/main/docker/compose.prod.yaml -o compose.yaml
 curl -L https://raw.githubusercontent.com/ogmueller/phritzbox/main/docker/.env.dist -o .env
 ```
 
 Edit `.env` with your Fritz!Box credentials, then start the application:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+docker compose up -d
 ```
 
 Visit `http://localhost` and log in with `admin` / `admin`.
 
 > **Important:** Change the default password immediately after your first login.
 
-To use a specific version instead of `latest`, edit the image tag in `docker-compose.prod.yml`:
+To use a specific version instead of `latest`, edit the image tag in `compose.yaml`:
 
 ```yaml
 image: ghcr.io/ogmueller/phritzbox:1.0.0   # tagged release
@@ -95,13 +106,19 @@ All settings are configured via environment variables in `.env`:
 CLI Commands
 ------------
 
-All commands can be run inside the Docker container:
+Using the release zip, run commands with the included `console` script:
+
+```bash
+./console COMMAND
+```
+
+Or via `docker compose exec` directly:
 
 ```bash
 docker compose exec app php /application/app/bin/console COMMAND
 ```
 
-Or directly if running without Docker:
+Without Docker:
 
 ```bash
 php app/bin/console COMMAND
@@ -184,7 +201,7 @@ cd docker && docker compose up
 
 The container mounts `app/`, `data/`, and `var/` as volumes for live code editing.
 
-> **Note:** The Docker dev setup only runs the PHP backend. To work on the frontend, you need to start the Vite dev server separately (see below) or uncomment the `vite` service in `docker/docker-compose.yml`.
+> **Note:** The Docker dev setup only runs the PHP backend. To work on the frontend, you need to start the Vite dev server separately (see below) or uncomment the `vite` service in `docker/compose.yaml`.
 
 ### Frontend
 
