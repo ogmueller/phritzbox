@@ -17,12 +17,12 @@ use PHPUnit\Framework\TestCase;
 
 class DeviceParsingTest extends TestCase
 {
-    private const FIXTURES_DIR = __DIR__ . '/../fixtures/devices/';
+    private const FIXTURES_DIR = __DIR__.'/../fixtures/devices/';
 
     private static function parseFixture(string $filename): Device
     {
-        $xml = file_get_contents(self::FIXTURES_DIR . $filename);
-        $element = simplexml_load_string('<devicelist version="1">' . $xml . '</devicelist>');
+        $xml = file_get_contents(self::FIXTURES_DIR.$filename);
+        $element = simplexml_load_string('<devicelist version="1">'.$xml.'</devicelist>');
 
         return Device::xmlFactory($element->device[0]);
     }

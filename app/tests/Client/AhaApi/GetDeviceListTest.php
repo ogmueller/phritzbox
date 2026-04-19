@@ -21,13 +21,13 @@ use PHPUnit\Framework\TestCase;
  */
 class GetDeviceListTest extends TestCase
 {
-    private const FIXTURES_DIR = __DIR__ . '/../../fixtures/devices/';
+    private const FIXTURES_DIR = __DIR__.'/../../fixtures/devices/';
 
     private static function loadFixture(string $filename): string
     {
         return '<devicelist version="1">'
-            . file_get_contents(self::FIXTURES_DIR . $filename)
-            . '</devicelist>';
+            .file_get_contents(self::FIXTURES_DIR.$filename)
+            .'</devicelist>';
     }
 
     #[DataProvider('provideDevices')]

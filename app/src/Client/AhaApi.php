@@ -244,7 +244,7 @@ class AhaApi
                 }
             }
 
-            throw new InvalidResponseException(sprintf('Device "%s" not found', $ain));
+            throw new InvalidResponseException(\sprintf('Device "%s" not found', $ain));
         }
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
