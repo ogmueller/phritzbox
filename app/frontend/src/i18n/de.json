@@ -58,6 +58,11 @@
   "detail.chartTitle": "{{metric}} (letzte 7 Tage)",
   "detail.failedToLoad": "Ger\u00e4t konnte nicht geladen werden",
 
+  "device.showXml": "XML anzeigen",
+  "device.copyXml": "In Zwischenablage kopieren",
+  "device.xmlCopied": "Kopiert!",
+  "device.xmlError": "Ger\u00e4te-XML konnte nicht geladen werden.",
+
   "chart.temperature": "Temperatur",
   "chart.power": "Leistung",
   "chart.energy": "Energie",

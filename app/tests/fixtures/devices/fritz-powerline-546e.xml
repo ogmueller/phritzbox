@@ -1,0 +1,16 @@
+<device identifier="24:65:11:CA:3F:43" id="20000" functionbitmask="640" fwversion="06.92"
+        manufacturer="AVM" productname="FRITZ!Powerline 546E">
+    <present>1</present>
+    <name>FRITZ!Powerline 546E</name>
+    <switch>
+        <state>1</state>
+        <mode>manuell</mode>
+        <lock>0</lock>
+        <devicelock>0</devicelock>
+    </switch>
+    <powermeter>
+        <voltage>229075</voltage>
+        <power>0</power>
+        <energy>8</energy>
+    </powermeter>
+</device>

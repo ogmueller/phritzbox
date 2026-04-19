@@ -49,6 +49,18 @@ class DeviceController extends AbstractController
         return $this->json($data);
     }
 
+    #[Route('/{ain}/xml', methods: ['GET'], priority: 10)]
+    public function xml(string $ain): JsonResponse
+    {
+        try {
+            $xml = $this->ahaApi->getDeviceXml($ain);
+        } catch (\Throwable) {
+            return $this->json(['error' => 'Could not fetch device XML'], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+
+        return $this->json(['ain' => $ain, 'xml' => $xml]);
+    }
+
     #[Route('/{ain}', methods: ['GET'])]
     public function show(string $ain): JsonResponse
     {
@@ -72,7 +84,7 @@ class DeviceController extends AbstractController
         return $this->json(['error' => 'Device not found'], Response::HTTP_NOT_FOUND);
     }
 
-    #[Route('/{ain}/on', methods: ['POST'])]
+    #[Route('/{ain}/on', methods: ['POST'], priority: 10)]
     public function turnOn(string $ain): JsonResponse
     {
         $state = $this->ahaApi->setSwitchOn($ain);
@@ -80,7 +92,7 @@ class DeviceController extends AbstractController
         return $this->json(['ain' => $ain, 'state' => $state === '1' ? 'on' : 'error']);
     }
 
-    #[Route('/{ain}/off', methods: ['POST'])]
+    #[Route('/{ain}/off', methods: ['POST'], priority: 10)]
     public function turnOff(string $ain): JsonResponse
     {
         $state = $this->ahaApi->setSwitchOff($ain);
@@ -88,7 +100,7 @@ class DeviceController extends AbstractController
         return $this->json(['ain' => $ain, 'state' => $state === '0' ? 'off' : 'error']);
     }
 
-    #[Route('/{ain}/setpoint', methods: ['PUT'])]
+    #[Route('/{ain}/setpoint', methods: ['PUT'], priority: 10)]
     public function setSetpoint(string $ain, Request $request): JsonResponse
     {
         $body = json_decode($request->getContent(), true);
