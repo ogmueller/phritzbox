@@ -107,6 +107,7 @@ export function ReportsPage() {
             label={t('reports.from')}
             id="report-from"
             value={from}
+            max={to}
             onChange={setFrom}
           />
 
@@ -114,14 +115,18 @@ export function ReportsPage() {
             label={t('reports.to')}
             id="report-to"
             value={to}
+            min={from}
             onChange={setTo}
           />
 
           <div className="form-group form-group--btn">
-            <Button onClick={handleLoad} disabled={loading || !selectedAin}>
+            <Button onClick={handleLoad} disabled={loading || !selectedAin || from > to}>
               {loading ? t('common.loading') : t('reports.load')}
             </Button>
           </div>
+          {from > to && (
+            <div className="filter-bar-error">{t('reports.invalidRange')}</div>
+          )}
         </div>
 
         {loaded && (

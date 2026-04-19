@@ -532,6 +532,12 @@ body {
   flex-wrap: wrap;
 }
 .filter-bar .form-group { min-width: 140px; }
+.filter-bar-error {
+  width: 100%;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  margin-top: -8px;
+}
 
 /* ── Avg toggles (reports page) ──────────────────────────────── */
 .avg-toggles {
