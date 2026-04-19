@@ -58,6 +58,11 @@
   "detail.chartTitle": "{{metric}} (last 7 days)",
   "detail.failedToLoad": "Failed to load device",
 
+  "device.showXml": "Show XML",
+  "device.copyXml": "Copy to clipboard",
+  "device.xmlCopied": "Copied!",
+  "device.xmlError": "Could not load device XML.",
+
   "chart.temperature": "Temperature",
   "chart.power": "Power",
   "chart.energy": "Energy",

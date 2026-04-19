@@ -9,48 +9,36 @@
  * file that was distributed with this source code.
  */
 
-namespace App\Tests\Client\AhaApi;
+namespace App\Tests\Device;
 
-use App\Client\AhaApi;
 use App\Device;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-/**
- * AhaApi tests with mocks.
- */
-class GetDeviceListTest extends TestCase
+class DeviceParsingTest extends TestCase
 {
-    private const FIXTURES_DIR = __DIR__ . '/../../fixtures/devices/';
+    private const FIXTURES_DIR = __DIR__ . '/../fixtures/devices/';
 
-    private static function loadFixture(string $filename): string
+    private static function parseFixture(string $filename): Device
     {
-        return '<devicelist version="1">'
-            . file_get_contents(self::FIXTURES_DIR . $filename)
-            . '</devicelist>';
+        $xml = file_get_contents(self::FIXTURES_DIR . $filename);
+        $element = simplexml_load_string('<devicelist version="1">' . $xml . '</devicelist>');
+
+        return Device::xmlFactory($element->device[0]);
     }
 
-    #[DataProvider('provideDevices')]
-    public function testDevices($deviceXml, $expected)
+    #[DataProvider('provideFixtures')]
+    public function testFixtureParsesCorrectly(string $fixture, array $expected): void
     {
-        $aha = \App\Tests\Helper::mockClientHelper($this, $deviceXml);
-        $devices = $aha->getDeviceListInfos();
-
-        self::assertCount(1, $devices);
-
-        /** @var Device $device */
-        $device = reset($devices);
+        $device = self::parseFixture($fixture);
         self::assertSame($expected, $device->toArray());
     }
 
-    /**
-     * @return \Generator
-     */
-    public static function provideDevices()
+    public static function provideFixtures(): \Generator
     {
-        // FRITZ!DECT 200
-        yield [
-            self::loadFixture('fritz-dect-200.xml'),
+        // FRITZ!DECT 200 — outlet + power meter + temperature sensor
+        yield 'fritz-dect-200' => [
+            'fritz-dect-200.xml',
             [
                 'firmwareVersion' => '04.16',
                 'functionBitMask' => 2944,
@@ -72,8 +60,9 @@ class GetDeviceListTest extends TestCase
             ],
         ];
 
-        yield [
-            self::loadFixture('fritz-dect-200-off.xml'),
+        // FRITZ!DECT 200 — all values off/zero
+        yield 'fritz-dect-200-off' => [
+            'fritz-dect-200-off.xml',
             [
                 'firmwareVersion' => '04.16',
                 'functionBitMask' => 2944,
@@ -95,9 +84,9 @@ class GetDeviceListTest extends TestCase
             ],
         ];
 
-        // FRITZ!Powerline 546E
-        yield [
-            self::loadFixture('fritz-powerline-546e.xml'),
+        // FRITZ!Powerline 546E — outlet + power meter, no temperature sensor
+        yield 'fritz-powerline-546e' => [
+            'fritz-powerline-546e.xml',
             [
                 'firmwareVersion' => '06.92',
                 'functionBitMask' => 640,

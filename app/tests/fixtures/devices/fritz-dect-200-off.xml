@@ -1,0 +1,20 @@
+<device identifier="08761 0372830" id="16" functionbitmask="2944" fwversion="04.16" manufacturer="AVM"
+        productname="FRITZ!DECT 200">
+    <present>0</present>
+    <name>FRITZ!DECT 200 (Fan)</name>
+    <switch>
+        <state>0</state>
+        <mode>manuell</mode>
+        <lock>0</lock>
+        <devicelock>0</devicelock>
+    </switch>
+    <powermeter>
+        <voltage>0</voltage>
+        <power>0</power>
+        <energy>0</energy>
+    </powermeter>
+    <temperature>
+        <celsius>0</celsius>
+        <offset>-10</offset>
+    </temperature>
+</device>

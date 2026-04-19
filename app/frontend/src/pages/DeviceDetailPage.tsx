@@ -1,9 +1,11 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getDevice, Device } from '../api/devices'
+import { getDevice, getDeviceXml, Device } from '../api/devices'
 import { getStats, StatPoint } from '../api/stats'
 import { PageHeader } from '../components/layout/PageHeader'
+import { Button } from '../components/ui/Button'
+import { Modal } from '../components/ui/Modal'
 import { Card } from '../components/ui/Card'
 import { DashboardIcon } from '../components/ui/NavIcons'
 import { PresentBadge, OnOffBadge } from '../components/ui/Badge'
@@ -26,6 +28,11 @@ export function DeviceDetailPage() {
   const [device, setDevice] = useState<Device | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [xmlOpen, setXmlOpen] = useState(false)
+  const [xmlContent, setXmlContent] = useState<string | null>(null)
+  const [xmlLoading, setXmlLoading] = useState(false)
+  const [xmlError, setXmlError] = useState<string | null>(null)
+  const [xmlCopied, setXmlCopied] = useState(false)
 
   const today = new Date()
   const weekAgo = new Date(today)
@@ -62,6 +69,27 @@ export function DeviceDetailPage() {
     getStats(ain, 'energy', from, to).then((r) => setEnergyData(r.data)).catch(() => {})
     getStats(ain, 'voltage', from, to).then((r) => setVoltageData(r.data)).catch(() => {})
   }, [ain, from, to])
+
+  const showXml = async () => {
+    setXmlOpen(true)
+    setXmlError(null)
+    if (xmlContent !== null || !ain) return
+    setXmlLoading(true)
+    try {
+      setXmlContent(await getDeviceXml(ain))
+    } catch {
+      setXmlError(t('device.xmlError'))
+    } finally {
+      setXmlLoading(false)
+    }
+  }
+
+  const copyXml = async () => {
+    if (!xmlContent) return
+    await navigator.clipboard.writeText(xmlContent)
+    setXmlCopied(true)
+    setTimeout(() => setXmlCopied(false), 2000)
+  }
 
   if (loading) return <div className="loading-state">{t('common.loading')}</div>
   if (error || !device) return <div className="alert alert--danger">{error ?? t('device.notFound')}</div>
@@ -172,6 +200,27 @@ export function DeviceDetailPage() {
           <Card title={t('detail.chartTitle', { metric: t('chart.voltage') })}><VoltageChart data={voltageData} /></Card>
         )}
       </div>
+
+      <div className="xml-viewer">
+        <Button variant="secondary" size="sm" onClick={showXml}>
+          {t('device.showXml')}
+        </Button>
+      </div>
+
+      <Modal open={xmlOpen} onClose={() => setXmlOpen(false)} title={t('device.showXml')}>
+        {xmlLoading && <div className="loading-state">{t('common.loading')}</div>}
+        {xmlError && <div className="alert alert--danger">{xmlError}</div>}
+        {xmlContent && (
+          <>
+            <div className="xml-viewer-toolbar">
+              <Button variant="secondary" size="sm" onClick={copyXml}>
+                {xmlCopied ? t('device.xmlCopied') : t('device.copyXml')}
+              </Button>
+            </div>
+            <pre className="xml-viewer-code"><code>{xmlContent}</code></pre>
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

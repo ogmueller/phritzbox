@@ -213,6 +213,49 @@ class AhaApi
     }
 
     /**
+     * Get raw XML for a single device or the full device list.
+     *
+     * Returns pretty-printed XML. If $ain is given, only the matching
+     * <device> node is returned; otherwise the full <devicelist>.
+     */
+    public function getDeviceXml(?string $ain = null): string
+    {
+        $response = $this->commandUrl('getdevicelistinfos');
+        if ($response === null) {
+            throw new InvalidResponseException('No response for getdevicelistinfos');
+        }
+
+        $raw = $response->getContent();
+
+        if ($ain !== null) {
+            $xml = simplexml_load_string($raw);
+            if ($xml === false) {
+                throw new InvalidResponseException('Invalid XML response');
+            }
+
+            foreach ($xml->device as $device) {
+                if ((string) $device['identifier'] === $ain) {
+                    $dom = new \DOMDocument('1.0', 'UTF-8');
+                    $dom->preserveWhiteSpace = false;
+                    $dom->formatOutput = true;
+                    $dom->loadXML($device->asXML());
+
+                    return $dom->saveXML($dom->documentElement);
+                }
+            }
+
+            throw new InvalidResponseException(sprintf('Device "%s" not found', $ain));
+        }
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = true;
+        $dom->loadXML($raw);
+
+        return $dom->saveXML($dom->documentElement);
+    }
+
+    /**
      * Deliver basic information about all SmartHome devices.
      */
     public function getTemperature(string $ain): ?string

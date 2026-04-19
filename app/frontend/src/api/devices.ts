@@ -56,3 +56,8 @@ export function turnOff(ain: string): Promise<void> {
 export function setSetpoint(ain: string, celsius: number): Promise<void> {
   return api.put<void>(`/api/devices/${encodeURIComponent(ain)}/setpoint`, { celsius })
 }
+
+export async function getDeviceXml(ain: string): Promise<string> {
+  const res = await api.get<{ ain: string; xml: string }>(`/api/devices/${encodeURIComponent(ain)}/xml`)
+  return res.xml
+}
