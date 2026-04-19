@@ -78,6 +78,7 @@
   "reports.fitToData": "Fit to data",
   "reports.chartTitle": "{{metric}} \u2014 {{device}} ({{from}} \u2013 {{to}})",
   "reports.emptyState": "Select a device and metric, then click Load.",
+  "reports.invalidRange": "\"From\" date must be before \"To\" date.",
   "reports.failedToLoad": "Failed to load data",
 
   "users.breadcrumbSystem": "System",
