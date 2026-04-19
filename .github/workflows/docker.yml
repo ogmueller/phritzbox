@@ -6,7 +6,7 @@ on:
         tags: ['v*']
 
 permissions:
-    contents: read
+    contents: write
     packages: write
 
 jobs:
@@ -43,3 +43,30 @@ jobs:
                   labels: ${{ steps.meta.outputs.labels }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
+
+    release:
+        name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Build release zip
+              run: |
+                  mkdir -p phritzbox
+                  cp docker/compose.prod.yaml phritzbox/compose.yaml
+                  cp docker/.env.dist phritzbox/.env.dist
+                  cp docker/console phritzbox/console
+                  chmod +x phritzbox/console
+                  cp docker/INSTALL.md phritzbox/README.md
+                  cp LICENSE phritzbox/
+                  VERSION=${GITHUB_REF_NAME#v}
+                  sed -i "s|ghcr.io/ogmueller/phritzbox:latest|ghcr.io/ogmueller/phritzbox:${VERSION}|" phritzbox/compose.yaml
+                  zip -r phritzbox-${VERSION}.zip phritzbox/
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  generate_release_notes: true
+                  files: phritzbox-*.zip

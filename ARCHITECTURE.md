@@ -538,8 +538,8 @@ The decision to use plain CSS classes (tokens + global styles) rather than a lib
 
 ```
 docker/
-├── docker-compose.yml          # Development (volume mounts)
-├── docker-compose.prod.yml     # Production (pre-built images from ghcr.io)
+├── compose.yaml                # Development (volume mounts)
+├── compose.prod.yaml           # Production (pre-built images from ghcr.io)
 ├── Dockerfile.dev              # FrankenPHP dev image
 ├── Dockerfile.prod             # Multi-stage: Node → Composer → FrankenPHP
 ├── Caddyfile                   # Caddy/FrankenPHP web server config
@@ -549,14 +549,14 @@ docker/
     └── php-prod.ini            # OPcache + production PHP settings
 ```
 
-**Production services** (via `docker-compose.prod.yml`):
+**Production services** (via `compose.prod.yaml`):
 
 | Service | Image | Responsibility |
 |---|---|---|
 | `app` | `ghcr.io/ogmueller/phritzbox:latest` | FrankenPHP — serves static assets, runs PHP, handles all HTTP |
 | `cronado` | `ghcr.io/teqneers/cronado:latest` | Watches Docker socket and triggers `cron:smart:savestats` every 30 min via container labels |
 
-**Development** uses `docker-compose.yml` with `Dockerfile.dev` — same FrankenPHP base image but mounts `app/`, `data/`, and `var/` as volumes for live editing.
+**Development** uses `compose.yaml` with `Dockerfile.dev` — same FrankenPHP base image but mounts `app/`, `data/`, and `var/` as volumes for live editing.
 
 **Caddyfile strategy:**
 

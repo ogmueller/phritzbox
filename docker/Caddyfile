@@ -1,20 +1,20 @@
 {
-    frankenphp
-    order php_server before file_server
+	frankenphp
+	order php_server before file_server
 }
 
-{$SERVER_NAME:localhost} {
-    root * /application/app/public
+{$SERVER_NAME:http://localhost} {
+	root * /application/app/public
 
-    header {
-        X-Frame-Options SAMEORIGIN
-        X-Content-Type-Options nosniff
-        Referrer-Policy strict-origin-when-cross-origin
-        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://assets.avm.de;"
-    }
+	header {
+		X-Frame-Options SAMEORIGIN
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://assets.avm.de;"
+	}
 
-    @assets path /frontend/assets/*
-    header @assets Cache-Control "public, max-age=31536000, immutable"
+	@assets path /frontend/assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
 
-    php_server
+	php_server
 }

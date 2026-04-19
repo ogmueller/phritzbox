@@ -12,7 +12,7 @@ services:
             APP_API_DOMAIN: ${APP_API_DOMAIN:-http://fritz.box}
             DATABASE_URL: "sqlite:///%kernel.project_dir%/../data/database.sqlite"
             JWT_PASSPHRASE: ${JWT_PASSPHRASE:-change-me}
-            SERVER_NAME: ${SERVER_NAME:-localhost}
+            SERVER_NAME: ${SERVER_NAME:-http://localhost}
         volumes:
             - phritzbox-data:/application/data
             - phritzbox-var:/application/var
@@ -33,6 +33,7 @@ services:
     cronado:
         image: ghcr.io/teqneers/cronado:latest
         restart: unless-stopped
+        user: root
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock:ro
         depends_on:
