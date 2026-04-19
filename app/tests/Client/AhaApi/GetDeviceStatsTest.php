@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  */
 class GetDeviceStatsTest extends TestCase
 {
-    private const FIXTURES_DIR = __DIR__ . '/../../fixtures/stats/';
+    private const FIXTURES_DIR = __DIR__.'/../../fixtures/stats/';
 
     #[DataProvider('provideDevices')]
     public function testDevices($xml, $expected)
@@ -37,7 +37,7 @@ class GetDeviceStatsTest extends TestCase
     {
         // FRITZ!DECT 200
         yield [
-            file_get_contents(self::FIXTURES_DIR . 'fritz-dect-200-stats.xml'),
+            file_get_contents(self::FIXTURES_DIR.'fritz-dect-200-stats.xml'),
             [
                 'temperature' => [
                     [
@@ -951,7 +951,7 @@ class GetDeviceStatsTest extends TestCase
 
         // FRITZ!Powerline 546E
         yield [
-            file_get_contents(self::FIXTURES_DIR . 'fritz-powerline-546e-stats.xml'),
+            file_get_contents(self::FIXTURES_DIR.'fritz-powerline-546e-stats.xml'),
             [
                 'voltage' => [
                     [
