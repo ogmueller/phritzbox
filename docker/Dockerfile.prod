@@ -33,9 +33,11 @@ COPY app/ app/
 COPY --from=composer /build/vendor app/vendor/
 COPY --from=frontend /build/app/public/frontend/ app/public/frontend/
 
-# Create required directories and set permissions
-RUN mkdir -p data var/cache var/log app/config/jwt \
-    && chown -R www-data:www-data data var app/config/jwt
+# Create required directories and set permissions.
+# /data and /config are Caddy's storage dirs (XDG_DATA_HOME / XDG_CONFIG_HOME);
+# the non-root www-data user needs them writable or Caddy logs permission errors.
+RUN mkdir -p data var/cache var/log app/config/jwt /data/caddy /config/caddy \
+    && chown -R www-data:www-data data var app/config/jwt /data /config
 
 COPY docker/php/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
