@@ -15,6 +15,7 @@ namespace App\Tests\Controller\Api;
 
 use App\Entity\SmartDeviceData;
 use App\Entity\User;
+use App\Service\SmartStatsCollectionService;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -133,6 +134,47 @@ class StatsControllerTest extends WebTestCase
         self::assertCount(1, $data['data']);
         // voltage: mV → V (÷1000) = 230
         self::assertEquals(230.0, $data['data'][0]['value']);
+    }
+
+    public function testRefreshRequiresAuth(): void
+    {
+        $this->client->request('POST', '/api/stats/refresh');
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testRefreshTriggersCollection(): void
+    {
+        $collection = $this->createMock(SmartStatsCollectionService::class);
+        $collection->expects(self::once())
+            ->method('collectAll')
+            ->willReturn(['devices' => 3, 'rows' => 42, 'perDevice' => []]);
+        static::getContainer()->set(SmartStatsCollectionService::class, $collection);
+
+        $this->client->request('POST', '/api/stats/refresh', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertSame('ok', $data['status']);
+        self::assertSame(3, $data['devices']);
+        self::assertSame(42, $data['rows']);
+    }
+
+    public function testRefreshReturnsBadGatewayOnFailure(): void
+    {
+        $collection = $this->createMock(SmartStatsCollectionService::class);
+        $collection->method('collectAll')
+            ->willThrowException(new \RuntimeException('Fritz!Box unreachable'));
+        static::getContainer()->set(SmartStatsCollectionService::class, $collection);
+
+        $this->client->request('POST', '/api/stats/refresh', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+
+        self::assertResponseStatusCodeSame(502);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertArrayHasKey('error', $data);
     }
 
     public function testTypesEndpoint(): void

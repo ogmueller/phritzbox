@@ -14,9 +14,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Client\AhaApi;
-use App\Device;
-use App\Entity\SmartDeviceData;
-use App\Service\SmartDeviceService;
+use App\Service\SmartStatsCollectionService;
 use Doctrine\ORM\EntityManagerInterface;
 use noximo\PHPColoredAsciiLinechart\Linechart;
 use noximo\PHPColoredAsciiLinechart\Settings;
@@ -35,17 +33,17 @@ use Symfony\Component\Stopwatch\Stopwatch;
 #[AsCommand(name: 'cron:smart:savestats', description: 'Collect and store all stats from all available devices')]
 class CronSmartSaveStats extends Smart
 {
-    private SmartDeviceService $smartDeviceService;
+    private SmartStatsCollectionService $smartStatsCollectionService;
 
     public function __construct(
         AhaApi $ahaApi,
         EntityManagerInterface $entityManager,
         #[Autowire(service: 'cache.app')]
         CacheItemPoolInterface $cache,
-        SmartDeviceService $smartDeviceService,
+        SmartStatsCollectionService $smartStatsCollectionService,
     ) {
         parent::__construct($ahaApi, $entityManager, $cache);
-        $this->smartDeviceService = $smartDeviceService;
+        $this->smartStatsCollectionService = $smartStatsCollectionService;
     }
 
     protected function configure(): void
@@ -59,121 +57,26 @@ class CronSmartSaveStats extends Smart
         OutputInterface $errOutput,
         Stopwatch $stopwatch,
     ): int {
-        $stopwatch->start('fetch-devices');
-        $devices = $this->ahaApi->getDeviceListInfos();
-        $fetchDevicesEvent = $stopwatch->stop('fetch-devices');
-        $output->isVerbose() && $this->io->writeln(\sprintf(
-            'Device list fetched in %.0f ms (%d devices)',
-            $fetchDevicesEvent->getDuration(),
-            \count($devices),
-        ));
+        $stopwatch->start('collect');
+        $result = $this->smartStatsCollectionService->collectAll();
+        $collectEvent = $stopwatch->stop('collect');
 
-        // Sync device metadata to local smart_device table
-        $this->smartDeviceService->syncDevices($devices);
-
-        $now = new \DateTimeImmutable();
-
-        // Pre-fetch last stored timestamp for every (sid, type) in one query
-        // instead of querying once per device inside the loop.
-        $ains = array_map(static fn (Device $d) => $d->getIdentifier(), $devices);
-        $lastRaw = $this->entityManager->createQueryBuilder()
-            ->select('d.sid, d.type, max(d.time) as last')
-            ->from(SmartDeviceData::class, 'd')
-            ->where('d.sid IN (:sids)')
-            ->addGroupBy('d.sid')
-            ->addGroupBy('d.type')
-            ->setParameter('sids', $ains)
-            ->getQuery()
-            ->getArrayResult();
-
-        // Build lookup: $lastSeen[$sid][$type] = 'Y-m-d H:i:s'
-        $lastSeen = [];
-        foreach ($lastRaw as $row) {
-            $lastSeen[$row['sid']][$row['type']] = $row['last'];
-        }
-
-        /** @var Device $device */
-        foreach ($devices as $device) {
-            $ain = $device->getIdentifier();
-
-            $stopwatch->start('fetch-'.$ain);
-            $stats = $this->ahaApi->getBasicDeviceStats($ain);
-            $fetchEvent = $stopwatch->stop('fetch-'.$ain);
-
-            $output->isVerbose() && $this->io->writeln(\sprintf(
-                "\nDevice %s [%s] — stats fetched in %.0f ms",
-                $device->getName(),
-                $ain,
-                $fetchEvent->getDuration(),
-            ));
-
-            $stopwatch->start('write-'.$ain);
-            $deviceCount = 0;
-
-            $last = $lastSeen[$ain] ?? [];
-
-            foreach ($stats as $category => $statsList) {
-                if (\count($statsList) > 1) {
-                    // find values with shortest interval
-                    $tmp = 0;
-                    foreach ($statsList as $key => $data) {
-                        if (empty($tmp) || $data['interval'] < $tmp) {
-                            $tmp = $data['interval'];
-                            $index = $key;
-                        }
-                    }
-                } else {
-                    $index = 0;
-                }
-                $data = $statsList[$index];
-                $intervalSeconds = $data['interval'];
-
-                // calculate current interval starting point
-                // go to the beginning of the last full time slot
-                $seconds = (int) $now->format('U');
-                $back = $intervalSeconds + $seconds % $intervalSeconds;
-                $end = $now->modify('-'.$back.' seconds');
-                $start = $end->modify('-'.($intervalSeconds * ($data['count'] - 1)).' seconds');
-
-                $step = new \DateInterval('PT'.$intervalSeconds.'S');
-
-                $sdd = new SmartDeviceData();
-                $sdd->setType($category);
-                $sdd->setSid($ain);
-
-                $count = 0;
-                foreach (array_reverse($data['values']) as $value) {
-                    // only save newer data points
-                    if (empty($last[$category]) || $start->format('Y-m-d H:i:s') > $last[$category]) {
-                        $insert = clone $sdd;
-                        $insert->setTime($start);
-                        $insert->setValue($value);
-                        $this->entityManager->persist($insert);
-                        ++$count;
-                    }
-
-                    // next interval
-                    $start = $start->add($step);
-                }
-                $deviceCount += $count;
-                $output->isVerbose() && $this->io->writeln('  - '.$count.' new '.$category.' entries');
+        if ($output->isVerbose()) {
+            foreach ($result['perDevice'] as $ain => $info) {
+                $this->io->writeln(\sprintf(
+                    'Device %s [%s] — %d new rows',
+                    $info['name'],
+                    $ain,
+                    $info['rows'],
+                ));
             }
-
-            $writeEvent = $stopwatch->stop('write-'.$ain);
-            $output->isVerbose() && $this->io->writeln(\sprintf(
-                '  persisted %d rows in %.0f ms (pre-flush)',
-                $deviceCount,
-                $writeEvent->getDuration(),
-            ));
         }
 
-        // Single flush wraps all inserts in one SQLite transaction
-        $stopwatch->start('db-flush');
-        $this->entityManager->flush();
-        $flushEvent = $stopwatch->stop('db-flush');
-        $output->isVerbose() && $this->io->writeln(\sprintf(
-            "\nDB flush: %.0f ms",
-            $flushEvent->getDuration(),
+        $this->io->writeln(\sprintf(
+            'Collected %d new rows from %d devices in %.0f ms',
+            $result['rows'],
+            $result['devices'],
+            $collectEvent->getDuration(),
         ));
 
         return 0;

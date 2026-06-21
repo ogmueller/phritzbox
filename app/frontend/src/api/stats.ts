@@ -20,3 +20,13 @@ export function getStats(ain: string, type: string, from: string, to: string): P
 export function getStatTypes(ain: string): Promise<{ ain: string; types: string[] }> {
   return api.get<{ ain: string; types: string[] }>(`/api/stats/types/${encodeURIComponent(ain)}`)
 }
+
+export interface RefreshResponse {
+  status: string
+  devices: number
+  rows: number
+}
+
+export function refreshStats(): Promise<RefreshResponse> {
+  return api.post<RefreshResponse>('/api/stats/refresh')
+}

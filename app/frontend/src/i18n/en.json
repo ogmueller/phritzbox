@@ -85,6 +85,13 @@
   "reports.emptyState": "Select a device and metric, then click Load.",
   "reports.invalidRange": "\"From\" date must be before \"To\" date.",
   "reports.failedToLoad": "Failed to load data",
+  "reports.refresh": "Pull latest data",
+  "reports.refreshing": "Pulling…",
+  "reports.refreshFailed": "Failed to pull latest data",
+  "reports.today": "Today",
+  "reports.yesterday": "Yesterday",
+  "reports.last7Days": "Last 7 days",
+  "reports.last30Days": "Last 30 days",
 
   "users.breadcrumbSystem": "System",
   "users.breadcrumbUsers": "Users",

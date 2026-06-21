@@ -14,9 +14,11 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Repository\SmartDeviceDataRepository;
+use App\Service\SmartStatsCollectionService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/stats')]
@@ -29,8 +31,32 @@ class StatsController extends AbstractController
         'power' => 100,
     ];
 
-    public function __construct(private readonly SmartDeviceDataRepository $repository)
+    public function __construct(
+        private readonly SmartDeviceDataRepository $repository,
+        private readonly SmartStatsCollectionService $collectionService,
+    ) {
+    }
+
+    /**
+     * Force an on-demand pull of fresh stats from the Fritz!Box for all devices.
+     */
+    #[Route('/refresh', methods: ['POST'], priority: 10)]
+    public function refresh(): JsonResponse
     {
+        try {
+            $result = $this->collectionService->collectAll();
+        } catch (\Throwable $e) {
+            return $this->json(
+                ['error' => $e->getMessage()],
+                Response::HTTP_BAD_GATEWAY,
+            );
+        }
+
+        return $this->json([
+            'status' => 'ok',
+            'devices' => $result['devices'],
+            'rows' => $result['rows'],
+        ]);
     }
 
     #[Route('/{ain}', methods: ['GET'])]
