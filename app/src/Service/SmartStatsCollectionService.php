@@ -16,6 +16,7 @@ namespace App\Service;
 use App\Client\AhaApi;
 use App\Device;
 use App\Entity\SmartDeviceData;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -51,18 +52,19 @@ class SmartStatsCollectionService
 
         $now = new \DateTimeImmutable();
 
-        // Pre-fetch last stored timestamp for every (sid, type) in one query
-        // instead of querying once per device inside the loop.
+        // Pre-fetch last stored timestamp for every (sid, type). A single
+        // GROUP BY sid, type over the whole table forces a full scan of all
+        // rows (~52M); instead, derive the distinct (sid, type) pairs and let
+        // the (sid, type, time) index do a per-pair reverse-seek for MAX(time).
+        // This turns a multi-second scan into a handful of millisecond seeks.
         $ains = array_map(static fn (Device $d) => $d->getIdentifier(), $devices);
-        $lastRaw = $this->entityManager->createQueryBuilder()
-            ->select('d.sid, d.type, max(d.time) as last')
-            ->from(SmartDeviceData::class, 'd')
-            ->where('d.sid IN (:sids)')
-            ->addGroupBy('d.sid')
-            ->addGroupBy('d.type')
-            ->setParameter('sids', $ains)
-            ->getQuery()
-            ->getArrayResult();
+        $lastRaw = $ains === [] ? [] : $this->entityManager->getConnection()->executeQuery(
+            'SELECT p.sid AS sid, p.type AS type,'
+            .' (SELECT MAX(d.time) FROM smart_device_data d WHERE d.sid = p.sid AND d.type = p.type) AS last'
+            .' FROM (SELECT DISTINCT sid, type FROM smart_device_data WHERE sid IN (:sids)) p',
+            ['sids' => $ains],
+            ['sids' => ArrayParameterType::STRING],
+        )->fetchAllAssociative();
 
         // Build lookup: $lastSeen[$sid][$type] = 'Y-m-d H:i:s'
         $lastSeen = [];

@@ -35,18 +35,20 @@ export function getAvgStyle(period: Period): { name: string; color: string } {
 }
 
 // Centered rolling average: each point becomes the mean of all points
-// within ±half of the period window around it.
+// within ±half of the period window around it. Input is time-sorted ascending,
+// so a forward-only two-pointer sliding window keeps this O(n) (not O(n²)).
 function computeRollingAvg(data: StatPoint[], period: Period): [string, number][] {
   const half = PERIOD_MS[period] / 2
   const times = data.map((p) => new Date(p.time).getTime())
-  return data.map((p, i) => {
+  const out: [string, number][] = []
+  let left = 0, right = 0, sum = 0
+  for (let i = 0; i < data.length; i++) {
     const t = times[i]
-    let sum = 0, count = 0
-    for (let j = 0; j < data.length; j++) {
-      if (Math.abs(times[j] - t) <= half) { sum += data[j].value; count++ }
-    }
-    return [p.time, sum / count]
-  })
+    while (right < data.length && times[right] <= t + half) { sum += data[right].value; right++ }
+    while (left < right && times[left] < t - half)          { sum -= data[left].value;  left++ }
+    out.push([data[i].time, sum / (right - left)])
+  }
+  return out
 }
 
 function buildAvgSeries(data: StatPoint[], period: Period) {
@@ -157,6 +159,7 @@ export function TimeSeriesChart({
           type: 'line',
           smooth: false,
           showSymbol: false,
+          sampling: 'lttb',
           data: scaledData.map((p) => [p.time, p.value]),
           lineStyle: { color, width: 1.5 },
           areaStyle: { color, opacity: 0.07 },
