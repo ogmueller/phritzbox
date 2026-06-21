@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStats, StatPoint } from '../api/stats'
+import { getStats, refreshStats, StatPoint } from '../api/stats'
 import { useDeviceContext } from '../contexts/DeviceContext'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Card } from '../components/ui/Card'
@@ -35,6 +35,7 @@ export function ReportsPage() {
   const [enabledPeriods, setEnabledPeriods]     = useState<Period[]>([])
   const [fitToData, setFitToData]               = useState(true)
   const [loaded, setLoaded]                     = useState(false)
+  const [refreshing, setRefreshing]             = useState(false)
 
   // Use a ref to track the latest request so we can ignore stale responses
   const requestIdRef = useRef(0)
@@ -84,6 +85,42 @@ export function ReportsPage() {
     }
   }
 
+  const applyPreset = (fromDate: string, toDate: string) => {
+    setFrom(fromDate)
+    setTo(toDate)
+    if (loaded) {
+      doLoad(selectedAin, selectedType, fromDate, toDate)
+    }
+  }
+
+  const presets = [
+    { key: 'today',      labelKey: 'reports.today'      as const, days: 0 },
+    { key: 'yesterday',  labelKey: 'reports.yesterday'  as const, days: 1 },
+    { key: 'last7Days',  labelKey: 'reports.last7Days'  as const, days: 7 },
+    { key: 'last30Days', labelKey: 'reports.last30Days' as const, days: 30 },
+  ]
+
+  const handlePreset = (days: number) => {
+    const start = new Date()
+    start.setDate(start.getDate() - days)
+    applyPreset(isoDate(start), isoDate(new Date()))
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    setError(null)
+    try {
+      await refreshStats()
+      if (loaded) {
+        await doLoad(selectedAin, selectedType, from, to)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('reports.refreshFailed'))
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   const togglePeriod = (key: string, checked: boolean) =>
     setEnabledPeriods((prev) => checked ? [...prev, key as Period] : prev.filter((x) => x !== key))
 
@@ -91,7 +128,16 @@ export function ReportsPage() {
 
   return (
     <div className="page">
-      <PageHeader title={t('reports.title')} subtitle={t('reports.subtitle')} />
+      <PageHeader
+        title={t('reports.title')}
+        subtitle={t('reports.subtitle')}
+        actions={
+          <Button variant="primary" size="sm" onClick={handleRefresh} disabled={refreshing}>
+            {refreshing && <span className="btn-spinner" />}
+            {refreshing ? t('reports.refreshing') : t('reports.refresh')}
+          </Button>
+        }
+      />
 
       <Card>
         <div className="filter-bar">
@@ -119,13 +165,24 @@ export function ReportsPage() {
             onChange={setTo}
           />
 
+          <div className="date-presets">
+            {presets.map((p) => (
+              <Button key={p.key} variant="ghost" size="sm" onClick={() => handlePreset(p.days)} disabled={refreshing}>
+                {t(p.labelKey)}
+              </Button>
+            ))}
+          </div>
+
           <div className="form-group form-group--btn">
-            <Button onClick={handleLoad} disabled={loading || !selectedAin || from > to}>
+            <Button onClick={handleLoad} disabled={loading || refreshing || !selectedAin || from > to}>
               {loading ? t('common.loading') : t('reports.load')}
             </Button>
           </div>
           {from > to && (
             <div className="filter-bar-error">{t('reports.invalidRange')}</div>
+          )}
+          {refreshing && (
+            <div className="filter-bar-status">{t('reports.refreshing')}</div>
           )}
         </div>
 

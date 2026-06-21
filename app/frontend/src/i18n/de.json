@@ -85,6 +85,13 @@
   "reports.emptyState": "Ger\u00e4t und Messgr\u00f6\u00dfe w\u00e4hlen, dann Laden klicken.",
   "reports.invalidRange": "\"Von\"-Datum muss vor dem \"Bis\"-Datum liegen.",
   "reports.failedToLoad": "Daten konnten nicht geladen werden",
+  "reports.refresh": "Aktuelle Daten abrufen",
+  "reports.refreshing": "Wird abgerufen…",
+  "reports.refreshFailed": "Aktuelle Daten konnten nicht abgerufen werden",
+  "reports.today": "Heute",
+  "reports.yesterday": "Seit gestern",
+  "reports.last7Days": "Letzte 7 Tage",
+  "reports.last30Days": "Letzte 30 Tage",
 
   "users.breadcrumbSystem": "System",
   "users.breadcrumbUsers": "Benutzer",

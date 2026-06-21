@@ -532,9 +532,21 @@ body {
   flex-wrap: wrap;
 }
 .filter-bar .form-group { min-width: 140px; }
+.date-presets {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
 .filter-bar-error {
   width: 100%;
   color: #b91c1c;
+  font-size: 0.85rem;
+  margin-top: -8px;
+}
+.filter-bar-status {
+  width: 100%;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   margin-top: -8px;
 }
@@ -720,6 +732,19 @@ body {
   animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Small inline spinner for use inside buttons */
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
 
 /* ── Form Input Wrapper (password eye toggle) ──────────────── */
 .form-input-wrapper {
