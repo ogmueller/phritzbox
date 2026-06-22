@@ -82,7 +82,7 @@ Visit `http://localhost` and log in with `admin` / `admin`.
 To use a specific version instead of `latest`, edit the image tag in `compose.yaml`:
 
 ```yaml
-image: ghcr.io/ogmueller/phritzbox:1.0.0   # tagged release
+image: ghcr.io/ogmueller/phritzbox:1.1.0   # tagged release
 image: ghcr.io/ogmueller/phritzbox:nightly  # latest from main branch
 ```
 
