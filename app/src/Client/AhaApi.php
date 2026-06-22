@@ -324,8 +324,73 @@ class AhaApi
             throw new InvalidResponseException('No response for getbasicdevicestats');
         }
 
+        return $this->parseBasicDeviceStats($response->getContent());
+    }
+
+    /**
+     * Fetch basic device stats for several AINs concurrently.
+     *
+     * Instead of one blocking request after another, the per-device requests
+     * are issued in small parallel batches. The Fritz!Box is a constrained
+     * device, so concurrency is intentionally limited. A device whose request
+     * or response fails is skipped (logged) rather than aborting the whole run.
+     *
+     * @param string[] $ains
+     *
+     * @throws \Psr\Cache\InvalidArgumentException
+     *
+     * @return array<string, array> map of AIN => parsed stats (see getBasicDeviceStats)
+     */
+    public function getBasicDeviceStatsBatch(array $ains, int $concurrency = 4): array
+    {
+        if ($ains === []) {
+            return [];
+        }
+
         try {
-            $xml = simplexml_load_string($response->getContent());
+            $sid = $this->helper->getSid();
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to obtain Fritz!Box SID', ['exception' => $e->getMessage()]);
+
+            return [];
+        }
+
+        $url = $this->helper->getUrlAha();
+        $requests = [];
+        foreach ($ains as $ain) {
+            $requests[$ain] = [$url, ['query' => [
+                'sid' => $sid,
+                'switchcmd' => 'getbasicdevicestats',
+                'ain' => $ain,
+            ]]];
+        }
+
+        $statistics = [];
+        foreach ($this->helper->requestUrlsConcurrent($requests, $concurrency) as $ain => $body) {
+            if ($body === null) {
+                $this->logger->warning('No stats response for device', ['ain' => $ain]);
+                continue;
+            }
+
+            try {
+                $statistics[$ain] = $this->parseBasicDeviceStats($body);
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to parse device stats', ['ain' => $ain, 'exception' => $e->getMessage()]);
+            }
+        }
+
+        return $statistics;
+    }
+
+    /**
+     * Parse a getbasicdevicestats XML response into the per-category structure.
+     *
+     * @throws InvalidResponseException
+     */
+    private function parseBasicDeviceStats(string $content): array
+    {
+        try {
+            $xml = simplexml_load_string($content);
         } catch (\Exception $e) {
             $this->helper->deleteSid();
 

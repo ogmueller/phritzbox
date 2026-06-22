@@ -27,6 +27,13 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 class SmartStatsCollectionService
 {
+    /**
+     * How many device-stats requests to run in parallel against the Fritz!Box.
+     * Kept small on purpose — the Fritz!Box is a constrained device and does
+     * not cope well with many simultaneous requests.
+     */
+    private const FETCH_CONCURRENCY = 4;
+
     public function __construct(
         private readonly AhaApi $ahaApi,
         private readonly EntityManagerInterface $entityManager,
@@ -72,6 +79,10 @@ class SmartStatsCollectionService
             $lastSeen[$row['sid']][$row['type']] = $row['last'];
         }
 
+        // Fetch every device's stats concurrently (bounded) instead of one
+        // blocking request after another — this is the bulk of the run time.
+        $statsByAin = $this->ahaApi->getBasicDeviceStatsBatch($ains, self::FETCH_CONCURRENCY);
+
         $perDevice = [];
         $totalRows = 0;
 
@@ -79,7 +90,7 @@ class SmartStatsCollectionService
         foreach ($devices as $device) {
             $ain = $device->getIdentifier();
 
-            $stats = $this->ahaApi->getBasicDeviceStats($ain);
+            $stats = $statsByAin[$ain] ?? [];
 
             $deviceCount = 0;
             $last = $lastSeen[$ain] ?? [];

@@ -92,6 +92,48 @@ class Helper
     }
 
     /**
+     * Issue multiple GET requests concurrently, in bounded batches, and return
+     * the response bodies keyed by the same keys as $requests. A request that
+     * fails (transport error, 4xx/5xx) yields null for its key.
+     *
+     * Symfony responses are lazy: issuing all requests in a batch before
+     * reading any body lets the HTTP client process them concurrently. The
+     * batch size bounds how many in-flight requests hit the Fritz!Box at once,
+     * which is a constrained device.
+     *
+     * @param array<string, array{0: string, 1: array}> $requests key => [url, options]
+     *
+     * @return array<string, string|null> key => response body (or null on failure)
+     */
+    public function requestUrlsConcurrent(array $requests, int $concurrency = 4): array
+    {
+        $concurrency = max(1, $concurrency);
+        $results = [];
+
+        foreach (array_chunk($requests, $concurrency, true) as $batch) {
+            /** @var array<string, ResponseInterface> $responses */
+            $responses = [];
+            foreach ($batch as $key => [$url, $options]) {
+                try {
+                    $responses[$key] = $this->httpClient->request('GET', $url, $options);
+                } catch (TransportExceptionInterface) {
+                    $results[$key] = null;
+                }
+            }
+
+            foreach ($responses as $key => $response) {
+                try {
+                    $results[$key] = $response->getContent();
+                } catch (\Throwable) {
+                    $results[$key] = null;
+                }
+            }
+        }
+
+        return $results;
+    }
+
+    /**
      * Remove existing session ID if exists.
      *
      * @throws \Psr\Cache\InvalidArgumentException
