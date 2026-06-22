@@ -39,7 +39,7 @@ Features
 
 - Live device status with 30-second auto-refresh
 - Interactive charts for temperature, power, energy, and voltage
-- Date-range reports with rolling averages
+- Date-range reports with quick presets (today, last 7/30 days), rolling averages, and on-demand data refresh
 - 18 CLI commands for device control and monitoring
 - User management with role-based access (admin only)
 - German and English interface
