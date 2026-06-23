@@ -13,6 +13,10 @@ services:
             DATABASE_URL: "sqlite:///%kernel.project_dir%/../data/database.sqlite"
             JWT_PASSPHRASE: ${JWT_PASSPHRASE:-change-me}
             SERVER_NAME: ${SERVER_NAME:-http://localhost}
+            # Alerting: configure a real MAILER_DSN to send e-mail alerts;
+            # the default discards mail (webhook alerts work without it).
+            MAILER_DSN: ${MAILER_DSN:-null://null}
+            APP_ALERT_FROM: ${APP_ALERT_FROM:-alerts@phritzbox.local}
         volumes:
             - phritzbox-data:/application/data
             - phritzbox-var:/application/var
@@ -21,6 +25,10 @@ services:
             cronado.savestats.enabled: "true"
             cronado.savestats.schedule: "*/30 * * * *"
             cronado.savestats.cmd: "php /application/app/bin/console cron:smart:savestats"
+            # Evaluate alert rules 5 min after each collection so it sees fresh data.
+            cronado.alerts.enabled: "true"
+            cronado.alerts.schedule: "5,35 * * * *"
+            cronado.alerts.cmd: "php /application/app/bin/console cron:smart:alerts"
         healthcheck:
             test: ["CMD-SHELL", "curl -sf http://localhost/ > /dev/null || exit 1"]
             interval: 30s

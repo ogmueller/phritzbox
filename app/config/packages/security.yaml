@@ -36,6 +36,8 @@ security:
     access_control:
         - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/users, roles: ROLE_ADMIN }
+        - { path: ^/api/alerts, roles: ROLE_ADMIN }
+        - { path: ^/api/channels, roles: ROLE_ADMIN }
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

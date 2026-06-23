@@ -10,6 +10,8 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ de
 const DeviceDetailPage = lazy(() => import('./pages/DeviceDetailPage').then(m => ({ default: m.DeviceDetailPage })))
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })))
 const UsersPage = lazy(() => import('./pages/UsersPage').then(m => ({ default: m.UsersPage })))
+const AlertsPage = lazy(() => import('./pages/AlertsPage').then(m => ({ default: m.AlertsPage })))
+const ChannelsPage = lazy(() => import('./pages/ChannelsPage').then(m => ({ default: m.ChannelsPage })))
 const HelpPage = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -35,6 +37,8 @@ function AppRoutes() {
         <Route path="/devices/:ain" element={<DeviceDetailPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/users" element={<RequireAdmin><UsersPage /></RequireAdmin>} />
+        <Route path="/alerts" element={<RequireAdmin><AlertsPage /></RequireAdmin>} />
+        <Route path="/channels" element={<RequireAdmin><ChannelsPage /></RequireAdmin>} />
         <Route path="/help" element={<HelpPage />} />
       </Route>
 

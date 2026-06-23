@@ -40,6 +40,7 @@ Features
 - Live device status with 30-second auto-refresh
 - Interactive charts for temperature, power, energy, and voltage
 - Date-range reports with quick presets (today, last 7/30 days), rolling averages, and on-demand data refresh
+- Rule-based alerting (threshold, sustained, or device-to-device comparison) via e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, or Slack/Mattermost
 - 18 CLI commands for device control and monitoring
 - User management with role-based access (admin only)
 - German and English interface
@@ -101,6 +102,8 @@ All settings are configured via environment variables in `.env`:
 | `JWT_PASSPHRASE` | No | `change-me` | Passphrase for JWT key encryption |
 | `SERVER_NAME` | No | `localhost` | Server hostname for Caddy |
 | `PHRITZBOX_PORT` | No | `80` | Port to expose the web UI |
+| `MAILER_DSN` | No | `null://null` | Mail transport for e-mail alerts (e.g. `smtp://user:pass@host:587`); default discards mail |
+| `APP_ALERT_FROM` | No | `alerts@phritzbox.local` | Sender address for alert e-mails |
 
 
 CLI Commands
@@ -144,6 +147,7 @@ php app/bin/console COMMAND
 | `smart:src:saving <ain>` | Read saving temperature setpoint [°C] |
 | `smart:template:list` | List all available SmartHome templates |
 | `cron:smart:savestats` | Collect and persist all device data |
+| `cron:smart:alerts` | Evaluate alert rules and send notifications |
 
 
 Data Collection
@@ -158,6 +162,39 @@ For a bare-metal installation, set up a cron job:
 ```
 
 The Fritz!Box caches device data. Temperature readings are available for up to 24 hours — if not fetched in time they are lost. Running every 30 minutes is recommended.
+
+
+Alerts
+------
+
+Define rules that notify you when something noteworthy happens — turning Phritzbox into a simple smart-temperature manager for your home.
+
+**Example — when to open or close the windows in summer:** put one temperature sensor outdoors and one indoors, then create a *comparison* rule like **“outdoor < indoor − 2 °C”**. When the outside air drops below your indoor temperature you get a notification telling you it's time to open up and let the cool air in; the inverse rule (**“outdoor > indoor”**) tells you when to close the windows and keep the heat out.
+
+**Rule types:**
+
+- **Threshold** — a metric crosses a value, e.g. *temperature above 25 °C* or *power below 5 W* (an appliance finished).
+- **Sustained** — a threshold holds for the last *N* minutes, e.g. *power above 2000 W for 5 minutes*.
+- **Comparison** — one device's metric relative to another's, ± an offset, e.g. *outdoor temperature < indoor temperature − 2 °C*.
+
+Rules are **edge-triggered**: you're alerted once when the condition becomes true, and again only after it clears and re-occurs. Set an optional *reminder interval* if you'd rather be re-notified while it stays true.
+
+**Channels** are the delivery destinations, managed separately and reusable across rules. A rule can notify **one or more** channels. Supported types:
+
+| Channel | You provide |
+|---------|-------------|
+| E-mail | recipient address (set `MAILER_DSN` to send) |
+| Webhook | a URL (receives a JSON payload) |
+| Pushover | user/group key + application token |
+| Telegram | chat ID + bot token |
+| ntfy | topic URL (+ optional auth token) |
+| Discord | channel webhook URL |
+| Gotify | server URL + app token |
+| Slack / Mattermost / Rocket.Chat | incoming-webhook URL |
+
+Set up channels under **Channels**, then reference them from **Alerts** (both are admin-only). Use a channel's **Test** button to verify delivery.
+
+Alert rules are evaluated shortly after each data collection (the `cron:smart:alerts` command, scheduled automatically in the Docker setup). Because evaluation runs on collected data, alerts can lag real-time by up to the collection interval (~30 minutes).
 
 
 Development

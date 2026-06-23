@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/php/php-prod.ini /usr/local/etc/php/conf.d/app-prod.ini
+# FrankenPHP reads /etc/frankenphp/Caddyfile; older base images used /etc/caddy/Caddyfile.
+COPY docker/Caddyfile /etc/frankenphp/Caddyfile
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 
 WORKDIR /application
