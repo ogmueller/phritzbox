@@ -1,6 +1,49 @@
 const TOKEN_KEY = 'phritzbox_token'
+const REFRESH_TOKEN_KEY = 'phritzbox_refresh_token'
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+// Shared in-flight refresh: if several requests hit a 401 at once, they all
+// await the same renewal instead of firing a stampede of refresh calls.
+let refreshPromise: Promise<boolean> | null = null
+
+async function doRefresh(): Promise<boolean> {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+  if (!refreshToken) return false
+
+  try {
+    const res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+    if (!res.ok) return false
+
+    const data = await res.json()
+    if (!data.token || !data.refresh_token) return false
+
+    localStorage.setItem(TOKEN_KEY, data.token)
+    localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function refreshSession(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = doRefresh().finally(() => {
+      refreshPromise = null
+    })
+  }
+  return refreshPromise
+}
+
+function forceLogout(): void {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+  window.location.href = '/login'
+}
+
+async function request<T>(path: string, init: RequestInit = {}, allowRetry = true): Promise<T> {
   const token = localStorage.getItem(TOKEN_KEY)
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -13,8 +56,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(path, { ...init, headers })
 
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY)
-    window.location.href = '/login'
+    // The access token expired. Try to silently renew it once and replay the
+    // request; only kick the user out to /login if the refresh itself fails.
+    if (allowRetry && (await refreshSession())) {
+      return request<T>(path, init, false)
+    }
+    forceLogout()
     throw new Error('Unauthorized')
   }
 

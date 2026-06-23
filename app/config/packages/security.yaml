@@ -35,6 +35,8 @@ security:
 
     access_control:
         - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/refresh, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/logout, roles: PUBLIC_ACCESS }
         - { path: ^/api/users, roles: ROLE_ADMIN }
         - { path: ^/api/alerts, roles: ROLE_ADMIN }
         - { path: ^/api/channels, roles: ROLE_ADMIN }
