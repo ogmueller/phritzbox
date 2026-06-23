@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
+import { logoutRequest } from '../api/auth'
 
 interface AuthUser {
   username: string
@@ -8,7 +9,7 @@ interface AuthUser {
 interface AuthContextValue {
   token: string | null
   user: AuthUser | null
-  login: (token: string) => void
+  login: (token: string, refreshToken: string) => void
   logout: () => void
   isAdmin: boolean
 }
@@ -16,6 +17,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 const TOKEN_KEY = 'phritzbox_token'
+const REFRESH_TOKEN_KEY = 'phritzbox_refresh_token'
 
 function parseJwtPayload(token: string): AuthUser | null {
   try {
@@ -36,14 +38,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return stored ? parseJwtPayload(stored) : null
   })
 
-  const login = useCallback((newToken: string) => {
+  const login = useCallback((newToken: string, refreshToken: string) => {
     localStorage.setItem(TOKEN_KEY, newToken)
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
     setToken(newToken)
     setUser(parseJwtPayload(newToken))
   }, [])
 
   const logout = useCallback(() => {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+    if (refreshToken) {
+      // Best-effort server-side invalidation; don't block the local logout.
+      void logoutRequest(refreshToken)
+    }
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
     setToken(null)
     setUser(null)
   }, [])

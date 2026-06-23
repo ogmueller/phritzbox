@@ -21,8 +21,8 @@ export function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      const token = await loginRequest(username, password)
-      login(token)
+      const { token, refreshToken } = await loginRequest(username, password)
+      login(token, refreshToken)
       navigate('/dashboard')
     } catch {
       setError(t('login.errorInvalid'))
