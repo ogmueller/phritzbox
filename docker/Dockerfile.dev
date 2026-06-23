@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y \
     && install-php-extensions pdo_sqlite \
     && rm -rf /var/lib/apt/lists/*
 
+# FrankenPHP reads /etc/frankenphp/Caddyfile; older base images used /etc/caddy/Caddyfile.
+COPY Caddyfile /etc/frankenphp/Caddyfile
 COPY Caddyfile /etc/caddy/Caddyfile
 
 WORKDIR /application

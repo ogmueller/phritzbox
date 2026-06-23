@@ -10,10 +10,28 @@ services:
             - ../app/.env
             - path: ../app/.env.local
               required: false
+        environment:
+            # Serve plain HTTP in dev — without the scheme Caddy turns on
+            # auto-HTTPS and 308-redirects to https://localhost (no cert).
+            SERVER_NAME: http://localhost
+            # Capture all dev e-mail in mailpit (overrides the null DSN from .env)
+            MAILER_DSN: smtp://mailpit:1025
+        depends_on:
+            - mailpit
         volumes:
             - ../app:/application/app
             - ../data:/application/data
             - ../var:/application/var
+        networks:
+            - phritzbox
+
+    mailpit:
+        image: axllent/mailpit:latest
+        container_name: "${COMPOSE_PROJECT_NAME}-mailpit"
+        restart: unless-stopped
+        ports:
+            - "${WEBMAIL_PORT:-8025}:8025"
+            - "${SMTP_PORT:-1025}:1025"
         networks:
             - phritzbox
 

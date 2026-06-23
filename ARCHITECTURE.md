@@ -20,6 +20,7 @@ Phritzbox is a self-hosted smart home dashboard for smart devices connected to A
    - [Console Commands](#26-console-commands)
    - [Security & Authentication](#27-security--authentication)
    - [Backend Dependencies](#28-backend-dependencies)
+   - [Alerting & Notifications](#29-alerting--notifications)
 3. [Frontend](#3-frontend)
    - [Entry Point & Routing](#31-entry-point--routing)
    - [API Client Layer](#32-api-client-layer)
@@ -178,13 +179,25 @@ Flat time-series table. No foreign keys — deliberately denormalised for simpli
 | `time` | DATETIME | Timestamp of reading |
 | `value` | FLOAT | Numeric value |
 
+**`SmartDevice`** (`app/src/Entity/SmartDevice.php`)
+
+Cached device metadata (name, manufacturer, product, firmware, feature bitmask) keyed by `ain`, upserted on each collection so the UI/alerts can resolve a device name without a live Fritz!Box call.
+
+**`AlertRule`** (`app/src/Entity/AlertRule.php`)
+
+A user-defined alert. Fields: `id`, `name`, `enabled`, `mode` (`threshold` | `comparison`), `sid` + `type` (subject device/metric), `operator` (`gt`/`lt`/`gte`/`lte`), `threshold` (threshold mode), `compareSid`/`compareType`/`compareOffset` (comparison mode), `durationMinutes` (0 = latest reading; >0 = sustained), `cooldownMinutes` (0 = alert once, >0 = reminder interval), `lastState`/`lastTriggeredAt`/`lastNotifiedAt` (edge-trigger state), `createdAt`. Has a **many-to-many** relation to `NotificationChannel` (join table `alert_rule_channel`) — a rule notifies one or more channels.
+
+**`NotificationChannel`** (`app/src/Entity/NotificationChannel.php`)
+
+A reusable delivery destination. Fields: `id`, `name`, `type` (`email`, `webhook`, `pushover`, `telegram`, `ntfy`, `discord`, `gotify`, `slack`), `target` (address/URL/chat-id/user-key per type), `secret` (nullable token, e.g. Pushover/Telegram/Gotify), `enabled`, `createdAt`.
+
 #### Repositories
 
-Both extend `ServiceEntityRepository` and rely on Doctrine's auto-wired query builder. `SmartDeviceDataRepository` is used by `StatsController` to filter by AIN, type, and time range. `UserRepository` is used by the security provider and `UserController`.
+All extend `ServiceEntityRepository`. `SmartDeviceDataRepository` filters by AIN/type/time range; `UserRepository` backs the security provider; `AlertRuleRepository` exposes `findEnabled()` and `countUsingChannel()` (used to block deleting an in-use channel); `NotificationChannelRepository` is plain CRUD.
 
-#### Migration
+#### Migrations
 
-`Version20260411024338` creates the `user` table, adds unique indexes on `username` and `email`, and seeds a default `admin` / `admin` account (bcrypt cost 12). **The default password must be changed after first deployment.**
+`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `idx_sid_type_time` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; and the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place).
 
 ---
 
@@ -223,6 +236,26 @@ Responses are hand-serialised into nested JSON mirroring the `Device` / `Feature
 
 Role validation restricts assignable roles to `ROLE_USER` and `ROLE_ADMIN` — unknown roles return 400. Password hashing uses Symfony's `UserPasswordHasherInterface` (bcrypt by default).
 
+#### `AlertController` — `/api/alerts`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/alerts` | ROLE_ADMIN | List alert rules |
+| POST | `/api/alerts` | ROLE_ADMIN | Create rule (JSON incl. `channelIds[]`) |
+| PUT | `/api/alerts/{id}` | ROLE_ADMIN | Update rule |
+| DELETE | `/api/alerts/{id}` | ROLE_ADMIN | Delete rule |
+| POST | `/api/alerts/{id}/toggle` | ROLE_ADMIN | Flip `enabled` |
+| POST | `/api/alerts/{id}/test` | ROLE_ADMIN | Send a test notification through the rule's channels |
+
+#### `ChannelController` — `/api/channels`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/channels` | ROLE_ADMIN | List channels |
+| POST | `/api/channels` | ROLE_ADMIN | Create channel (per-type validation of `target`/`secret`) |
+| PUT | `/api/channels/{id}` | ROLE_ADMIN | Update channel |
+| DELETE | `/api/channels/{id}` | ROLE_ADMIN | Delete channel (409 if still referenced by a rule) |
+
 #### `FrontendController`
 
 Catch-all for non-API routes. Serves `app/public/frontend/index.html` so React Router handles client-side navigation. Returns a plain-text fallback if the frontend has not been built yet.
@@ -246,7 +279,8 @@ Provides shared concerns so subclasses stay focused:
 
 | Command | Class | Description |
 |---|---|---|
-| `cron:smart:savestats` | `CronSmartSaveStats` | **Primary data collection entry point.** Fetches stats for all devices, finds the shortest interval (highest resolution), stores new datapoints in `smart_device_data`, skipping rows that already exist for a given timestamp+type. Designed to run every 5–30 minutes via cron. |
+| `cron:smart:savestats` | `CronSmartSaveStats` | **Primary data collection entry point.** Fetches stats for all devices (concurrently, bounded), finds the shortest interval (highest resolution), stores new datapoints in `smart_device_data`, skipping rows already present for a timestamp+type. Designed to run every 5–30 minutes via cron. Delegates to `SmartStatsCollectionService` so the same logic backs the web "pull latest data" button. |
+| `cron:smart:alerts` | `CronEvaluateAlerts` | Evaluates enabled alert rules and dispatches notifications (via `AlertEvaluationService`). A plain `Command` (no Fritz!Box access). Scheduled a few minutes after `savestats` so it sees fresh data. |
 | `smart:device:list` | `SmartDeviceList` | Print all devices with feature flags |
 | `smart:device:stats` | `SmartDeviceStats` | Show device time-series data as ASCII charts |
 | `smart:switch:list` | `SmartSwitchList` | List all switchable outlets |
@@ -275,6 +309,8 @@ Access control matrix:
 |---|---|
 | `/api/auth/login` | PUBLIC_ACCESS |
 | `/api/users/**` | ROLE_ADMIN |
+| `/api/alerts/**` | ROLE_ADMIN |
+| `/api/channels/**` | ROLE_ADMIN |
 | `/api/**` | ROLE_USER |
 | `/**` (frontend) | none |
 
@@ -295,6 +331,7 @@ Access control matrix:
 | `doctrine/doctrine-migrations-bundle` | Schema versioning. Alternative: manual SQL scripts — migrations give repeatable, reviewable schema history. |
 | `lexik/jwt-authentication-bundle` | Mature JWT library for Symfony with straightforward Symfony Security integration. Alternative: custom token implementation — no reason to reinvent this. |
 | `nelmio/cors-bundle` | Handles CORS preflight for the dev Vite proxy. Unnecessary in production (same origin) but harmless. |
+| `symfony/mailer` | Sends e-mail alerts. Default `MAILER_DSN=null://null` discards mail until an SMTP DSN is configured; webhook/push channels need no mail server. |
 | `ext-simplexml` | Fritz!Box XML API responses are parsed with SimpleXML. Alternative: DOMDocument — SimpleXML is lighter for read-only XML traversal. |
 | `noximo/php-colored-ascii-linechart` | ASCII charts for `smart:device:stats` CLI output. No comparable Composer alternative for terminal line charts. |
 
@@ -308,6 +345,27 @@ Access control matrix:
 | `friendsofphp/php-cs-fixer` | Enforces PSR-12 + custom rules; configured in `.php-cs-fixer.dist.php` |
 | `phpmd/phpmd` | Static analysis for code smells |
 | `roave/security-advisories` | Blocks installation of packages with known CVEs |
+
+---
+
+### 2.9 Alerting & Notifications
+
+A rule-based alerting subsystem that watches collected readings and notifies the user. Example use case: pair an outdoor and an indoor temperature sensor and create a comparison rule (*outdoor < indoor − 2 °C*) to know when to open the windows — smart temperature management for the home.
+
+**Domain.** `AlertRule` (the condition) ↔ `NotificationChannel` (the destination), many-to-many. Two rule modes:
+- **threshold** — `value <operator> threshold`, optionally **sustained** for `durationMinutes` (every sample in the window must satisfy it, via a single indexed `MIN/MAX/COUNT` query).
+- **comparison** — `A <operator> B + offset`, where A and B are the latest readings of two devices for the same metric.
+
+**Units.** `App\Service\MetricUnits` is the single source of truth for stored↔display conversion (voltage mV→V, power cW→W; temperature/energy 1:1). Thresholds/offsets are entered in display units and converted to stored units once, so comparisons run directly against raw DB values.
+
+**Evaluation** (`App\Service\AlertEvaluationService::evaluateAll()`):
+1. Load enabled rules; for each, compute "triggered?" using fast `idx_sid_type_time` queries (latest value, or windowed aggregate for sustained).
+2. **Edge-triggered state machine:** notify on the `ok → triggered` transition; while it stays triggered, re-notify only if `cooldownMinutes > 0` and the interval elapsed (`0` = alert once); on `triggered → ok`, send a "resolved" notice. State persists in `lastState`/`lastTriggeredAt`/`lastNotifiedAt`.
+3. Build the message once, then dispatch to **every enabled channel** on the rule (per-channel try/catch — one failing channel doesn't block the others or the rule).
+
+**Delivery.** `App\Notification\AlertChannelInterface` (tagged `app.alert_channel`) is implemented by one transport per type — `EmailAlertChannel`, `WebhookAlertChannel`, `PushoverAlertChannel`, `TelegramAlertChannel`, `NtfyAlertChannel`, `DiscordAlertChannel`, `GotifyAlertChannel`, `SlackAlertChannel`. `AlertNotifier` routes a `NotificationChannel` to the transport whose `supports($type)` matches; transports POST via `HttpClientInterface` (or `MailerInterface` for e-mail) and throw on non-2xx so failures surface in the `/test` endpoint and the cron log. Adding a new channel type = one class + a constant in `NotificationChannel::TYPES`.
+
+**Scheduling.** The `cron:smart:alerts` command runs on its own cronado schedule (`5,35 * * * *`), a few minutes after each `*/30` collection. Alerts therefore reflect stored data and can lag real time by up to the collection interval.
 
 ---
 
@@ -330,8 +388,11 @@ ErrorBoundary
                     ├── /dashboard          → DashboardPage    (lazy)
                     ├── /devices/:ain       → DeviceDetailPage (lazy)
                     ├── /reports            → ReportsPage      (lazy)
+                    ├── /help               → HelpPage         (lazy)
                     └── RequireAdmin
-                        └── /users          → UsersPage        (lazy)
+                        ├── /users          → UsersPage        (lazy)
+                        ├── /alerts         → AlertsPage       (lazy)
+                        └── /channels       → ChannelsPage     (lazy)
 ```
 
 `RequireAuth` reads from `AuthContext`; if no token is present it redirects to `/login` preserving the intended destination. `RequireAdmin` additionally checks `isAdmin` and redirects non-admin users to `/dashboard`.
@@ -378,6 +439,10 @@ TypeScript interfaces `Device`, `DeviceFeatures`, `OutletFeature`, `ThermostatFe
 #### `users.ts`
 
 Full CRUD: `getUsers()`, `createUser(payload)`, `updateUser(id, payload)`, `deleteUser(id)`. `User` and `UserPayload` interfaces defined here.
+
+#### `alerts.ts` / `channels.ts`
+
+CRUD for the alerting admin pages. `alerts.ts` exposes `getAlerts/createAlert/updateAlert/deleteAlert/toggleAlert/testAlert` (`Alert` carries `channelIds[]`/`channelNames[]`); `channels.ts` exposes `getChannels/createChannel/updateChannel/deleteChannel` (`Channel` with `type`, `target`, optional `secret`). Backing the `AlertsPage` (multi-channel `CheckboxGroup`, inline enabled `Switch`) and `ChannelsPage`.
 
 ---
 
@@ -454,6 +519,14 @@ Date-range filter (from/to date inputs + metric type selector) and a `useStats` 
 #### `UsersPage`
 
 Admin-only. Lists users in a table. "New User" button opens a modal form (create). Each row has Edit and Delete actions. All mutations call the `users.ts` API functions and refresh the list on success.
+
+#### `AlertsPage`
+
+Admin-only. Lists alert rules with a compact condition column (e.g. `outdoor > indoor + 2 [°C]`), an inline enabled `Switch`, and a per-row **Test** action. The modal form switches fields by rule mode (threshold vs comparison) and selects one or more channels via a `CheckboxGroup`.
+
+#### `ChannelsPage`
+
+Admin-only. CRUD for notification channels. The form adapts its `target`/`secret` fields to the chosen type (e.g. "Chat ID" + "Bot token" for Telegram). Deleting a channel still referenced by a rule surfaces the API's 409 message.
 
 ---
 
@@ -618,8 +691,10 @@ The Docker workflow uses `docker/metadata-action` for tag generation and `docker
 | `JWT_SECRET_KEY` | Lexik JWT | `%kernel.project_dir%/config/jwt/private.pem` |
 | `JWT_PUBLIC_KEY` | Lexik JWT | `%kernel.project_dir%/config/jwt/public.pem` |
 | `JWT_PASSPHRASE` | Lexik JWT | Key passphrase |
-| `SERVER_NAME` | Caddy/FrankenPHP | `localhost` (or domain for auto-HTTPS) |
+| `SERVER_NAME` | Caddy/FrankenPHP | `http://localhost` (scheme = plain HTTP; bare domain enables auto-HTTPS) |
 | `CORS_ALLOW_ORIGIN` | Nelmio CORS | `^http://localhost:5173$` (dev only) |
+| `MAILER_DSN` | Symfony Mailer (e-mail alerts) | `null://null` (default, discards) or `smtp://user:pass@host:587` |
+| `APP_ALERT_FROM` | Alert e-mail sender | `alerts@phritzbox.local` |
 
 Sensitive values (passwords, key passphrase) go in `.env.local` which is gitignored. For Docker production, these are set in `docker/.env` (copied from `docker/.env.dist`).
 

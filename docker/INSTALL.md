@@ -35,6 +35,8 @@ All settings are configured via environment variables in `.env`:
 | `JWT_PASSPHRASE` | No | `change-me` | Passphrase for JWT key encryption |
 | `SERVER_NAME` | No | `http://localhost` | Server hostname (use bare domain for auto-HTTPS) |
 | `PHRITZBOX_PORT` | No | `80` | Port to expose the web UI |
+| `MAILER_DSN` | No | `null://null` | SMTP DSN for e-mail alerts (e.g. `smtp://user:pass@host:587`); default discards mail. Webhook/push alert channels need no mail server. |
+| `APP_ALERT_FROM` | No | `alerts@phritzbox.local` | Sender address for alert e-mails |
 
 ## CLI Commands
 

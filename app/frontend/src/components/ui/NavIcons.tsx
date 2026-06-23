@@ -31,6 +31,22 @@ export function UsersIcon({ size = 16 }: IconProps) {
   )
 }
 
+export function BellIcon({ size = 16 }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width={size} height={size} fill="currentColor">
+      <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm5-5V7a5 5 0 0 0-4-4.9V1.5a1 1 0 0 0-2 0v.6A5 5 0 0 0 3 7v4l-1.3 1.3a.7.7 0 0 0 .5 1.2h11.6a.7.7 0 0 0 .5-1.2L13 11z"/>
+    </svg>
+  )
+}
+
+export function ChannelIcon({ size = 16 }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width={size} height={size} fill="currentColor">
+      <path d="M15.5 1.5 1 7.2c-.6.2-.6 1 .02 1.2l3.9 1.3 1.3 3.9c.2.6 1 .6 1.2.02L14.5.5l-.02-.02z" transform="translate(0 1)"/>
+    </svg>
+  )
+}
+
 export function HelpIcon({ size = 16 }: IconProps) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width={size} height={size} fill="currentColor">

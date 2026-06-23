@@ -382,6 +382,18 @@
     "symfony/http-kernel": {
         "version": "v5.3.3"
     },
+    "symfony/mailer": {
+        "version": "8.0",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "4.3",
+            "ref": "09051cfde49476e3c12cd3a0e44289ace1c75a4f"
+        },
+        "files": [
+            "config/packages/mailer.yaml"
+        ]
+    },
     "symfony/monolog-bridge": {
         "version": "v5.3.3"
     },
