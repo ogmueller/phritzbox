@@ -52,4 +52,23 @@ class SmartDeviceService
     {
         return $this->repository->find($ain);
     }
+
+    /**
+     * Persist the per-direction "confirm before switching" flags for a device.
+     *
+     * Returns the updated entity, or null if no metadata row exists for the AIN.
+     */
+    public function setConfirmFlags(string $ain, bool $confirmOn, bool $confirmOff): ?SmartDevice
+    {
+        $device = $this->repository->find($ain);
+        if ($device === null) {
+            return null;
+        }
+
+        $device->setConfirmOn($confirmOn);
+        $device->setConfirmOff($confirmOff);
+        $this->em->flush();
+
+        return $device;
+    }
 }
