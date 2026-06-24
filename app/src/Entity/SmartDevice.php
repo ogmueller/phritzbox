@@ -39,6 +39,12 @@ class SmartDevice
     #[ORM\Column(type: Types::INTEGER)]
     private int $functionBitMask = 0;
 
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $confirmOn = false;
+
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $confirmOff = false;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $firstSeenAt;
 
@@ -113,6 +119,30 @@ class SmartDevice
     public function setFunctionBitMask(int $functionBitMask): self
     {
         $this->functionBitMask = $functionBitMask;
+
+        return $this;
+    }
+
+    public function isConfirmOn(): bool
+    {
+        return $this->confirmOn;
+    }
+
+    public function setConfirmOn(bool $confirmOn): self
+    {
+        $this->confirmOn = $confirmOn;
+
+        return $this;
+    }
+
+    public function isConfirmOff(): bool
+    {
+        return $this->confirmOff;
+    }
+
+    public function setConfirmOff(bool $confirmOff): self
+    {
+        $this->confirmOff = $confirmOff;
 
         return $this;
     }

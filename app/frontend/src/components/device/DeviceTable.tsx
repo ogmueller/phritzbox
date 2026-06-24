@@ -87,7 +87,14 @@ export function DeviceTable({ devices, onRefresh }: DeviceTableProps) {
           render: (d) => (
             <div className="row-actions">
               {d.features.outlet && d.outlet && (
-                <OutletToggle ain={d.ain} currentState={d.outlet.state} onToggled={onRefresh} />
+                <OutletToggle
+                  ain={d.ain}
+                  currentState={d.outlet.state}
+                  name={d.name}
+                  confirmOn={d.confirmOn}
+                  confirmOff={d.confirmOff}
+                  onToggled={onRefresh}
+                />
               )}
               <Button variant="ghost" size="sm" onClick={() => navigate(`/devices/${d.ain}`)}>
                 {t('common.details')}

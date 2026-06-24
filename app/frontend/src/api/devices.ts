@@ -10,6 +10,8 @@ export interface Device {
   functionBitMask?: number
   productImage?: string | null
   source?: 'live' | 'cached'
+  confirmOn?: boolean
+  confirmOff?: boolean
   features: {
     outlet: boolean
     thermostat: boolean
@@ -55,6 +57,10 @@ export function turnOff(ain: string): Promise<void> {
 
 export function setSetpoint(ain: string, celsius: number): Promise<void> {
   return api.put<void>(`/api/devices/${encodeURIComponent(ain)}/setpoint`, { celsius })
+}
+
+export function setDeviceProtection(ain: string, confirmOn: boolean, confirmOff: boolean): Promise<void> {
+  return api.put<void>(`/api/devices/${encodeURIComponent(ain)}/protection`, { confirmOn, confirmOff })
 }
 
 export async function getDeviceXml(ain: string): Promise<string> {

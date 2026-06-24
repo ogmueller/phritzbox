@@ -1,11 +1,13 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getDevice, getDeviceXml, Device } from '../api/devices'
+import { getDevice, getDeviceXml, setDeviceProtection, Device } from '../api/devices'
 import { getStats, StatPoint } from '../api/stats'
+import { useAuth } from '../contexts/AuthContext'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
+import { Switch } from '../components/ui/Switch'
 import { Card } from '../components/ui/Card'
 import { DashboardIcon } from '../components/ui/NavIcons'
 import { PresentBadge, OnOffBadge } from '../components/ui/Badge'
@@ -24,6 +26,7 @@ function isoDate(d: Date) {
 
 export function DeviceDetailPage() {
   const { t } = useTranslation()
+  const { isAdmin } = useAuth()
   const { ain } = useParams<{ ain: string }>()
   const [device, setDevice] = useState<Device | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,6 +59,12 @@ export function DeviceDetailPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const updateProtection = async (confirmOn: boolean, confirmOff: boolean) => {
+    if (!ain) return
+    await setDeviceProtection(ain, confirmOn, confirmOff)
+    await loadDevice()
   }
 
   useEffect(() => {
@@ -146,12 +155,39 @@ export function DeviceDetailPage() {
           <Card title={t('detail.switch')}>
             <div className="detail-row">
               <span>{t('detail.state')}</span>
-              <OutletToggle ain={device.ain} currentState={device.outlet.state} onToggled={loadDevice} />
+              <OutletToggle
+                ain={device.ain}
+                currentState={device.outlet.state}
+                name={device.name}
+                confirmOn={device.confirmOn}
+                confirmOff={device.confirmOff}
+                onToggled={loadDevice}
+              />
             </div>
             <div className="detail-row">
               <span>{t('detail.mode')}</span>
               <span>{device.outlet.mode}</span>
             </div>
+            {isAdmin && (
+              <>
+                <div className="detail-row">
+                  <span>{t('detail.confirmOn')}</span>
+                  <Switch
+                    checked={device.confirmOn ?? false}
+                    onChange={(next) => updateProtection(next, device.confirmOff ?? false)}
+                    ariaLabel={t('detail.confirmOn')}
+                  />
+                </div>
+                <div className="detail-row">
+                  <span>{t('detail.confirmOff')}</span>
+                  <Switch
+                    checked={device.confirmOff ?? false}
+                    onChange={(next) => updateProtection(device.confirmOn ?? false, next)}
+                    ariaLabel={t('detail.confirmOff')}
+                  />
+                </div>
+              </>
+            )}
           </Card>
         )}
 

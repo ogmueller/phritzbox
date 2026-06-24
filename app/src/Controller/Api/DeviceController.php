@@ -23,6 +23,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/devices')]
 class DeviceController extends AbstractController
@@ -39,7 +40,8 @@ class DeviceController extends AbstractController
         try {
             $devices = $this->ahaApi->getDeviceListInfos();
             $this->smartDeviceService->syncDevices($devices);
-            $data = array_map(fn (Device $d) => $this->serializeDevice($d), $devices);
+            $meta = $this->smartDeviceService->getAllCached();
+            $data = array_map(fn (Device $d) => $this->serializeDevice($d, $meta[$d->getIdentifier()] ?? null), $devices);
         } catch (\Throwable) {
             // Fritz!Box unreachable — fall back to cached device metadata
             $cached = $this->smartDeviceService->getAllCached();
@@ -70,7 +72,7 @@ class DeviceController extends AbstractController
 
             foreach ($devices as $device) {
                 if ($device->getIdentifier() === $ain) {
-                    return $this->json($this->serializeDevice($device));
+                    return $this->json($this->serializeDevice($device, $this->smartDeviceService->findByAin($ain)));
                 }
             }
         } catch (\Throwable) {
@@ -115,7 +117,32 @@ class DeviceController extends AbstractController
         return $this->json(['ain' => $ain, 'rawValue' => $raw, 'celsius' => (int) $raw / 2]);
     }
 
-    private function serializeDevice(Device $device): array
+    #[Route('/{ain}/protection', methods: ['PUT'], priority: 10)]
+    #[IsGranted('ROLE_ADMIN')]
+    public function setProtection(string $ain, Request $request): JsonResponse
+    {
+        $body = json_decode($request->getContent(), true);
+        $confirmOn = $body['confirmOn'] ?? null;
+        $confirmOff = $body['confirmOff'] ?? null;
+
+        if (!\is_bool($confirmOn) || !\is_bool($confirmOff)) {
+            return $this->json(['error' => 'confirmOn and confirmOff (booleans) are required'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $device = $this->smartDeviceService->setConfirmFlags($ain, $confirmOn, $confirmOff);
+
+        if ($device === null) {
+            return $this->json(['error' => 'Device not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->json([
+            'ain' => $ain,
+            'confirmOn' => $device->isConfirmOn(),
+            'confirmOff' => $device->isConfirmOff(),
+        ]);
+    }
+
+    private function serializeDevice(Device $device, ?SmartDevice $meta = null): array
     {
         $data = [
             'ain' => $device->getIdentifier(),
@@ -127,6 +154,8 @@ class DeviceController extends AbstractController
             'functionBitMask' => $device->getFunctionBitMask(),
             'productImage' => ProductImageMap::getImageUrl($device->getProductName()),
             'source' => 'live',
+            'confirmOn' => $meta?->isConfirmOn() ?? false,
+            'confirmOff' => $meta?->isConfirmOff() ?? false,
             'features' => [
                 'outlet' => $device->hasOutlet(),
                 'thermostat' => $device->hasThermostat(),
@@ -186,6 +215,8 @@ class DeviceController extends AbstractController
             'functionBitMask' => $bitMask,
             'productImage' => ProductImageMap::getImageUrl($sd->getProductName()),
             'source' => 'cached',
+            'confirmOn' => $sd->isConfirmOn(),
+            'confirmOff' => $sd->isConfirmOff(),
             'features' => [
                 'outlet' => ($bitMask & Device::FUNCTION_BIT_OUTLET) > 0,
                 'thermostat' => ($bitMask & Device::FUNCTION_BIT_THERMOSTAT) > 0,
