@@ -9,7 +9,7 @@ export function DashboardPage() {
   const { t } = useTranslation()
   const { devices, loading, error, refresh } = useDeviceContext()
   const [refreshing, setRefreshing] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>()
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   // Manual refresh shows a spinner; the 30s auto-refresh stays silent.
   const handleRefresh = async () => {
