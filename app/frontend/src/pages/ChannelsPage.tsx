@@ -4,6 +4,7 @@ import { getChannels, createChannel, updateChannel, deleteChannel, Channel, Chan
 import { Card } from '../components/ui/Card'
 import { DataTable } from '../components/ui/DataTable'
 import { Button } from '../components/ui/Button'
+import { PencilIcon, TrashIcon } from '../components/ui/ActionIcons'
 import { TextInput } from '../components/ui/TextInput'
 import { SelectField } from '../components/ui/SelectField'
 
@@ -105,8 +106,8 @@ export function ChannelsPage() {
               width: '100px',
               render: (c) => (
                 <div className="row-actions">
-                  <Button variant="icon" iconVariant="edit" size="sm" title={t('channels.editTitle')} onClick={() => openEdit(c)}>✎</Button>
-                  <Button variant="icon" iconVariant="delete" size="sm" title={t('channels.deleteTitle')} onClick={() => remove(c)}>✕</Button>
+                  <Button variant="icon" iconVariant="edit" size="sm" title={t('channels.editTitle')} onClick={() => openEdit(c)}><PencilIcon /></Button>
+                  <Button variant="icon" iconVariant="delete" size="sm" title={t('channels.deleteTitle')} onClick={() => remove(c)}><TrashIcon /></Button>
                 </div>
               ),
             },
