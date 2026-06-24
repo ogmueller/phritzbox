@@ -6,6 +6,7 @@ import { useDeviceContext } from '../contexts/DeviceContext'
 import { Card } from '../components/ui/Card'
 import { DataTable } from '../components/ui/DataTable'
 import { Button } from '../components/ui/Button'
+import { PencilIcon, TrashIcon } from '../components/ui/ActionIcons'
 import { Switch } from '../components/ui/Switch'
 import { TextInput } from '../components/ui/TextInput'
 import { SelectField } from '../components/ui/SelectField'
@@ -217,10 +218,10 @@ export function AlertsPage() {
                     {t('alerts.test')}
                   </Button>
                   <Button variant="icon" iconVariant="edit" size="sm" title={t('alerts.editTitle')} onClick={() => openEdit(a)}>
-                    ✎
+                    <PencilIcon />
                   </Button>
                   <Button variant="icon" iconVariant="delete" size="sm" title={t('alerts.deleteTitle')} onClick={() => remove(a)}>
-                    ✕
+                    <TrashIcon />
                   </Button>
                 </div>
               ),
