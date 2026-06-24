@@ -19,7 +19,7 @@
     "symfony/console": "^8.0",
     "symfony/dotenv": "^8.0",
     "symfony/flex": "^2.0",
-    "symfony/framework-bundle": "^8.0",
+    "symfony/framework-bundle": "^8.1",
     "symfony/http-client": "^8.0",
     "symfony/mailer": "8.0.*",
     "symfony/monolog-bundle": "^4.0",
@@ -84,7 +84,7 @@
   },
   "extra": {
     "symfony": {
-      "require": "8.0.*",
+      "require": "8.1.*",
       "allow-contrib": true
     }
   }
