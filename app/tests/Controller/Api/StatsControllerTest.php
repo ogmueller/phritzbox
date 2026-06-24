@@ -163,7 +163,7 @@ class StatsControllerTest extends WebTestCase
 
     public function testRefreshReturnsBadGatewayOnFailure(): void
     {
-        $collection = $this->createMock(SmartStatsCollectionService::class);
+        $collection = $this->createStub(SmartStatsCollectionService::class);
         $collection->method('collectAll')
             ->willThrowException(new \RuntimeException('Fritz!Box unreachable'));
         static::getContainer()->set(SmartStatsCollectionService::class, $collection);

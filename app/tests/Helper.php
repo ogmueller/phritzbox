@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace App\Tests;
 
 use App\Client\AhaApi;
-use PHPUnit\Framework\MockObject\MockObject;
+use App\Client\Helper as ClientHelper;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -24,25 +24,14 @@ class Helper extends TestCase
 {
     public static function mockClientHelper(TestCase $test, string $response): AhaApi
     {
-        /** @var MockObject|\App\Client\Helper $helper */
-        $helper = $test->getMockBuilder(\App\Client\Helper::class)
-                       ->disableOriginalConstructor()
-                       ->onlyMethods(['requestUrl', 'getSid', 'getUrlAha'])
-                       ->getMock();
+        // A stub (not a mock) — we only need canned return values, no call-count
+        // expectations. Mock objects imply an any() expectation, deprecated in PHPUnit 13.
+        $helper = $test->createStub(ClientHelper::class);
 
         $client = new MockHttpClient(new MockResponse($response));
-        $helper->expects($test->any())
-               ->method('requestUrl')
-               ->withAnyParameters()
-               ->willReturn($client->request('GET', 'https://fritz.box'));
-
-        $helper->expects($test->any())
-               ->method('getSid')
-               ->willReturn('123');
-
-        $helper->expects($test->any())
-               ->method('getUrlAha')
-               ->willReturn('https://fritz.box');
+        $helper->method('requestUrl')->willReturn($client->request('GET', 'https://fritz.box'));
+        $helper->method('getSid')->willReturn('123');
+        $helper->method('getUrlAha')->willReturn('https://fritz.box');
 
         return new AhaApi($helper, new NullLogger());
     }

@@ -16,21 +16,23 @@ namespace App\Tests\Command;
 use App\Client\AhaApi;
 use App\Command\Smart;
 use Doctrine\ORM\EntityManagerInterface;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Console\Tester\CommandTester;
 
 abstract class CommandTestCase extends TestCase
 {
-    protected AhaApi&MockObject $ahaApi;
-    protected EntityManagerInterface&MockObject $entityManager;
+    // Stubs, not mocks: the command tests only need canned return values, never
+    // call-count assertions. Mocks-without-expectations are flagged by PHPUnit 13.
+    protected AhaApi&Stub $ahaApi;
+    protected EntityManagerInterface&Stub $entityManager;
     protected ArrayAdapter $cache;
 
     protected function setUp(): void
     {
-        $this->ahaApi = $this->createMock(AhaApi::class);
-        $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->ahaApi = $this->createStub(AhaApi::class);
+        $this->entityManager = $this->createStub(EntityManagerInterface::class);
         $this->cache = new ArrayAdapter();
     }
 
