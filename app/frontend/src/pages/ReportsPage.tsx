@@ -132,8 +132,7 @@ export function ReportsPage() {
         title={t('reports.title')}
         subtitle={t('reports.subtitle')}
         actions={
-          <Button variant="primary" size="sm" onClick={handleRefresh} disabled={refreshing}>
-            {refreshing && <span className="btn-spinner" />}
+          <Button variant="primary" size="sm" onClick={handleRefresh} loading={refreshing}>
             {refreshing ? t('reports.refreshing') : t('reports.refresh')}
           </Button>
         }
