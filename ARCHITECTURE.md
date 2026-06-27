@@ -179,6 +179,8 @@ Flat time-series table. No foreign keys — deliberately denormalised for simpli
 | `time` | DATETIME | Timestamp of reading |
 | `value` | FLOAT | Numeric value |
 
+A **UNIQUE index on `(sid, type, time)`** enforces one reading per device/metric/timestamp (it also serves the range queries). It replaced an earlier non-unique index after overlapping collection runs were found to have inserted duplicate rows; collection now uses `INSERT OR IGNORE` so duplicates can't recur.
+
 **`SmartDevice`** (`app/src/Entity/SmartDevice.php`)
 
 Cached device metadata (name, manufacturer, product, firmware, feature bitmask) keyed by `ain`, upserted on each collection so the UI/alerts can resolve a device name without a live Fritz!Box call.
@@ -191,13 +193,17 @@ A user-defined alert. Fields: `id`, `name`, `enabled`, `mode` (`threshold` | `co
 
 A reusable delivery destination. Fields: `id`, `name`, `type` (`email`, `webhook`, `pushover`, `telegram`, `ntfy`, `discord`, `gotify`, `slack`), `target` (address/URL/chat-id/user-key per type), `secret` (nullable token, e.g. Pushover/Telegram/Gotify), `enabled`, `createdAt`.
 
+**`AlertEvent`** (`app/src/Entity/AlertEvent.php`)
+
+Append-only audit log of alert lifecycle events, powering the Alerts "Recent activity" view. Fields: `id`, `ruleId` + `ruleName` (denormalised so the history survives rule deletion), `state` (`triggered` | `resolved` | `rearmed`), `type`, `valueDisplay`/`compareDisplay` (the readings at evaluation time, in display units), `deliveries` (JSON array of `{channel, type, ok, error}` — empty for `resolved`/`rearmed`, which send no message), `createdAt` (indexed for recency queries). Written by `AlertEvaluationService` on trigger/resolve and by `AlertController::rearm()` on a manual re-arm.
+
 #### Repositories
 
-All extend `ServiceEntityRepository`. `SmartDeviceDataRepository` filters by AIN/type/time range; `UserRepository` backs the security provider; `AlertRuleRepository` exposes `findEnabled()` and `countUsingChannel()` (used to block deleting an in-use channel); `NotificationChannelRepository` is plain CRUD.
+All extend `ServiceEntityRepository`. `SmartDeviceDataRepository` filters by AIN/type/time range; `UserRepository` backs the security provider; `AlertRuleRepository` exposes `findEnabled()` and `countUsingChannel()` (used to block deleting an in-use channel); `AlertEventRepository` exposes `findRecent($limit)` for the activity log; `NotificationChannelRepository` is plain CRUD.
 
 #### Migrations
 
-`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `idx_sid_type_time` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; and the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place).
+`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `(sid, type, time)` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place); the `alert_event` log table; and a migration that de-duplicates `smart_device_data` and upgrades the index to **UNIQUE** `(sid, type, time)`.
 
 ---
 
@@ -221,7 +227,8 @@ Responses are hand-serialised into nested JSON mirroring the `Device` / `Feature
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/stats/{ain}` | ROLE_USER | Query time-series data; query params: `type`, `from` (default: `-24 hours`), `to` (default: `now`) |
+| POST | `/api/stats/refresh` | ROLE_USER | On-demand collection from the Fritz!Box (`SmartStatsCollectionService::collectAll()`), then an immediate `AlertEvaluationService::evaluateAll()` so a manual pull also checks alert rules. Backs the Reports "Pull latest data" button |
+| GET | `/api/stats/{ain}` | ROLE_USER | Query time-series data; query params: `type`, `from` (default: `-24 hours`), `to` (default: `now`). Collapses duplicate timestamps defensively |
 | GET | `/api/stats/types/{ain}` | ROLE_USER | List available metric types for a device |
 
 #### `UserController` — `/api/users`
@@ -241,10 +248,12 @@ Role validation restricts assignable roles to `ROLE_USER` and `ROLE_ADMIN` — u
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | GET | `/api/alerts` | ROLE_ADMIN | List alert rules |
+| GET | `/api/alerts/events` | ROLE_ADMIN | Recent activity log (`?limit=`, default 50) |
 | POST | `/api/alerts` | ROLE_ADMIN | Create rule (JSON incl. `channelIds[]`) |
 | PUT | `/api/alerts/{id}` | ROLE_ADMIN | Update rule |
 | DELETE | `/api/alerts/{id}` | ROLE_ADMIN | Delete rule |
 | POST | `/api/alerts/{id}/toggle` | ROLE_ADMIN | Flip `enabled` |
+| POST | `/api/alerts/{id}/rearm` | ROLE_ADMIN | Reset a latched rule to OK so it can fire again (logs a `rearmed` event) |
 | POST | `/api/alerts/{id}/test` | ROLE_ADMIN | Send a test notification through the rule's channels |
 
 #### `ChannelController` — `/api/channels`
@@ -360,12 +369,13 @@ A rule-based alerting subsystem that watches collected readings and notifies the
 
 **Evaluation** (`App\Service\AlertEvaluationService::evaluateAll()`):
 1. Load enabled rules; for each, compute "triggered?" using fast `idx_sid_type_time` queries (latest value, or windowed aggregate for sustained).
-2. **Edge-triggered state machine:** notify on the `ok → triggered` transition; while it stays triggered, re-notify only if `cooldownMinutes > 0` and the interval elapsed (`0` = alert once); on `triggered → ok`, send a "resolved" notice. State persists in `lastState`/`lastTriggeredAt`/`lastNotifiedAt`.
+2. **Edge-triggered state machine:** notify on the `ok → triggered` transition; while it stays triggered, re-notify only if `cooldownMinutes > 0` and the interval elapsed (`0` = alert once). The `triggered → ok` transition is **recorded but not notified** (only the triggering edge sends messages). State persists in `lastState`/`lastTriggeredAt`/`lastNotifiedAt`; an admin can manually re-arm a latched rule via `POST /api/alerts/{id}/rearm`.
 3. Build the message once, then dispatch to **every enabled channel** on the rule (per-channel try/catch — one failing channel doesn't block the others or the rule).
+4. **Audit log:** every trigger, resolution, and re-arm is persisted as an `AlertEvent` with the readings and per-channel delivery outcome, surfaced in the Alerts "Recent activity" table. This makes an otherwise-silent delivery failure (a channel that threw) visible.
 
 **Delivery.** `App\Notification\AlertChannelInterface` (tagged `app.alert_channel`) is implemented by one transport per type — `EmailAlertChannel`, `WebhookAlertChannel`, `PushoverAlertChannel`, `TelegramAlertChannel`, `NtfyAlertChannel`, `DiscordAlertChannel`, `GotifyAlertChannel`, `SlackAlertChannel`. `AlertNotifier` routes a `NotificationChannel` to the transport whose `supports($type)` matches; transports POST via `HttpClientInterface` (or `MailerInterface` for e-mail) and throw on non-2xx so failures surface in the `/test` endpoint and the cron log. Adding a new channel type = one class + a constant in `NotificationChannel::TYPES`.
 
-**Scheduling.** The `cron:smart:alerts` command runs on its own cronado schedule (`5,35 * * * *`), a few minutes after each `*/30` collection. Alerts therefore reflect stored data and can lag real time by up to the collection interval.
+**Scheduling.** The `cron:smart:alerts` command runs on its own cronado schedule (`5,35 * * * *`), a few minutes after each `*/30` collection. Alerts therefore reflect stored data and can lag real time by up to the collection interval. The Reports "Pull latest data" endpoint (`POST /api/stats/refresh`) also calls `evaluateAll()` right after collecting, so a manual pull checks the rules immediately rather than waiting for the cron.
 
 ---
 
@@ -380,6 +390,7 @@ A rule-based alerting subsystem that watches collected readings and notifies the
 ```
 ErrorBoundary
 └── AuthProvider
+    ├── NotificationHost        (global error toasts, route-independent)
     └── BrowserRouter
         └── Suspense
             ├── /login              → LoginPage         (lazy, public)
@@ -410,11 +421,16 @@ A thin wrapper over `fetch` — not Axios, not React Query. It exposes `api.get<
 1. Reads the JWT from `localStorage` under the key `phritzbox_token`
 2. Adds `Authorization: Bearer <token>` if a token exists
 3. Sets `Content-Type: application/json`
-4. On **401** — clears the token and redirects to `/login`
-5. On non-2xx — throws an `Error` with the status code
-6. On **204** — returns `undefined` (no body)
+4. On **401** — tries a one-shot silent token refresh and replays the request; only on refresh failure does it clear the token and redirect to `/login`
+5. On a **5xx** response or a **network/fetch error** — publishes a global error notification (see below) before throwing, so background loads fail visibly
+6. On non-2xx — throws an `Error` with the status code (4xx stays inline on the calling page)
+7. On **204** — returns `undefined` (no body)
 
 This keeps all auth-token logic in one place so individual API modules stay clean.
+
+#### `notifications/bus.ts` + `NotificationHost`
+
+`client.ts` is a plain module, so it can't call a React context. A tiny framework-agnostic event bus (`pushNotification` / `subscribe`) bridges the gap: the client publishes serious-error notifications and `components/layout/NotificationHost` (mounted once near the app root) subscribes and renders top-centre toasts — de-duplicating identical messages (with a `×N` count), auto-dismissing after ~10 s, and offering a manual close. App code can also `pushNotification` directly.
 
 #### `auth.ts`
 
@@ -434,7 +450,7 @@ TypeScript interfaces `Device`, `DeviceFeatures`, `OutletFeature`, `ThermostatFe
 
 #### `stats.ts`
 
-`getStats(ain, type?, from?, to?)` and `getStatTypes(ain)`. The `StatsResponse` interface contains `ain`, `type`, and `data: StatPoint[]` where `StatPoint = {timestamp: string, value: number}`.
+`getStats(ain, type?, from?, to?)`, `getStatTypes(ain)`, and `refreshStats()` (POST `/api/stats/refresh`). The `StatsResponse` interface contains `ain`, `type`, and `data: StatPoint[]` where `StatPoint = {time: string, value: number, type: string}`. `RefreshResponse` adds an `alerts` summary (`{rules, triggered, notified, resolved}`) from the post-collection evaluation.
 
 #### `users.ts`
 
@@ -442,7 +458,7 @@ Full CRUD: `getUsers()`, `createUser(payload)`, `updateUser(id, payload)`, `dele
 
 #### `alerts.ts` / `channels.ts`
 
-CRUD for the alerting admin pages. `alerts.ts` exposes `getAlerts/createAlert/updateAlert/deleteAlert/toggleAlert/testAlert` (`Alert` carries `channelIds[]`/`channelNames[]`); `channels.ts` exposes `getChannels/createChannel/updateChannel/deleteChannel` (`Channel` with `type`, `target`, optional `secret`). Backing the `AlertsPage` (multi-channel `CheckboxGroup`, inline enabled `Switch`) and `ChannelsPage`.
+CRUD for the alerting admin pages. `alerts.ts` exposes `getAlerts/createAlert/updateAlert/deleteAlert/toggleAlert/testAlert`, plus `rearmAlert(id)` and `getAlertEvents(limit?)` for the activity log (`Alert` carries `channelIds[]`/`channelNames[]` and `lastState`; `AlertEvent` carries `state`, the readings, and `deliveries[]`). `channels.ts` exposes `getChannels/createChannel/updateChannel/deleteChannel` (`Channel` with `type`, `target`, optional `secret`). Backing the `AlertsPage` (multi-channel `CheckboxGroup`, inline enabled `Switch`) and `ChannelsPage`.
 
 ---
 
@@ -502,7 +518,7 @@ Renders a centred card with a blue banner header (AVM-inspired). Calls `loginReq
 
 #### `DashboardPage`
 
-Fetches all devices via `useDevices` (30 s poll). Renders a `PageHeader` and a `DeviceTable`. Shows a loading state until the first fetch completes.
+Reads devices from `DeviceContext`. Refreshes on every visit (mount) and then polls every 30 s. Renders a `PageHeader` and a `DeviceTable`. Shows a loading state until the first fetch completes.
 
 #### `DeviceDetailPage`
 
@@ -514,7 +530,7 @@ Reads `:ain` from URL params. Fetches the single device and 7-day history for al
 
 #### `ReportsPage`
 
-Date-range filter (from/to date inputs + metric type selector) and a `useStats` hook. Renders the relevant `TimeSeriesChart` variant for the selected device + metric.
+Device + metric selectors, a from/to date filter with quick presets (Today / Yesterday / Last 7 / Last 30 days), averages and "Fit to data" toggles, a "Pull latest data" action, and a `TimeSeriesChart`. The full filter is **persisted to `localStorage`** (`phritzbox_reports_filter`) and restored — and auto-run — on return; if a date *preset* was active it is re-resolved relative to today (so "Yesterday" stays current), otherwise the explicit range is restored.
 
 #### `UsersPage`
 
@@ -522,7 +538,7 @@ Admin-only. Lists users in a table. "New User" button opens a modal form (create
 
 #### `AlertsPage`
 
-Admin-only. Lists alert rules with a compact condition column (e.g. `outdoor > indoor + 2 [°C]`), an inline enabled `Switch`, and a per-row **Test** action. The modal form switches fields by rule mode (threshold vs comparison) and selects one or more channels via a `CheckboxGroup`.
+Admin-only. Lists alert rules with a compact condition column (e.g. `outdoor > indoor + 2 [°C]`), a current-**State** column (OK / Triggered with a **Re-arm** action on latched rules), an inline enabled `Switch`, and a per-row **Test** action. The modal form switches fields by rule mode (threshold vs comparison) and selects one or more channels via a `CheckboxGroup`. Below the rules, a **Recent activity** `DataTable` (from `getAlertEvents`) shows each firing/resolution/re-arm with the readings and per-channel delivery status.
 
 #### `ChannelsPage`
 
@@ -579,7 +595,8 @@ Located in `components/ui/`. These are lightweight CSS-class-based components, n
 | `Card` | `header`, `children` | `.card` wrapper with optional `.card-header` |
 | `Badge` | `variant` | `.badge--success`, `--danger`, `--warning`, `--neutral` |
 | `StatusDot` | `active: boolean` | Small coloured circle for online/offline |
-| `DataTable` | `columns[]`, `rows[]`, `emptyMessage` | Generic table renderer; columns define header + cell render function |
+| `DataTable` | `columns[]`, `rows[]`, `keyFn`, `emptyMessage` | Generic table renderer with zebra striping and a shaded header. A column with a `sortValue` accessor becomes click-to-sort (asc → desc → off) with a chevron indicator |
+| `NotificationHost` | — | Top-centre toast stack fed by the `notifications` bus; renders global error messages (see §3.2) |
 
 The decision to use plain CSS classes (tokens + global styles) rather than a library like shadcn/ui, MUI, or Tailwind was made to keep the bundle small and allow the AVM Fritz!Box visual style to be applied directly without fighting component defaults.
 

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Card } from '../components/ui/Card'
+import { version } from '../../package.json'
 
 export function HelpPage() {
   const { t } = useTranslation()
@@ -18,6 +19,7 @@ export function HelpPage() {
             <li>{t('help.featureMonitor')}</li>
             <li>{t('help.featureControl')}</li>
             <li>{t('help.featureReports')}</li>
+            <li>{t('help.featureAlerts')}</li>
             <li>{t('help.featureUsers')}</li>
           </ul>
         </div>
@@ -40,7 +42,7 @@ export function HelpPage() {
           </ul>
 
           <div className="help-version">
-            {t('help.version')}: 1.0.0
+            {t('help.version')}: {version}
           </div>
         </div>
       </Card>
