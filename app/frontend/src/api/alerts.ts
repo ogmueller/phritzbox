@@ -51,7 +51,7 @@ export interface AlertEvent {
   id: number
   ruleId: number | null
   ruleName: string
-  state: 'triggered' | 'resolved'
+  state: 'triggered' | 'resolved' | 'rearmed'
   type: string
   unit: string
   valueDisplay: number | null

@@ -13,11 +13,12 @@ fi
 echo "Running database migrations..."
 php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
-# Rebuild cache. var/ may be on a persistent volume, so a container compiled by
-# a previous image version can linger and mismatch the deployed code (e.g.
-# ArgumentCountError when a service constructor changed). Clear it, then warm.
+# Rebuild cache. Clear any cache compiled by a previous image version (which can
+# mismatch the deployed code, e.g. ArgumentCountError when a constructor changed),
+# then warm. The removal is best-effort: it must never abort startup (under set -e)
+# if a leftover file is owned by a different user — cache:warmup overwrites anyway.
 echo "Rebuilding cache..."
-rm -rf /application/var/cache/*
+rm -rf /application/var/cache/* 2>/dev/null || true
 php bin/console cache:warmup
 
 echo "Ready."
