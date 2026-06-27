@@ -28,6 +28,7 @@ class AlertEvent
 {
     public const STATE_TRIGGERED = 'triggered';
     public const STATE_RESOLVED = 'resolved';
+    public const STATE_REARMED = 'rearmed';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

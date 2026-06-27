@@ -135,9 +135,17 @@ class AlertController extends AbstractController
             return $this->json(['error' => 'Alert rule not found'], Response::HTTP_NOT_FOUND);
         }
 
-        // Reset a latched rule to OK so the next evaluation can fire it again.
+        // Reset a latched rule to OK so the next evaluation can fire it again,
+        // and record the manual re-arm in the activity log.
         $rule->setLastState(AlertRule::STATE_OK);
         $rule->setLastNotifiedAt(null);
+        $this->entityManager->persist(
+            (new AlertEvent())
+                ->setRuleId($rule->getId())
+                ->setRuleName($rule->getName())
+                ->setState(AlertEvent::STATE_REARMED)
+                ->setType($rule->getType())
+        );
         $this->entityManager->flush();
 
         return $this->json($this->serialize($rule));

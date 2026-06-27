@@ -64,6 +64,7 @@
   "alerts.stateTriggered": "Ausgelöst",
   "alerts.stateResolved": "Behoben",
   "alerts.stateOk": "OK",
+  "alerts.stateRearmed": "Reaktiviert",
   "alerts.currentState": "Zustand",
   "alerts.rearm": "Reaktivieren",
   "alerts.rearmTitle": "Alarm auf OK zurücksetzen, damit er erneut auslösen kann",

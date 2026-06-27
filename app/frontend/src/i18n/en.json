@@ -64,6 +64,7 @@
   "alerts.stateTriggered": "Triggered",
   "alerts.stateResolved": "Resolved",
   "alerts.stateOk": "OK",
+  "alerts.stateRearmed": "Re-armed",
   "alerts.currentState": "State",
   "alerts.rearm": "Re-arm",
   "alerts.rearmTitle": "Reset this alert to OK so it can fire again",

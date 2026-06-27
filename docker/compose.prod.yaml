@@ -19,7 +19,11 @@ services:
             APP_ALERT_FROM: ${APP_ALERT_FROM:-alerts@phritzbox.local}
         volumes:
             - phritzbox-data:/application/data
-            - phritzbox-var:/application/var
+            # Persist logs only — NOT the whole var/. The cache must stay ephemeral
+            # (in the image layer): persisting var/cache across image versions left
+            # behind pool files owned by an older root-running image that the
+            # www-data entrypoint could not delete, crash-looping on `rm -rf`.
+            - phritzbox-log:/application/var/log
             - phritzbox-jwt:/application/app/config/jwt
         labels:
             cronado.savestats.enabled: "true"
@@ -56,7 +60,7 @@ services:
 
 volumes:
     phritzbox-data:
-    phritzbox-var:
+    phritzbox-log:
     phritzbox-jwt:
 
 networks:

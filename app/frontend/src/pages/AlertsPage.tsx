@@ -137,6 +137,7 @@ export function AlertsPage() {
   const handleRearm = async (a: Alert) => {
     const updated = await rearmAlert(a.id)
     setAlerts((prev) => prev.map((x) => (x.id === a.id ? updated : x)))
+    loadEvents()
   }
 
   const muted = { color: 'var(--color-text-muted)' } as const
@@ -146,6 +147,7 @@ export function AlertsPage() {
   const fmtNum = (v: number | null) => (v == null ? '—' : String(Number(v.toFixed(2))))
 
   const renderReading = (e: AlertEvent) => {
+    if (e.valueDisplay == null) return '—' // e.g. a manual re-arm carries no reading
     const val = `${fmtNum(e.valueDisplay)} ${e.unit}`
     return e.compareDisplay == null ? val : `${val} ↔ ${fmtNum(e.compareDisplay)} ${e.unit}`
   }
@@ -306,7 +308,9 @@ export function AlertsPage() {
               render: (e) =>
                 e.state === 'triggered'
                   ? <Badge label={t('alerts.stateTriggered')} variant="danger" />
-                  : <Badge label={t('alerts.stateResolved')} variant="success" />,
+                  : e.state === 'rearmed'
+                    ? <Badge label={t('alerts.stateRearmed')} variant="neutral" />
+                    : <Badge label={t('alerts.stateResolved')} variant="success" />,
             },
             { key: 'reading', header: t('alerts.reading'), render: (e) => renderReading(e) },
             { key: 'delivery', header: t('alerts.delivery'), render: (e) => renderDelivery(e) },
