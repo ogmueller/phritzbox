@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - Rule-based alerting system. Define rules in the web UI (admin) that fire when a device metric crosses a threshold, stays past it for a sustained period, or relates to another device's metric (e.g. tempA > tempB + 2). Evaluated shortly after each data collection via the new `cron:smart:alerts` command, with a per-rule cooldown and a "send test" button.
 - Reusable notification channels, managed in their own admin module (Channels); each alert rule can notify one or more of them. Built-in channel types: e-mail, generic webhook, Pushover, Telegram, ntfy, Discord, Gotify, and Slack-compatible (Slack/Mattermost/Rocket.Chat).
+- Alert activity log — a "Recent activity" section on the Alerts page (and `GET /api/alerts/events`) records every firing, resolution, and manual re-arm with the readings and **per-channel delivery status** (sent / failed + error message), so a silently failing notification is now visible. Stored in the new `alert_event` table.
+- Alert rule state + manual re-arm — each rule row shows its current state (OK / Triggered); a **Re-arm** action (`POST /api/alerts/{id}/rearm`) resets a latched rule so it can fire again on the next evaluation.
+- "Pull latest data" in Reports now also evaluates alert rules immediately against the freshly collected readings (previously only the scheduled cron evaluated them).
+- Sortable, zebra-striped tables with a shaded header across the app (Dashboard, Alerts, Users, Channels, and the activity log); click a column header to sort, click again to reverse.
+- Global "system message" toasts for serious HTTP errors (5xx responses or an unreachable server), so background data loads no longer fail silently.
+- Reports remembers your last selection (device, metric, date preset/range, averages, "Fit to data") and auto-runs it on return; a saved preset such as "Yesterday" re-resolves relative to the current day.
+- Dashboard fetches fresh data on every visit, in addition to the 30-second auto-refresh.
+
+### Changed
+- Alerts notify only when a condition becomes true (the triggering edge). When a condition clears again, the resolution is recorded in the activity log but **no "resolved" message is sent**.
+
+### Fixed
+- Report chart tooltips no longer show duplicated values on short date ranges. The root cause — duplicate `(sid, type, time)` rows created by overlapping collection runs (a manual pull racing the cron) — was removed, and prevented going forward with a UNIQUE index plus idempotent (`INSERT OR IGNORE`) data collection.
+- Production container no longer crash-loops when its persisted volume held cache files from an older image version: prod now persists only `var/log` (not the whole `var/`), keeping the Symfony cache ephemeral, and the startup cache wipe is best-effort so a stray permission error can't abort boot.
 
 ## [1.1.0] - 2026-06-22
 

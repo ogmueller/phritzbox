@@ -37,10 +37,11 @@ Screenshots
 Features
 --------
 
-- Live device status with 30-second auto-refresh
+- Live device status with 30-second auto-refresh (and a fresh pull on every visit)
 - Interactive charts for temperature, power, energy, and voltage
-- Date-range reports with quick presets (today, last 7/30 days), rolling averages, and on-demand data refresh
-- Rule-based alerting (threshold, sustained, or device-to-device comparison) via e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, or Slack/Mattermost
+- Date-range reports with quick presets (today, last 7/30 days), rolling averages, and on-demand data refresh — your last selection is remembered and re-run when you come back
+- Rule-based alerting (threshold, sustained, or device-to-device comparison) via e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, or Slack/Mattermost — with an activity log that shows per-channel delivery status, current-rule state, and a manual re-arm
+- Sortable tables and global error notifications throughout the UI
 - 18 CLI commands for device control and monitoring
 - User management with role-based access (admin only)
 - German and English interface
@@ -177,7 +178,9 @@ Define rules that notify you when something noteworthy happens — turning Phrit
 - **Sustained** — a threshold holds for the last *N* minutes, e.g. *power above 2000 W for 5 minutes*.
 - **Comparison** — one device's metric relative to another's, ± an offset, e.g. *outdoor temperature < indoor temperature − 2 °C*.
 
-Rules are **edge-triggered**: you're alerted once when the condition becomes true, and again only after it clears and re-occurs. Set an optional *reminder interval* if you'd rather be re-notified while it stays true.
+Rules are **edge-triggered**: you're alerted once when the condition becomes true, and again only after it clears and re-occurs. Set an optional *reminder interval* if you'd rather be re-notified while it stays true. A message is sent **only on the triggering edge** — when the condition clears again the resolution is logged but not notified.
+
+Each rule shows its **current state** (OK / Triggered) on the Alerts page. A rule with "alert once" stays *triggered* until the condition clears; if you want it to fire again sooner, use the **Re-arm** action to reset it to OK. The **Recent activity** log below the rules records every firing, resolution, and re-arm together with the readings and the **per-channel delivery result** (sent ✓ / failed ✗ with the error), so a misconfigured channel is easy to spot.
 
 **Channels** are the delivery destinations, managed separately and reusable across rules. A rule can notify **one or more** channels. Supported types:
 
@@ -194,7 +197,7 @@ Rules are **edge-triggered**: you're alerted once when the condition becomes tru
 
 Set up channels under **Channels**, then reference them from **Alerts** (both are admin-only). Use a channel's **Test** button to verify delivery.
 
-Alert rules are evaluated shortly after each data collection (the `cron:smart:alerts` command, scheduled automatically in the Docker setup). Because evaluation runs on collected data, alerts can lag real-time by up to the collection interval (~30 minutes).
+Alert rules are evaluated shortly after each data collection (the `cron:smart:alerts` command, scheduled automatically in the Docker setup). Because evaluation runs on collected data, alerts can lag real-time by up to the collection interval (~30 minutes). To check immediately, the Reports **"Pull latest data"** button collects fresh readings *and* evaluates the rules right away.
 
 
 Development

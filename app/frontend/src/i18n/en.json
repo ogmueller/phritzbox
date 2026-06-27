@@ -251,7 +251,8 @@
   "help.features": "Features",
   "help.featureMonitor": "Monitor smart home devices in real time",
   "help.featureControl": "Control outlets and thermostats",
-  "help.featureReports": "View historical data and charts",
+  "help.featureReports": "View historical data and charts, with your last selection remembered",
+  "help.featureAlerts": "Get notified by rule-based alerts (e-mail, push, webhook) with an activity log",
   "help.featureUsers": "Manage users and permissions",
 
   "device.type.outlet": "Outlet",

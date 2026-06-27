@@ -251,7 +251,8 @@
   "help.features": "Funktionen",
   "help.featureMonitor": "Smart-Home-Ger\u00e4te in Echtzeit \u00fcberwachen",
   "help.featureControl": "Steckdosen und Thermostate steuern",
-  "help.featureReports": "Historische Daten und Diagramme anzeigen",
+  "help.featureReports": "Historische Daten und Diagramme anzeigen – die letzte Auswahl wird gemerkt",
+  "help.featureAlerts": "Regelbasierte Benachrichtigungen (E-Mail, Push, Webhook) mit Ereignisprotokoll",
   "help.featureUsers": "Benutzer und Berechtigungen verwalten",
 
   "device.type.outlet": "Steckdose",
