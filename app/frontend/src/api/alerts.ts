@@ -40,8 +40,32 @@ export interface AlertPayload {
   cooldownMinutes: number
 }
 
+export interface AlertEventDelivery {
+  channel: string
+  type: string
+  ok: boolean
+  error: string | null
+}
+
+export interface AlertEvent {
+  id: number
+  ruleId: number | null
+  ruleName: string
+  state: 'triggered' | 'resolved'
+  type: string
+  unit: string
+  valueDisplay: number | null
+  compareDisplay: number | null
+  deliveries: AlertEventDelivery[]
+  createdAt: string
+}
+
 export function getAlerts(): Promise<Alert[]> {
   return api.get<Alert[]>('/api/alerts')
+}
+
+export function getAlertEvents(limit = 50): Promise<AlertEvent[]> {
+  return api.get<AlertEvent[]>(`/api/alerts/events?limit=${limit}`)
 }
 
 export function createAlert(payload: AlertPayload): Promise<Alert> {
@@ -62,4 +86,8 @@ export function testAlert(id: number): Promise<{ status: string }> {
 
 export function toggleAlert(id: number): Promise<Alert> {
   return api.post<Alert>(`/api/alerts/${id}/toggle`)
+}
+
+export function rearmAlert(id: number): Promise<Alert> {
+  return api.post<Alert>(`/api/alerts/${id}/rearm`)
 }

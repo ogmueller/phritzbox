@@ -13,7 +13,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
+use App\Entity\AlertEvent;
 use App\Entity\AlertRule;
+use App\Repository\AlertEventRepository;
 use App\Repository\AlertRuleRepository;
 use App\Repository\NotificationChannelRepository;
 use App\Service\AlertEvaluationService;
@@ -33,6 +35,7 @@ class AlertController extends AbstractController
         private readonly NotificationChannelRepository $channels,
         private readonly EntityManagerInterface $entityManager,
         private readonly AlertEvaluationService $evaluationService,
+        private readonly AlertEventRepository $events,
     ) {
     }
 
@@ -42,6 +45,15 @@ class AlertController extends AbstractController
         $rules = $this->repository->findBy([], ['id' => 'ASC']);
 
         return $this->json(array_map(fn (AlertRule $r) => $this->serialize($r), $rules));
+    }
+
+    #[Route('/events', methods: ['GET'])]
+    public function events(Request $request): JsonResponse
+    {
+        $limit = max(1, min(200, (int) $request->query->get('limit', '50')));
+        $events = $this->events->findRecent($limit);
+
+        return $this->json(array_map(fn (AlertEvent $e) => $this->serializeEvent($e), $events));
     }
 
     #[Route('', methods: ['POST'])]
@@ -110,6 +122,22 @@ class AlertController extends AbstractController
         }
 
         $rule->setEnabled(!$rule->isEnabled());
+        $this->entityManager->flush();
+
+        return $this->json($this->serialize($rule));
+    }
+
+    #[Route('/{id}/rearm', methods: ['POST'])]
+    public function rearm(int $id): JsonResponse
+    {
+        $rule = $this->repository->find($id);
+        if ($rule === null) {
+            return $this->json(['error' => 'Alert rule not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Reset a latched rule to OK so the next evaluation can fire it again.
+        $rule->setLastState(AlertRule::STATE_OK);
+        $rule->setLastNotifiedAt(null);
         $this->entityManager->flush();
 
         return $this->json($this->serialize($rule));
@@ -249,6 +277,25 @@ class AlertController extends AbstractController
             'lastState' => $rule->getLastState(),
             'lastTriggeredAt' => $rule->getLastTriggeredAt()?->format(\DateTimeInterface::ATOM),
             'createdAt' => $rule->getCreatedAt()->format(\DateTimeInterface::ATOM),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeEvent(AlertEvent $event): array
+    {
+        return [
+            'id' => $event->getId(),
+            'ruleId' => $event->getRuleId(),
+            'ruleName' => $event->getRuleName(),
+            'state' => $event->getState(),
+            'type' => $event->getType(),
+            'unit' => MetricUnits::unit($event->getType()),
+            'valueDisplay' => $event->getValueDisplay(),
+            'compareDisplay' => $event->getCompareDisplay(),
+            'deliveries' => $event->getDeliveries(),
+            'createdAt' => $event->getCreatedAt()->format(\DateTimeInterface::ATOM),
         ];
     }
 }

@@ -377,6 +377,7 @@ body {
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
+  background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -387,9 +388,49 @@ body {
 }
 
 .data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: rgba(21, 119, 207, 0.04); }
+
+/* Zebra striping; the hover rule below intentionally follows it so hover wins. */
+.data-table tbody tr:nth-child(even) td { background: var(--color-surface-2); }
+.data-table tbody tr:hover td { background: rgba(21, 119, 207, 0.04); }
 
 .table-empty { text-align: center; color: var(--color-text-muted); padding: 32px; }
+
+/* Sortable column header button + chevron-pair indicator. */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+}
+
+.sort-icon {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sort-icon__chevron { color: var(--color-border); }
+.sort-icon__chevron--active { color: var(--color-primary); }
+
+/* Section heading between cards (e.g. Alerts "Recent activity"). */
+.section-title {
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--color-text);
+  margin: 28px 0 12px;
+}
+
+/* Per-channel delivery status in the alert activity log. */
+.delivery-list { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; }
+.delivery { font-size: 13px; white-space: nowrap; }
+.delivery--ok   { color: var(--color-success-dark); }
+.delivery--fail { color: var(--color-danger); }
 
 /* ── Device Table ────────────────────────────────────────────── */
 .device-name { font-weight: 500; }
@@ -642,6 +683,60 @@ body {
 /* ── Alerts / states ─────────────────────────────────────────── */
 .alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13.5px; margin-bottom: 16px; }
 .alert--danger { background: rgba(204, 0, 0, 0.06); color: var(--color-danger); border-left: 3px solid var(--color-danger); }
+
+/* ── Global notification toasts ──────────────────────────────── */
+.toast-host {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200; /* above topbar (50) and modals (100) */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  border-left: 3px solid var(--color-border);
+  font-size: 13.5px;
+  color: var(--color-text);
+  animation: toast-in 150ms ease;
+}
+
+.toast--error   { border-left-color: var(--color-danger); }
+.toast--warning { border-left-color: var(--color-warning); }
+.toast--success { border-left-color: var(--color-success); }
+.toast--info    { border-left-color: var(--color-primary); }
+
+.toast__text  { flex: 1; }
+.toast__count { font-size: 12px; font-weight: 600; color: var(--color-text-muted); }
+
+.toast__close {
+  flex-shrink: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px;
+}
+.toast__close:hover { color: var(--color-text); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .loading-state { padding: 40px; text-align: center; color: var(--color-text-muted); }
 .empty-state   { padding: 40px; text-align: center; color: var(--color-text-muted); }

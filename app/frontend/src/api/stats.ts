@@ -25,6 +25,7 @@ export interface RefreshResponse {
   status: string
   devices: number
   rows: number
+  alerts: { rules: number; triggered: number; notified: number; resolved: number } | null
 }
 
 export function refreshStats(): Promise<RefreshResponse> {

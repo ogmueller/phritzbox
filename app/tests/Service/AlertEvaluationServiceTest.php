@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Entity\AlertEvent;
 use App\Entity\AlertRule;
 use App\Entity\NotificationChannel;
 use App\Entity\SmartDeviceData;
@@ -120,15 +121,16 @@ class AlertEvaluationServiceTest extends KernelTestCase
         self::assertSame(0, $this->service->evaluateAll()['notified']);
         self::assertCount(1, $this->spy->sent);
 
-        // Drops below -> resolves; re-arms the edge.
+        // Drops below -> resolves silently (no message) and re-arms the edge.
         $this->reading('edge', 'temperature', 20.0, '+1 second');
         self::assertSame(1, $this->service->evaluateAll()['resolved']);
         self::assertSame(AlertRule::STATE_OK, $rule->getLastState());
+        self::assertCount(1, $this->spy->sent, 'resolve must not notify');
 
         // Breaches again -> fires once more.
         $this->reading('edge', 'temperature', 26.0, '+2 seconds');
         self::assertSame(1, $this->service->evaluateAll()['notified']);
-        self::assertCount(3, $this->spy->sent); // triggered, resolved, triggered
+        self::assertCount(2, $this->spy->sent); // triggered, triggered (no resolve message)
     }
 
     public function testReminderFiresAfterIntervalElapses(): void
@@ -178,12 +180,19 @@ class AlertEvaluationServiceTest extends KernelTestCase
         $this->service->evaluateAll();
         self::assertSame(AlertRule::STATE_TRIGGERED, $rule->getLastState());
 
-        // New, lower reading -> resolve.
+        // New, lower reading -> resolve: state clears and it is logged, but no
+        // notification is sent (only triggering sends messages).
         $this->reading('alert-temp2', 'temperature', 20.0, '+1 second');
         $r = $this->service->evaluateAll();
         self::assertSame(1, $r['resolved']);
         self::assertSame(AlertRule::STATE_OK, $rule->getLastState());
-        self::assertSame('resolved', end($this->spy->sent)['state']);
+        self::assertCount(1, $this->spy->sent, 'resolve must not notify');
+        self::assertSame('triggered', $this->spy->sent[0]['state']);
+
+        // The resolution is still recorded in the activity log, with no deliveries.
+        $events = $this->em->getRepository(AlertEvent::class)->findBy(['ruleId' => $rule->getId(), 'state' => 'resolved']);
+        self::assertCount(1, $events);
+        self::assertSame([], $events[0]->getDeliveries());
     }
 
     public function testPowerThresholdRespectsUnitConversion(): void
@@ -214,6 +223,63 @@ class AlertEvaluationServiceTest extends KernelTestCase
 
         $r = $this->service->evaluateAll();
         self::assertSame(1, $r['triggered']);
+    }
+
+    public function testTriggerLogsEventWithDeliveryStatus(): void
+    {
+        $this->reading('log-temp', 'temperature', 25.0);
+        $rule = $this->persistRule((new AlertRule())
+            ->setName('Logged')->setSid('log-temp')->setType('temperature')
+            ->setMode(AlertRule::MODE_THRESHOLD)->setOperator('gt')->setThreshold(22.0)
+            ->addChannel($this->channel));
+
+        $this->service->evaluateAll();
+
+        $events = $this->em->getRepository(AlertEvent::class)->findBy(['ruleId' => $rule->getId()]);
+        self::assertCount(1, $events);
+        $event = $events[0];
+        self::assertSame(AlertEvent::STATE_TRIGGERED, $event->getState());
+        self::assertSame($rule->getName(), $event->getRuleName());
+        self::assertEqualsWithDelta(25.0, $event->getValueDisplay(), 0.01);
+        self::assertCount(1, $event->getDeliveries());
+        self::assertTrue($event->getDeliveries()[0]['ok']);
+    }
+
+    public function testFailedChannelDeliveryIsRecorded(): void
+    {
+        $failing = new class implements AlertChannelInterface {
+            public function supports(string $type): bool
+            {
+                return true;
+            }
+
+            public function send(NotificationChannel $channel, string $subject, string $body, array $context): void
+            {
+                throw new \RuntimeException('boom');
+            }
+        };
+        $service = new AlertEvaluationService(
+            $this->em->getRepository(AlertRule::class),
+            $this->em,
+            new AlertNotifier([$failing]),
+            static::getContainer()->get(SmartDeviceService::class),
+            new NullLogger(),
+        );
+
+        $this->reading('fail-temp', 'temperature', 25.0);
+        $rule = $this->persistRule((new AlertRule())
+            ->setName('Failing')->setSid('fail-temp')->setType('temperature')
+            ->setMode(AlertRule::MODE_THRESHOLD)->setOperator('gt')->setThreshold(22.0)
+            ->addChannel($this->channel));
+
+        // A failing channel must not blow up evaluation; the failure is recorded.
+        $service->evaluateAll();
+
+        $events = $this->em->getRepository(AlertEvent::class)->findBy(['ruleId' => $rule->getId()]);
+        self::assertCount(1, $events);
+        $delivery = $events[0]->getDeliveries()[0];
+        self::assertFalse($delivery['ok']);
+        self::assertSame('boom', $delivery['error']);
     }
 
     public function testSustainedThresholdUsesWholeWindow(): void

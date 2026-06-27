@@ -22,6 +22,8 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
+    // Pull fresh live data on every visit, then keep it current every 30s.
+    refresh()
     intervalRef.current = setInterval(refresh, 30_000)
     return () => clearInterval(intervalRef.current)
   }, [refresh])

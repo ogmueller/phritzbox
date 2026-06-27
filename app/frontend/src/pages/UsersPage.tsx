@@ -91,6 +91,7 @@ export function UsersPage() {
             {
               key: 'username',
               header: t('users.username'),
+              sortValue: (u) => u.username,
               render: (u) => (
                 <div>
                   <strong>{u.username}</strong>
@@ -113,6 +114,7 @@ export function UsersPage() {
               key: 'created',
               header: t('users.created'),
               width: '110px',
+              sortValue: (u) => new Date(u.createdAt).getTime(),
               render: (u) => (
                 <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
                   {new Date(u.createdAt).toLocaleDateString()}

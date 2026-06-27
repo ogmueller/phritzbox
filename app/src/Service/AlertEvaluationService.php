@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\AlertEvent;
 use App\Entity\AlertRule;
 use App\Notification\AlertNotifier;
 use App\Repository\AlertRuleRepository;
@@ -61,9 +62,10 @@ final class AlertEvaluationService
                         ++$notified;
                     }
                 } elseif ($rule->getLastState() === AlertRule::STATE_TRIGGERED) {
+                    // Condition cleared: log the resolution (silently — no message)
+                    // and re-arm the rule so it can trigger again next time.
                     $rule->setLastState(AlertRule::STATE_OK);
                     $this->dispatch($rule, false, $eval, $now);
-                    $rule->setLastNotifiedAt($now);
                     ++$resolved;
                 }
             } catch (\Throwable $e) {
@@ -283,21 +285,41 @@ final class AlertEvaluationService
             'time' => $now->format(\DateTimeInterface::ATOM),
         ];
 
-        // Notify every enabled channel; one failing channel must not block the rest.
-        foreach ($rule->getChannels() as $channel) {
-            if (!$channel->isEnabled()) {
-                continue;
-            }
-            try {
-                $this->notifier->notify($channel, $subject, $body, $context);
-            } catch (\Throwable $e) {
-                $this->logger->error('Alert notification failed', [
-                    'rule' => $rule->getId(),
-                    'channel' => $channel->getId(),
-                    'exception' => $e->getMessage(),
-                ]);
+        // Only the triggering edge sends notifications; clearing the condition is
+        // recorded in the activity log but intentionally stays silent (no message).
+        // One failing channel must not block the rest; each outcome is recorded so
+        // a silently failing channel becomes visible.
+        $deliveries = [];
+        if ($triggered) {
+            foreach ($rule->getChannels() as $channel) {
+                if (!$channel->isEnabled()) {
+                    continue;
+                }
+                try {
+                    $this->notifier->notify($channel, $subject, $body, $context);
+                    $deliveries[] = ['channel' => $channel->getName(), 'type' => $channel->getType(), 'ok' => true, 'error' => null];
+                } catch (\Throwable $e) {
+                    $deliveries[] = ['channel' => $channel->getName(), 'type' => $channel->getType(), 'ok' => false, 'error' => $e->getMessage()];
+                    $this->logger->error('Alert notification failed', [
+                        'rule' => $rule->getId(),
+                        'channel' => $channel->getId(),
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
             }
         }
+
+        $this->entityManager->persist(
+            (new AlertEvent())
+                ->setRuleId($rule->getId())
+                ->setRuleName($rule->getName())
+                ->setState($triggered ? AlertEvent::STATE_TRIGGERED : AlertEvent::STATE_RESOLVED)
+                ->setType($type)
+                ->setValueDisplay($eval['valueDisplay'] ?? null)
+                ->setCompareDisplay($eval['compareDisplay'] ?? null)
+                ->setDeliveries($deliveries)
+                ->setCreatedAt($now)
+        );
     }
 
     private function deviceName(string $ain): string

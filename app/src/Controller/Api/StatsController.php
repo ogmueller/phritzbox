@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Repository\SmartDeviceDataRepository;
+use App\Service\AlertEvaluationService;
 use App\Service\SmartStatsCollectionService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,11 +35,14 @@ class StatsController extends AbstractController
     public function __construct(
         private readonly SmartDeviceDataRepository $repository,
         private readonly SmartStatsCollectionService $collectionService,
+        private readonly AlertEvaluationService $alertEvaluation,
     ) {
     }
 
     /**
-     * Force an on-demand pull of fresh stats from the Fritz!Box for all devices.
+     * Force an on-demand pull of fresh stats from the Fritz!Box for all devices,
+     * then evaluate alert rules against the freshly collected readings so a manual
+     * pull reflects in alerts immediately instead of waiting for the cron.
      */
     #[Route('/refresh', methods: ['POST'], priority: 10)]
     public function refresh(): JsonResponse
@@ -52,10 +56,20 @@ class StatsController extends AbstractController
             );
         }
 
+        // Evaluation is independent of collection: the data is already persisted,
+        // so an alert failure must not turn the successful pull into an error.
+        $alerts = null;
+        try {
+            $alerts = $this->alertEvaluation->evaluateAll();
+        } catch (\Throwable) {
+            // evaluateAll already logs and isolates per-rule failures internally.
+        }
+
         return $this->json([
             'status' => 'ok',
             'devices' => $result['devices'],
             'rows' => $result['rows'],
+            'alerts' => $alerts,
         ]);
     }
 
@@ -98,14 +112,17 @@ class StatsController extends AbstractController
             }
             $sql .= ' GROUP BY '.$groupExpr.', type ORDER BY MIN(time) ASC';
         } else {
-            $sql = 'SELECT time, value, type'
+            // Collapse any duplicate (time, type) rows so each timestamp yields a
+            // single point — otherwise the chart tooltip lists the value twice.
+            // Duplicates hold the same value, so AVG is a no-op on clean data.
+            $sql = 'SELECT time, AVG(value) AS value, type'
                 .' FROM smart_device_data'
                 .' WHERE sid = :ain AND time >= :from AND time <= :to';
             if ($type !== '') {
                 $sql .= ' AND type = :type';
                 $params['type'] = $type;
             }
-            $sql .= ' ORDER BY time ASC';
+            $sql .= ' GROUP BY time, type ORDER BY time ASC';
         }
 
         $rows = $conn->fetchAllAssociative($sql, $params);
