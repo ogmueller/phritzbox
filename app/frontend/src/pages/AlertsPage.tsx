@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getAlerts, createAlert, updateAlert, deleteAlert, testAlert, toggleAlert, Alert, AlertPayload, AlertMode, AlertOperator } from '../api/alerts'
+import { getAlerts, createAlert, updateAlert, deleteAlert, testAlert, toggleAlert, rearmAlert, getAlertEvents, Alert, AlertEvent, AlertPayload, AlertMode, AlertOperator } from '../api/alerts'
 import { getChannels, Channel } from '../api/channels'
 import { useDeviceContext } from '../contexts/DeviceContext'
 import { Card } from '../components/ui/Card'
 import { DataTable } from '../components/ui/DataTable'
+import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { PencilIcon, TrashIcon } from '../components/ui/ActionIcons'
 import { Switch } from '../components/ui/Switch'
@@ -72,6 +73,7 @@ export function AlertsPage() {
   const { t } = useTranslation()
   const { devices } = useDeviceContext()
   const [alerts, setAlerts] = useState<Alert[]>([])
+  const [events, setEvents] = useState<AlertEvent[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [editing, setEditing] = useState<Alert | null>(null)
   const [creating, setCreating] = useState(false)
@@ -80,7 +82,8 @@ export function AlertsPage() {
   const [saving, setSaving] = useState(false)
 
   const load = () => getAlerts().then(setAlerts).catch(() => {})
-  useEffect(() => { load(); getChannels().then(setChannels).catch(() => {}) }, [])
+  const loadEvents = () => getAlertEvents().then(setEvents).catch(() => {})
+  useEffect(() => { load(); loadEvents(); getChannels().then(setChannels).catch(() => {}) }, [])
 
   const deviceName = (ain: string) => devices.find((d) => d.ain === ain)?.name ?? ain
   const metricLabel = (type: string) => t(`chart.${type}` as 'chart.temperature')
@@ -131,9 +134,34 @@ export function AlertsPage() {
     setAlerts((prev) => prev.map((x) => (x.id === a.id ? updated : x)))
   }
 
+  const handleRearm = async (a: Alert) => {
+    const updated = await rearmAlert(a.id)
+    setAlerts((prev) => prev.map((x) => (x.id === a.id ? updated : x)))
+  }
+
   const muted = { color: 'var(--color-text-muted)' } as const
 
   const offsetStr = (offset: number) => (offset > 0 ? ` + ${offset}` : offset < 0 ? ` - ${Math.abs(offset)}` : '')
+
+  const fmtNum = (v: number | null) => (v == null ? '—' : String(Number(v.toFixed(2))))
+
+  const renderReading = (e: AlertEvent) => {
+    const val = `${fmtNum(e.valueDisplay)} ${e.unit}`
+    return e.compareDisplay == null ? val : `${val} ↔ ${fmtNum(e.compareDisplay)} ${e.unit}`
+  }
+
+  const renderDelivery = (e: AlertEvent) => {
+    if (e.deliveries.length === 0) return <span style={muted}>—</span>
+    return (
+      <span className="delivery-list">
+        {e.deliveries.map((d, i) => (
+          <span key={i} className={`delivery delivery--${d.ok ? 'ok' : 'fail'}`} title={d.error ?? undefined}>
+            {d.channel} {d.ok ? '✓' : '✗'}
+          </span>
+        ))}
+      </span>
+    )
+  }
 
   const renderCondition = (a: Alert) => {
     const op = OP_SYMBOLS[a.operator]
@@ -192,13 +220,32 @@ export function AlertsPage() {
               key: 'name',
               header: t('alerts.name'),
               render: (a) => <strong>{a.name}</strong>,
+              sortValue: (a) => a.name,
             },
             { key: 'condition', header: t('alerts.condition'), render: (a) => renderCondition(a) },
             { key: 'channel', header: t('alerts.channels'), width: '150px', render: (a) => a.channelNames.join(', ') || '—' },
             {
+              key: 'state',
+              header: t('alerts.currentState'),
+              width: '150px',
+              sortValue: (a) => a.lastState,
+              render: (a) =>
+                a.lastState === 'triggered' ? (
+                  <div className="row-actions">
+                    <Badge label={t('alerts.stateTriggered')} variant="danger" />
+                    <Button variant="ghost" size="sm" title={t('alerts.rearmTitle')} onClick={() => handleRearm(a)}>
+                      {t('alerts.rearm')}
+                    </Button>
+                  </div>
+                ) : (
+                  <Badge label={t('alerts.stateOk')} variant="neutral" />
+                ),
+            },
+            {
               key: 'enabled',
               header: t('alerts.status'),
               width: '90px',
+              sortValue: (a) => (a.enabled ? 1 : 0),
               render: (a) => (
                 <Switch
                   checked={a.enabled}
@@ -235,6 +282,37 @@ export function AlertsPage() {
       </div>
 
       <p className="empty-state" style={{ textAlign: 'left', padding: '8px 0' }}>{t('alerts.latencyNote')}</p>
+
+      <h2 className="section-title">{t('alerts.activity')}</h2>
+      <Card>
+        <DataTable
+          rows={events}
+          keyFn={(e) => e.id}
+          emptyMessage={t('alerts.noActivity')}
+          columns={[
+            {
+              key: 'time',
+              header: t('alerts.time'),
+              width: '170px',
+              sortValue: (e) => e.createdAt,
+              render: (e) => <span style={{ fontSize: '13px' }}>{new Date(e.createdAt).toLocaleString()}</span>,
+            },
+            { key: 'rule', header: t('alerts.rule'), sortValue: (e) => e.ruleName, render: (e) => e.ruleName },
+            {
+              key: 'state',
+              header: t('alerts.state'),
+              width: '110px',
+              sortValue: (e) => e.state,
+              render: (e) =>
+                e.state === 'triggered'
+                  ? <Badge label={t('alerts.stateTriggered')} variant="danger" />
+                  : <Badge label={t('alerts.stateResolved')} variant="success" />,
+            },
+            { key: 'reading', header: t('alerts.reading'), render: (e) => renderReading(e) },
+            { key: 'delivery', header: t('alerts.delivery'), render: (e) => renderDelivery(e) },
+          ]}
+        />
+      </Card>
 
       {creating && (
         <div className="modal-overlay" onClick={closeModal}>

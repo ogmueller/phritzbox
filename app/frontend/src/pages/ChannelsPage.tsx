@@ -97,9 +97,9 @@ export function ChannelsPage() {
           keyFn={(c) => c.id}
           emptyMessage={t('channels.noChannels')}
           columns={[
-            { key: 'name', header: t('channels.name'), render: (c) => <strong>{c.name}</strong> },
-            { key: 'type', header: t('channels.type'), width: '110px', render: (c) => c.type },
-            { key: 'target', header: t('channels.target'), render: (c) => c.target },
+            { key: 'name', header: t('channels.name'), render: (c) => <strong>{c.name}</strong>, sortValue: (c) => c.name },
+            { key: 'type', header: t('channels.type'), width: '110px', render: (c) => c.type, sortValue: (c) => c.type },
+            { key: 'target', header: t('channels.target'), render: (c) => c.target, sortValue: (c) => c.target },
             {
               key: 'actions',
               header: '',

@@ -13,9 +13,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller\Api;
 
+use App\Entity\AlertRule;
 use App\Entity\SmartDeviceData;
 use App\Entity\User;
 use App\Service\SmartStatsCollectionService;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -94,6 +96,18 @@ class StatsControllerTest extends WebTestCase
         self::assertSame('temperature', $data['data'][0]['type']);
     }
 
+    public function testDuplicateReadingRejectedByUniqueIndex(): void
+    {
+        // The unique (sid, type, time) index must prevent duplicate readings.
+        // A plain INSERT of a second row at the same key must raise a violation
+        // (this is why the collector uses INSERT OR IGNORE).
+        $conn = $this->em->getConnection();
+        $conn->insert('smart_device_data', ['sid' => 'uniq-ain', 'type' => 'temperature', 'time' => '2026-01-01 00:00:00', 'value' => 21]);
+
+        $this->expectException(UniqueConstraintViolationException::class);
+        $conn->insert('smart_device_data', ['sid' => 'uniq-ain', 'type' => 'temperature', 'time' => '2026-01-01 00:00:00', 'value' => 22]);
+    }
+
     public function testShowStatsWithDateRange(): void
     {
         $entry = new SmartDeviceData();
@@ -159,6 +173,33 @@ class StatsControllerTest extends WebTestCase
         self::assertSame('ok', $data['status']);
         self::assertSame(3, $data['devices']);
         self::assertSame(42, $data['rows']);
+    }
+
+    public function testRefreshAlsoEvaluatesAlerts(): void
+    {
+        // AlertEvaluationService is final (not mockable); drive the real service
+        // with a seeded reading + rule. No channels => no outbound notifications.
+        $collection = $this->createStub(SmartStatsCollectionService::class);
+        $collection->method('collectAll')->willReturn(['devices' => 1, 'rows' => 5, 'perDevice' => []]);
+        static::getContainer()->set(SmartStatsCollectionService::class, $collection);
+
+        $reading = (new SmartDeviceData())
+            ->setSid('refresh-temp')->setType('temperature')->setValue(25)->setTime(new \DateTimeImmutable());
+        $rule = (new AlertRule())
+            ->setName('Refresh hot')->setSid('refresh-temp')->setType('temperature')
+            ->setMode(AlertRule::MODE_THRESHOLD)->setOperator('gt')->setThreshold(22.0);
+        $this->em->persist($reading);
+        $this->em->persist($rule);
+        $this->em->flush();
+
+        $this->client->request('POST', '/api/stats/refresh', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertSame('ok', $data['status']);
+        self::assertSame(1, $data['alerts']['triggered']);
     }
 
     public function testRefreshReturnsBadGatewayOnFailure(): void

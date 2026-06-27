@@ -1,3 +1,5 @@
+import { pushNotification } from '../notifications/bus'
+
 const TOKEN_KEY = 'phritzbox_token'
 const REFRESH_TOKEN_KEY = 'phritzbox_refresh_token'
 
@@ -53,7 +55,15 @@ async function request<T>(path: string, init: RequestInit = {}, allowRetry = tru
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(path, { ...init, headers })
+  let res: Response
+  try {
+    res = await fetch(path, { ...init, headers })
+  } catch (e) {
+    // The server is unreachable (network down, DNS, CORS, etc.). Surface a
+    // global toast so silent background loads don't fail invisibly.
+    pushNotification({ severity: 'error', messageKey: 'errors.network' })
+    throw e
+  }
 
   if (res.status === 401) {
     // The access token expired. Try to silently renew it once and replay the
@@ -63,6 +73,12 @@ async function request<T>(path: string, init: RequestInit = {}, allowRetry = tru
     }
     forceLogout()
     throw new Error('Unauthorized')
+  }
+
+  if (res.status >= 500) {
+    // Serious server-side failure — surface globally regardless of whether the
+    // caller handles the thrown error inline.
+    pushNotification({ severity: 'error', messageKey: 'errors.server', params: { status: res.status } })
   }
 
   if (!res.ok) {

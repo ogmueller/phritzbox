@@ -1,4 +1,4 @@
-// Shared edit/delete icons used by row-action buttons (Users, Alerts, Channels).
+// Shared edit/delete/sort icons used across tables (Users, Alerts, Channels, Devices).
 
 export const PencilIcon = () => (
   <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -11,4 +11,23 @@ export const TrashIcon = () => (
     <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
     <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
   </svg>
+)
+
+// Up/down chevron pair shown next to sortable column headers.
+// The active direction's chevron is highlighted via the --active modifier class.
+export const SortIcon = ({ direction }: { direction: 'asc' | 'desc' | 'none' }) => (
+  <span className="sort-icon" aria-hidden="true">
+    <svg
+      className={`sort-icon__chevron${direction === 'asc' ? ' sort-icon__chevron--active' : ''}`}
+      width="8" height="5" viewBox="0 0 8 5" fill="currentColor"
+    >
+      <path d="M4 0 0 5h8z" />
+    </svg>
+    <svg
+      className={`sort-icon__chevron${direction === 'desc' ? ' sort-icon__chevron--active' : ''}`}
+      width="8" height="5" viewBox="0 0 8 5" fill="currentColor"
+    >
+      <path d="M4 5 0 0h8z" />
+    </svg>
+  </span>
 )

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AppLayout } from './components/layout/AppLayout'
+import { NotificationHost } from './components/layout/NotificationHost'
 import { DeviceProvider } from './contexts/DeviceContext'
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
@@ -51,6 +52,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <NotificationHost />
         <BrowserRouter>
           <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>Loading...</div>}>
             <AppRoutes />

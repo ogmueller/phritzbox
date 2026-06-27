@@ -15,7 +15,6 @@ namespace App\Service;
 
 use App\Client\AhaApi;
 use App\Device;
-use App\Entity\SmartDeviceData;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -84,7 +83,7 @@ class SmartStatsCollectionService
         $statsByAin = $this->ahaApi->getBasicDeviceStatsBatch($ains, self::FETCH_CONCURRENCY);
 
         $perDevice = [];
-        $totalRows = 0;
+        $pending = [];
 
         /** @var Device $device */
         foreach ($devices as $device) {
@@ -120,18 +119,11 @@ class SmartStatsCollectionService
 
                 $step = new \DateInterval('PT'.$intervalSeconds.'S');
 
-                $sdd = new SmartDeviceData();
-                $sdd->setType($category);
-                $sdd->setSid($ain);
-
                 $count = 0;
                 foreach (array_reverse($data['values']) as $value) {
                     // only save newer data points
                     if (empty($last[$category]) || $start->format('Y-m-d H:i:s') > $last[$category]) {
-                        $insert = clone $sdd;
-                        $insert->setTime($start);
-                        $insert->setValue($value);
-                        $this->entityManager->persist($insert);
+                        $pending[] = [$ain, $category, $start->format('Y-m-d H:i:s'), $value];
                         ++$count;
                     }
 
@@ -142,15 +134,33 @@ class SmartStatsCollectionService
             }
 
             $perDevice[$ain] = ['name' => $device->getName(), 'rows' => $deviceCount];
-            $totalRows += $deviceCount;
         }
 
-        // Single flush wraps all inserts in one SQLite transaction
-        $this->entityManager->flush();
+        // Persist via INSERT OR IGNORE so overlapping runs (e.g. cron racing a
+        // manual pull) cannot create duplicate (sid, type, time) rows — the UNIQUE
+        // index backstops the in-PHP "only newer" guard. One shared transaction.
+        $inserted = 0;
+        if ($pending !== []) {
+            $conn = $this->entityManager->getConnection();
+            $conn->beginTransaction();
+            try {
+                foreach ($pending as $row) {
+                    $inserted += (int) $conn->executeStatement(
+                        'INSERT OR IGNORE INTO smart_device_data (sid, type, time, value) VALUES (?, ?, ?, ?)',
+                        $row,
+                    );
+                }
+                $conn->commit();
+            } catch (\Throwable $e) {
+                $conn->rollBack();
+
+                throw $e;
+            }
+        }
 
         return [
             'devices' => \count($devices),
-            'rows' => $totalRows,
+            'rows' => $inserted,
             'perDevice' => $perDevice,
         ];
     }

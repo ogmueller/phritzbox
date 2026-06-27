@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller\Api;
 
+use App\Entity\AlertRule;
 use App\Entity\NotificationChannel;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -162,6 +163,20 @@ class AlertControllerTest extends WebTestCase
 
         [, $on] = $this->request('POST', '/api/alerts/'.$created['id'].'/toggle', $this->adminToken);
         self::assertTrue($on['enabled']);
+    }
+
+    public function testRearmResetsTriggeredRuleToOk(): void
+    {
+        [, $created] = $this->request('POST', '/api/alerts', $this->adminToken, $this->validPayload());
+
+        // Latch the rule into the triggered state, as a real firing would.
+        $rule = $this->em->getRepository(AlertRule::class)->find($created['id']);
+        $rule->setLastState(AlertRule::STATE_TRIGGERED);
+        $this->em->flush();
+
+        [$status, $body] = $this->request('POST', '/api/alerts/'.$created['id'].'/rearm', $this->adminToken);
+        self::assertSame(200, $status);
+        self::assertSame('ok', $body['lastState']);
     }
 
     public function testTestEndpointSendsThroughChannel(): void

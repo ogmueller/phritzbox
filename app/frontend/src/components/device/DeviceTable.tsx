@@ -26,6 +26,7 @@ export function DeviceTable({ devices, onRefresh }: DeviceTableProps) {
         {
           key: 'name',
           header: t('device.device'),
+          sortValue: (d) => d.name,
           render: (d) => (
             <div className="device-name-cell">
               {d.productImage
@@ -43,6 +44,7 @@ export function DeviceTable({ devices, onRefresh }: DeviceTableProps) {
           key: 'status',
           header: t('device.status'),
           width: '120px',
+          sortValue: (d) => (d.present ? 1 : 0),
           render: (d) => <PresentBadge present={d.present} />,
         },
         {
@@ -60,6 +62,7 @@ export function DeviceTable({ devices, onRefresh }: DeviceTableProps) {
           key: 'temp',
           header: t('device.temperature'),
           width: '110px',
+          sortValue: (d) => d.temperature?.celsius ?? d.thermostat?.setpoint ?? -Infinity,
           render: (d) =>
             d.temperature ? (
               <span>{d.temperature.celsius} °C</span>
@@ -73,6 +76,7 @@ export function DeviceTable({ devices, onRefresh }: DeviceTableProps) {
           key: 'power',
           header: t('device.power'),
           width: '90px',
+          sortValue: (d) => d.powerMeter?.power ?? -Infinity,
           render: (d) =>
             d.powerMeter ? (
               <span>{d.powerMeter.power} W</span>
