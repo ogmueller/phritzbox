@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStats, refreshStats, StatPoint } from '../api/stats'
 import { useDeviceContext } from '../contexts/DeviceContext'
@@ -21,31 +21,92 @@ function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
 }
 
+// Date-range quick picks. `days` = how many days back the range starts from today.
+const PRESETS = [
+  { key: 'today',      labelKey: 'reports.today'      as const, days: 0 },
+  { key: 'yesterday',  labelKey: 'reports.yesterday'  as const, days: 1 },
+  { key: 'last7Days',  labelKey: 'reports.last7Days'  as const, days: 7 },
+  { key: 'last30Days', labelKey: 'reports.last30Days' as const, days: 30 },
+]
+
+function presetRange(days: number): { from: string; to: string } {
+  const start = new Date()
+  start.setDate(start.getDate() - days)
+  return { from: isoDate(start), to: isoDate(new Date()) }
+}
+
+// Persisted Reports filter so the page restores the last "search" on return.
+const REPORTS_FILTER_KEY = 'phritzbox_reports_filter'
+
+interface SavedFilter {
+  ain: string
+  type: string
+  presetKey: string | null
+  from: string
+  to: string
+  fitToData: boolean
+  enabledPeriods: Period[]
+}
+
+function loadSavedFilter(): SavedFilter | null {
+  try {
+    const raw = localStorage.getItem(REPORTS_FILTER_KEY)
+    return raw ? (JSON.parse(raw) as SavedFilter) : null
+  } catch {
+    return null
+  }
+}
+
 export function ReportsPage() {
   const { t, i18n } = useTranslation()
   const { devices } = useDeviceContext()
+  // Read the persisted filter once. A saved preset re-resolves to dates relative
+  // to *today*, so e.g. "Yesterday" stays correct when returning on a later day.
+  const savedRef = useRef(loadSavedFilter())
+  const saved = savedRef.current
+  const savedPresetDays = saved?.presetKey ? PRESETS.find((p) => p.key === saved.presetKey)?.days : undefined
+
   const [selectedAin, setSelectedAin]       = useState('')
-  const [selectedType, setSelectedType]     = useState('temperature')
-  const [from, setFrom]                     = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return isoDate(d) })
-  const [to, setTo]                         = useState(() => isoDate(new Date()))
+  const [selectedType, setSelectedType]     = useState(() => saved?.type ?? 'temperature')
+  const [presetKey, setPresetKey]           = useState<string | null>(() => saved?.presetKey ?? null)
+  const [from, setFrom]                     = useState(() => savedPresetDays !== undefined ? presetRange(savedPresetDays).from : (saved?.from ?? presetRange(7).from))
+  const [to, setTo]                         = useState(() => savedPresetDays !== undefined ? presetRange(savedPresetDays).to   : (saved?.to   ?? presetRange(7).to))
   const [data, setData]                     = useState<StatPoint[]>([])
   const [loading, setLoading]               = useState(false)
   const [error, setError]                   = useState<string | null>(null)
   const [availablePeriods, setAvailablePeriods] = useState<Period[]>([])
   const [enabledPeriods, setEnabledPeriods]     = useState<Period[]>([])
-  const [fitToData, setFitToData]               = useState(true)
+  const [fitToData, setFitToData]               = useState(() => saved?.fitToData ?? true)
   const [loaded, setLoaded]                     = useState(false)
   const [refreshing, setRefreshing]             = useState(false)
 
   // Use a ref to track the latest request so we can ignore stale responses
   const requestIdRef = useRef(0)
 
-  // Auto-select first device when devices load
-  if (devices.length > 0 && !selectedAin) {
-    setSelectedAin(devices[0].ain)
-  }
+  // Once devices are available, pick the device and (if a filter was saved)
+  // auto-run the last search. Runs only once.
+  const didRestore = useRef(false)
+  useEffect(() => {
+    if (didRestore.current || devices.length === 0) return
+    didRestore.current = true
+    const ain = saved?.ain && devices.some((d) => d.ain === saved.ain) ? saved.ain : devices[0].ain
+    setSelectedAin(ain)
+    if (saved) {
+      doLoad(ain, selectedType, from, to, saved.enabledPeriods)
+    }
+  }, [devices])
 
-  const doLoad = async (ain: string, type: string, fromDate: string, toDate: string) => {
+  // Persist the current filter on any change.
+  useEffect(() => {
+    try {
+      const payload: SavedFilter = { ain: selectedAin, type: selectedType, presetKey, from, to, fitToData, enabledPeriods }
+      localStorage.setItem(REPORTS_FILTER_KEY, JSON.stringify(payload))
+    } catch {
+      // ignore quota / private-mode write failures
+    }
+  }, [selectedAin, selectedType, presetKey, from, to, fitToData, enabledPeriods])
+
+  const doLoad = async (ain: string, type: string, fromDate: string, toDate: string, restoreAvg?: Period[]) => {
     if (!ain) return
     const thisRequest = ++requestIdRef.current
     setLoading(true)
@@ -60,7 +121,9 @@ export function ReportsPage() {
       const diffDays = (new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)
       const periods = res.data.length >= 2 ? selectAveragePeriods(diffDays) : []
       setAvailablePeriods(periods)
-      setEnabledPeriods(periods)
+      // On restore, honour the saved averages (intersected with what this range
+      // offers); a normal load enables all available periods.
+      setEnabledPeriods(restoreAvg ? periods.filter((p) => restoreAvg.includes(p)) : periods)
     } catch (e) {
       if (thisRequest !== requestIdRef.current) return
       setError(e instanceof Error ? e.message : t('reports.failedToLoad'))
@@ -93,17 +156,10 @@ export function ReportsPage() {
     }
   }
 
-  const presets = [
-    { key: 'today',      labelKey: 'reports.today'      as const, days: 0 },
-    { key: 'yesterday',  labelKey: 'reports.yesterday'  as const, days: 1 },
-    { key: 'last7Days',  labelKey: 'reports.last7Days'  as const, days: 7 },
-    { key: 'last30Days', labelKey: 'reports.last30Days' as const, days: 30 },
-  ]
-
-  const handlePreset = (days: number) => {
-    const start = new Date()
-    start.setDate(start.getDate() - days)
-    applyPreset(isoDate(start), isoDate(new Date()))
+  const handlePreset = (preset: { key: string; days: number }) => {
+    setPresetKey(preset.key)
+    const { from: f, to: t2 } = presetRange(preset.days)
+    applyPreset(f, t2)
   }
 
   const handleRefresh = async () => {
@@ -153,7 +209,7 @@ export function ReportsPage() {
             id="report-from"
             value={from}
             max={to}
-            onChange={setFrom}
+            onChange={(v) => { setFrom(v); setPresetKey(null) }}
           />
 
           <DateField
@@ -161,12 +217,12 @@ export function ReportsPage() {
             id="report-to"
             value={to}
             min={from}
-            onChange={setTo}
+            onChange={(v) => { setTo(v); setPresetKey(null) }}
           />
 
           <div className="date-presets">
-            {presets.map((p) => (
-              <Button key={p.key} variant="ghost" size="sm" onClick={() => handlePreset(p.days)} disabled={refreshing}>
+            {PRESETS.map((p) => (
+              <Button key={p.key} variant={presetKey === p.key ? 'secondary' : 'ghost'} size="sm" onClick={() => handlePreset(p)} disabled={refreshing}>
                 {t(p.labelKey)}
               </Button>
             ))}
