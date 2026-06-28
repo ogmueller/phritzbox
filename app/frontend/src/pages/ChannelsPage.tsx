@@ -7,6 +7,8 @@ import { Button } from '../components/ui/Button'
 import { PencilIcon, TrashIcon } from '../components/ui/ActionIcons'
 import { TextInput } from '../components/ui/TextInput'
 import { SelectField } from '../components/ui/SelectField'
+import { useConfirm } from '../hooks/useConfirm'
+import { pushNotification } from '../notifications/bus'
 
 const EMPTY: ChannelPayload = { name: '', type: 'email', target: '', secret: '', enabled: true }
 
@@ -42,6 +44,7 @@ const SECRET_LABEL: Partial<Record<ChannelType, string>> = {
 
 export function ChannelsPage() {
   const { t } = useTranslation()
+  const { confirm, dialog } = useConfirm()
   const [channels, setChannels] = useState<Channel[]>([])
   const [editing, setEditing] = useState<Channel | null>(null)
   const [creating, setCreating] = useState(false)
@@ -63,7 +66,11 @@ export function ChannelsPage() {
     setSaving(true)
     setError(null)
     try {
-      editing ? await updateChannel(editing.id, form) : await createChannel(form)
+      if (editing) {
+        await updateChannel(editing.id, form)
+      } else {
+        await createChannel(form)
+      }
       await load()
       closeModal()
     } catch (e) {
@@ -74,12 +81,12 @@ export function ChannelsPage() {
   }
 
   const remove = async (c: Channel) => {
-    if (!confirm(t('channels.deleteConfirm', { name: c.name }))) return
+    if (!(await confirm({ title: t('channels.deleteTitle'), message: t('channels.deleteConfirm', { name: c.name }) }))) return
     try {
       await deleteChannel(c.id)
       await load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : t('channels.deleteFailed'))
+      pushNotification({ severity: 'error', message: e instanceof Error ? e.message : t('channels.deleteFailed') })
     }
   }
 
@@ -167,6 +174,8 @@ export function ChannelsPage() {
           </div>
         </div>
       )}
+
+      {dialog}
     </div>
   )
 }

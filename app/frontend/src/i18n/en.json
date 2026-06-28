@@ -123,6 +123,8 @@
   "errors.network": "Can't reach the server. Check your connection.",
   "errors.dismiss": "Dismiss",
 
+  "banner.staleData": "Live data may be stale — last collected {{minutes}} min ago. Check that the server (and its cron) is running.",
+
   "dashboard.title": "Dashboard",
   "dashboard.subtitle": "Live device status \u2014 refreshes every 30 s",
   "dashboard.loadingDevices": "Loading devices\u2026",

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppNotification, subscribe } from '../../notifications/bus'
 
@@ -14,49 +14,36 @@ interface Toast {
 export function NotificationHost() {
   const { t } = useTranslation()
   const [toasts, setToasts] = useState<Toast[]>([])
-  // Per-toast dismissal timers, keyed by toast id.
-  const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
 
-  const dismiss = (id: number) => {
-    const timer = timers.current.get(id)
-    if (timer) {
-      clearTimeout(timer)
-      timers.current.delete(id)
-    }
+  const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((x) => x.id !== id))
-  }
+  }, [])
 
-  const arm = (id: number) => {
-    const existing = timers.current.get(id)
-    if (existing) clearTimeout(existing)
-    timers.current.set(id, setTimeout(() => dismiss(id), AUTO_DISMISS_MS))
-  }
-
+  // Subscribe once; the handler only updates state (pure), so it's test-friendly.
   useEffect(() => {
-    const unsubscribe = subscribe((n) => {
+    return subscribe((n) => {
       const text = n.message ?? (n.messageKey ? String(t(n.messageKey as never, n.params as never)) : '')
       if (!text) return
 
       setToasts((prev) => {
-        // De-duplicate: an identical, still-visible toast bumps its count and
-        // re-arms its timer instead of stacking another copy.
+        // De-duplicate: an identical, still-visible toast bumps its count instead
+        // of stacking a copy. The count change re-runs the timer effect below,
+        // which resets its auto-dismiss countdown.
         const dupe = prev.find((x) => x.severity === n.severity && x.text === text)
         if (dupe) {
-          arm(dupe.id)
           return prev.map((x) => (x.id === dupe.id ? { ...x, count: x.count + 1 } : x))
         }
-        arm(n.id)
         return [...prev, { id: n.id, severity: n.severity, text, count: 1 }]
       })
     })
-
-    const pending = timers.current
-    return () => {
-      unsubscribe()
-      pending.forEach((timer) => clearTimeout(timer))
-      pending.clear()
-    }
   }, [t])
+
+  // Arm an auto-dismiss timer per visible toast; re-armed whenever the toast set
+  // changes (including a dedup count bump). Cleared on unmount/change.
+  useEffect(() => {
+    const timers = toasts.map((toast) => setTimeout(() => dismiss(toast.id), AUTO_DISMISS_MS))
+    return () => timers.forEach(clearTimeout)
+  }, [toasts, dismiss])
 
   if (toasts.length === 0) return null
 

@@ -1,6 +1,6 @@
 services:
     app:
-        image: ghcr.io/ogmueller/phritzbox:latest
+image: ghcr.io/ogmueller/phritzbox:latest
         restart: unless-stopped
         ports:
             - "${PHRITZBOX_PORT:-80}:80"

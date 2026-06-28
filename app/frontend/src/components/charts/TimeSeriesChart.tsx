@@ -31,7 +31,7 @@ const AVG_KEYS: Record<Period, { key: string; color: string }> = {
 
 export function getAvgStyle(period: Period): { name: string; color: string } {
   const { key, color } = AVG_KEYS[period]
-  return { name: i18n.t(key as any), color }
+  return { name: i18n.t(key as never), color }
 }
 
 // Centered rolling average: each point becomes the mean of all points
