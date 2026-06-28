@@ -158,6 +158,14 @@ class SmartStatsCollectionService
             }
         }
 
+        // Record that a collection ran (even if it added no new rows) so the UI
+        // can detect stale data when scheduled collection is missed.
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO app_state (name, value, updated_at) VALUES (:n, :v, :u)'
+            .' ON CONFLICT(name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
+            ['n' => 'last_collection_at', 'v' => $now->format(\DateTimeInterface::ATOM), 'u' => $now->format('Y-m-d H:i:s')],
+        );
+
         return [
             'devices' => \count($devices),
             'rows' => $inserted,

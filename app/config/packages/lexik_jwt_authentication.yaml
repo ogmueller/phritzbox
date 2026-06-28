@@ -2,3 +2,7 @@ lexik_jwt_authentication:
     secret_key: '%env(resolve:JWT_SECRET_KEY)%'
     public_key: '%env(resolve:JWT_PUBLIC_KEY)%'
     pass_phrase: '%env(JWT_PASSPHRASE)%'
+    # Access-token lifetime (seconds). Kept short on purpose: the SPA silently
+    # renews via the rotating refresh token (see App\Security\RefreshTokenManager),
+    # so an expired/leaked access token is only briefly useful.
+    token_ttl: 3600

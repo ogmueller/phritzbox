@@ -7,12 +7,15 @@ import { DataTable } from '../components/ui/DataTable'
 import { Button } from '../components/ui/Button'
 import { TextInput } from '../components/ui/TextInput'
 import { PencilIcon, TrashIcon } from '../components/ui/ActionIcons'
+import { useConfirm } from '../hooks/useConfirm'
+import { pushNotification } from '../notifications/bus'
 
 const EMPTY: UserPayload = { username: '', email: '', password: '', roles: ['ROLE_USER'] }
 
 export function UsersPage() {
   const { t } = useTranslation()
   const { user: currentUser } = useAuth()
+  const { confirm, dialog } = useConfirm()
   const [users, setUsers] = useState<User[]>([])
   const [editing, setEditing] = useState<User | null>(null)
   const [creating, setCreating] = useState(false)
@@ -38,7 +41,11 @@ export function UsersPage() {
     try {
       const payload = { ...form }
       if (!payload.password) delete payload.password
-      editing ? await updateUser(editing.id, payload) : await createUser(payload)
+      if (editing) {
+        await updateUser(editing.id, payload)
+      } else {
+        await createUser(payload)
+      }
       await load()
       closeModal()
     } catch (e) {
@@ -49,12 +56,12 @@ export function UsersPage() {
   }
 
   const remove = async (u: User) => {
-    if (!confirm(t('users.deleteConfirm', { username: u.username }))) return
+    if (!(await confirm({ title: t('users.deleteTitle'), message: t('users.deleteConfirm', { username: u.username }) }))) return
     try {
       await deleteUser(u.id)
       await load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : t('users.deleteFailed'))
+      pushNotification({ severity: 'error', message: e instanceof Error ? e.message : t('users.deleteFailed') })
     }
   }
 
@@ -204,6 +211,8 @@ export function UsersPage() {
           </div>
         </div>
       )}
+
+      {dialog}
     </div>
   )
 }

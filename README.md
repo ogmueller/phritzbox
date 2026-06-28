@@ -164,6 +164,8 @@ For a bare-metal installation, set up a cron job:
 
 The Fritz!Box caches device data. Temperature readings are available for up to 24 hours — if not fetched in time they are lost. Running every 30 minutes is recommended.
 
+**Keep the host awake.** The scheduler ([cronado](https://github.com/teqneers/cronado)) does not catch up missed runs, so if the machine sleeps (e.g. a laptop closing its lid), collection and alert evaluation simply pause until it wakes. Run Phritzbox on always-on hardware, or disable system sleep on the host. If data does go stale, the web UI shows a "live data may be stale" banner with how long ago the last collection succeeded.
+
 
 Alerts
 ------

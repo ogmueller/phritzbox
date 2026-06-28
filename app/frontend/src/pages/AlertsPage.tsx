@@ -9,6 +9,8 @@ import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { PencilIcon, TrashIcon } from '../components/ui/ActionIcons'
 import { Switch } from '../components/ui/Switch'
+import { useConfirm } from '../hooks/useConfirm'
+import { pushNotification } from '../notifications/bus'
 import { TextInput } from '../components/ui/TextInput'
 import { SelectField } from '../components/ui/SelectField'
 import { CheckboxGroup } from '../components/ui/CheckboxGroup'
@@ -72,6 +74,7 @@ function toPayload(f: AlertForm): AlertPayload {
 export function AlertsPage() {
   const { t } = useTranslation()
   const { devices } = useDeviceContext()
+  const { confirm, dialog } = useConfirm()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [events, setEvents] = useState<AlertEvent[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
@@ -100,7 +103,11 @@ export function AlertsPage() {
     setError(null)
     try {
       const payload = toPayload(form)
-      editing ? await updateAlert(editing.id, payload) : await createAlert(payload)
+      if (editing) {
+        await updateAlert(editing.id, payload)
+      } else {
+        await createAlert(payload)
+      }
       await load()
       closeModal()
     } catch (e) {
@@ -111,21 +118,21 @@ export function AlertsPage() {
   }
 
   const remove = async (a: Alert) => {
-    if (!confirm(t('alerts.deleteConfirm', { name: a.name }))) return
+    if (!(await confirm({ title: t('alerts.deleteTitle'), message: t('alerts.deleteConfirm', { name: a.name }) }))) return
     try {
       await deleteAlert(a.id)
       await load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : t('alerts.deleteFailed'))
+      pushNotification({ severity: 'error', message: e instanceof Error ? e.message : t('alerts.deleteFailed') })
     }
   }
 
   const sendTest = async (a: Alert) => {
     try {
       await testAlert(a.id)
-      alert(t('alerts.testSent'))
+      pushNotification({ severity: 'success', message: t('alerts.testSent') })
     } catch (e) {
-      alert(e instanceof Error ? e.message : t('alerts.testFailed'))
+      pushNotification({ severity: 'error', message: e instanceof Error ? e.message : t('alerts.testFailed') })
     }
   }
 
@@ -384,6 +391,8 @@ export function AlertsPage() {
           </div>
         </div>
       )}
+
+      {dialog}
     </div>
   )
 }

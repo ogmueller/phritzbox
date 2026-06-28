@@ -123,6 +123,8 @@
   "errors.network": "Server nicht erreichbar. Bitte Verbindung prüfen.",
   "errors.dismiss": "Schließen",
 
+  "banner.staleData": "Live-Daten sind möglicherweise veraltet — zuletzt vor {{minutes}} Min. erfasst. Bitte prüfen, ob der Server (und sein Cron) läuft.",
+
   "dashboard.title": "\u00dcbersicht",
   "dashboard.subtitle": "Live-Ger\u00e4testatus \u2014 Aktualisierung alle 30 s",
   "dashboard.loadingDevices": "Ger\u00e4te werden geladen\u2026",
