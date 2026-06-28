@@ -13,9 +13,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\Repository\SmartDeviceDataRepository;
 use App\Service\AlertEvaluationService;
 use App\Service\SmartStatsCollectionService;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,7 +33,7 @@ class StatsController extends AbstractController
     ];
 
     public function __construct(
-        private readonly SmartDeviceDataRepository $repository,
+        private readonly Connection $connection,
         private readonly SmartStatsCollectionService $collectionService,
         private readonly AlertEvaluationService $alertEvaluation,
     ) {
@@ -95,7 +95,7 @@ class StatsController extends AbstractController
             $groupExpr = null;
         }
 
-        $conn = $this->repository->getEntityManager()->getConnection();
+        $conn = $this->connection;
         $params = [
             'ain' => $ain,
             'from' => $from->format('Y-m-d H:i:s'),
@@ -191,7 +191,7 @@ class StatsController extends AbstractController
     #[Route('/types/{ain}', methods: ['GET'])]
     public function types(string $ain): JsonResponse
     {
-        $conn = $this->repository->getEntityManager()->getConnection();
+        $conn = $this->connection;
         $types = $conn->fetchFirstColumn(
             'SELECT DISTINCT type FROM smart_device_data WHERE sid = :ain ORDER BY type',
             ['ain' => $ain]

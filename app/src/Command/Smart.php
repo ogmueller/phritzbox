@@ -19,6 +19,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressIndicator;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableStyle;
 use Symfony\Component\Console\Input\InputInterface;
@@ -72,6 +73,9 @@ abstract class Smart extends Command
             $devices = $valueItem->get();
 
             $helper = $this->getHelper('question');
+            if (!$helper instanceof QuestionHelper) {
+                throw new \LogicException('Question helper is not registered');
+            }
             $question = new Question('Please enter AIN of device: ');
 
             if (!empty($devices)) {

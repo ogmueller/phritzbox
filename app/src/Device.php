@@ -69,6 +69,8 @@ class Device
 
     /**
      * Return all important values in array.
+     *
+     * @return array<string, mixed>
      */
     public function toArray(): array
     {
