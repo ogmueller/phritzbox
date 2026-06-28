@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button'
 import { SelectField } from '../components/ui/SelectField'
 import { DateField } from '../components/ui/DateField'
 import { CheckboxGroup } from '../components/ui/CheckboxGroup'
+import { Popover } from '../components/ui/Popover'
 import { TimeSeriesChart, Period, ChartEvent, getAvgStyle, selectAveragePeriods } from '../components/charts/TimeSeriesChart'
 
 const STAT_TYPES = [
@@ -118,9 +119,8 @@ export function ReportsPage() {
     const ain2 = saved?.ain2 && devices.some((d) => d.ain === saved.ain2) ? saved.ain2 : ''
     setSelectedAin(ain)
     setSelectedAin2(ain2)
-    if (saved) {
-      doLoad(ain, selectedType, from, to, { restoreAvg: saved.enabledPeriods, ain2, showEvents: saved.showEvents })
-    }
+    // No Load button: always run the initial query (saved filter, or defaults).
+    doLoad(ain, selectedType, from, to, { restoreAvg: saved?.enabledPeriods, ain2, showEvents: saved?.showEvents ?? showEvents })
   }, [devices])
 
   // Persist the current filter on any change.
@@ -187,11 +187,21 @@ export function ReportsPage() {
     }
   }
 
-  const handleLoad = () => doLoad(selectedAin, selectedType, from, to)
+  const handleDeviceChange = (ain: string) => {
+    setSelectedAin(ain)
+    doLoad(ain, selectedType, from, to)
+  }
 
   const handleMetricChange = (type: string) => {
     setSelectedType(type)
-    if (loaded) doLoad(selectedAin, type, from, to)
+    doLoad(selectedAin, type, from, to)
+  }
+
+  // Presets dropdown value is the active preset, or 'custom' for a manual range.
+  const handlePresetSelect = (value: string) => {
+    if (value === 'custom') return // From/To are always visible; nothing to apply
+    const preset = PRESETS.find((p) => p.key === value)
+    if (preset) handlePreset(preset)
   }
 
   const handleSecondDeviceChange = (ain2: string) => {
@@ -267,6 +277,12 @@ export function ReportsPage() {
     ...devices.filter((d) => d.ain !== selectedAin).map((d) => ({ value: d.ain, label: d.name })),
   ]
 
+  const presetValue = presetKey ?? 'custom'
+  const presetOptions = [
+    { value: 'custom', label: t('reports.presetCustom') },
+    ...PRESETS.map((p) => ({ value: p.key, label: t(p.labelKey) })),
+  ]
+
   const titleDevice = deviceName(selectedAin) + (selectedAin2 ? ` + ${deviceName(selectedAin2)}` : '')
 
   return (
@@ -282,16 +298,18 @@ export function ReportsPage() {
       />
 
       <Card>
-        <div className="filter-bar">
+        <div className="report-toolbar">
           <SelectField
+            className="toolbar-field"
             label={t('reports.device')}
             id="report-device"
             value={selectedAin}
-            onChange={setSelectedAin}
+            onChange={handleDeviceChange}
             options={devices.map((d) => ({ value: d.ain, label: d.name }))}
           />
 
           <SelectField
+            className="toolbar-field"
             label={t('reports.compareDevice')}
             id="report-device-2"
             value={selectedAin2}
@@ -299,57 +317,45 @@ export function ReportsPage() {
             options={secondOptions}
           />
 
+          <SelectField
+            className="toolbar-field"
+            label={t('reports.metric')}
+            id="report-metric"
+            value={selectedType}
+            onChange={handleMetricChange}
+            options={STAT_TYPES.map((s) => ({ value: s.value, label: t(s.labelKey) }))}
+          />
+
           <DateField
+            className="toolbar-field"
             label={t('reports.from')}
             id="report-from"
             value={from}
             max={to}
-            onChange={(v) => { setFrom(v); setPresetKey(null) }}
+            onChange={(v) => { setFrom(v); setPresetKey(null); if (v <= to) doLoad(selectedAin, selectedType, v, to) }}
           />
 
           <DateField
+            className="toolbar-field"
             label={t('reports.to')}
             id="report-to"
             value={to}
             min={from}
-            onChange={(v) => { setTo(v); setPresetKey(null) }}
+            onChange={(v) => { setTo(v); setPresetKey(null); if (from <= v) doLoad(selectedAin, selectedType, from, v) }}
           />
 
-          <div className="date-presets">
-            {PRESETS.map((p) => (
-              <Button key={p.key} variant={presetKey === p.key ? 'secondary' : 'ghost'} size="sm" onClick={() => handlePreset(p)} disabled={refreshing}>
-                {t(p.labelKey)}
-              </Button>
-            ))}
-          </div>
+          <SelectField
+            className="toolbar-field"
+            label={t('reports.presets')}
+            id="report-presets"
+            value={presetValue}
+            onChange={handlePresetSelect}
+            options={presetOptions}
+          />
 
-          <div className="form-group form-group--btn">
-            <Button onClick={handleLoad} disabled={loading || refreshing || !selectedAin || from > to}>
-              {loading ? t('common.loading') : t('reports.load')}
-            </Button>
-          </div>
-          {from > to && (
-            <div className="filter-bar-error">{t('reports.invalidRange')}</div>
-          )}
-          {refreshing && (
-            <div className="filter-bar-status">{t('reports.refreshing')}</div>
-          )}
-        </div>
-
-        {loaded && (
-          <div className="avg-toggles">
-            <SelectField
-              label={t('reports.metric')}
-              id="report-metric"
-              value={selectedType}
-              onChange={handleMetricChange}
-              options={STAT_TYPES.map((s) => ({ value: s.value, label: t(s.labelKey) }))}
-              className="avg-toggles-metric"
-            />
-
-            {availablePeriods.length > 0 && (
-              <>
-                <span className="avg-toggles-separator" />
+          <Popover label={`${t('reports.options')} ▾`}>
+            <div className="popover-options">
+              {availablePeriods.length > 0 && (
                 <CheckboxGroup
                   label={t('reports.averages')}
                   items={availablePeriods.map((p) => {
@@ -358,27 +364,25 @@ export function ReportsPage() {
                   })}
                   onChange={togglePeriod}
                 />
-              </>
-            )}
-            <span className="avg-toggles-separator" />
-            <label className="checkbox-group-item">
-              <input
-                type="checkbox"
-                checked={fitToData}
-                onChange={(e) => setFitToData(e.target.checked)}
-              />
-              <span>{t('reports.fitToData')}</span>
-            </label>
-            <label className="checkbox-group-item">
-              <input
-                type="checkbox"
-                checked={showEvents}
-                onChange={(e) => handleShowEventsChange(e.target.checked)}
-              />
-              <span>{t('reports.showEvents')}</span>
-            </label>
-          </div>
-        )}
+              )}
+              <label className="checkbox-group-item">
+                <input type="checkbox" checked={fitToData} onChange={(e) => setFitToData(e.target.checked)} />
+                <span>{t('reports.fitToData')}</span>
+              </label>
+              <label className="checkbox-group-item">
+                <input type="checkbox" checked={showEvents} onChange={(e) => handleShowEventsChange(e.target.checked)} />
+                <span>{t('reports.showEvents')}</span>
+              </label>
+            </div>
+          </Popover>
+
+          {from > to && (
+            <div className="filter-bar-error">{t('reports.invalidRange')}</div>
+          )}
+          {refreshing && (
+            <div className="filter-bar-status">{t('reports.refreshing')}</div>
+          )}
+        </div>
       </Card>
 
       {error && <div className="alert alert--danger">{error}</div>}
