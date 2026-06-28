@@ -1,13 +1,17 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
-import { Button } from './Button'
 
 interface PopoverProps {
   label: ReactNode
-  children: ReactNode
+  /** Panel content; a function form receives a `close` callback. */
+  children: ReactNode | ((close: () => void) => ReactNode)
+  /** Class for the trigger button (defaults to the ghost-button look). */
+  triggerClassName?: string
+  /** Which edge the panel aligns to. */
+  align?: 'left' | 'right'
 }
 
 /** A small click-toggled popover that closes on outside-click or Escape. */
-export function Popover({ label, children }: PopoverProps) {
+export function Popover({ label, children, triggerClassName = 'btn btn--ghost btn--sm', align = 'right' }: PopoverProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -29,10 +33,14 @@ export function Popover({ label, children }: PopoverProps) {
 
   return (
     <div className="popover" ref={ref}>
-      <Button variant="ghost" size="sm" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <button type="button" className={triggerClassName} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         {label}
-      </Button>
-      {open && <div className="popover-panel">{children}</div>}
+      </button>
+      {open && (
+        <div className={`popover-panel popover-panel--${align}`}>
+          {typeof children === 'function' ? children(() => setOpen(false)) : children}
+        </div>
+      )}
     </div>
   )
 }
