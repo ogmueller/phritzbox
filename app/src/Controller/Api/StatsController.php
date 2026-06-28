@@ -13,7 +13,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
+use App\Repository\AlertEventRepository;
 use App\Service\AlertEvaluationService;
+use App\Service\MetricUnits;
 use App\Service\SmartStatsCollectionService;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -71,6 +73,45 @@ class StatsController extends AbstractController
             'rows' => $result['rows'],
             'alerts' => $alerts,
         ]);
+    }
+
+    /**
+     * Alert events of a metric within a date range, restricted to rules involving
+     * the given devices — used to overlay markers on the Reports chart.
+     * Available to any authenticated user (unlike the admin-only alert config).
+     */
+    #[Route('/alert-events', methods: ['GET'], priority: 10)]
+    public function alertEvents(Request $request, AlertEventRepository $events): JsonResponse
+    {
+        $type = $request->query->getString('type');
+        if (!MetricUnits::isValidType($type)) {
+            return $this->json(['error' => 'type must be one of: '.implode(', ', MetricUnits::TYPES)], Response::HTTP_BAD_REQUEST);
+        }
+
+        $devices = array_values(array_filter(
+            array_map(strval(...), $request->query->all('devices')),
+            static fn (string $d): bool => $d !== '',
+        ));
+        if ($devices === []) {
+            return $this->json([]);
+        }
+
+        $fromStr = $request->query->getString('from');
+        $toStr = $request->query->getString('to');
+        $from = ($fromStr !== '' ? new \DateTimeImmutable($fromStr) : new \DateTimeImmutable('-24 hours'))->format('Y-m-d H:i:s');
+        $to = ($toStr !== '' ? new \DateTimeImmutable($toStr.' 23:59:59') : new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        $data = array_map(static fn (array $e): array => [
+            'ruleName' => $e['ruleName'],
+            'state' => $e['state'],
+            'sid' => $e['sid'],
+            'compareSid' => $e['compareSid'],
+            'valueDisplay' => $e['valueDisplay'],
+            'compareDisplay' => $e['compareDisplay'],
+            'createdAt' => (new \DateTimeImmutable($e['createdAt']))->format(\DateTimeInterface::ATOM),
+        ], $events->findForReport($type, $from, $to, $devices));
+
+        return $this->json($data);
     }
 
     #[Route('/{ain}', methods: ['GET'])]

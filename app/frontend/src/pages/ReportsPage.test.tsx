@@ -5,11 +5,13 @@ import { ReportsPage } from './ReportsPage'
 const getStats = vi.fn()
 const refreshStats = vi.fn()
 const getStatTypes = vi.fn()
+const getReportAlertEvents = vi.fn()
 
 vi.mock('../api/stats', () => ({
   getStats: (...a: unknown[]) => getStats(...a),
   refreshStats: (...a: unknown[]) => refreshStats(...a),
   getStatTypes: (...a: unknown[]) => getStatTypes(...a),
+  getReportAlertEvents: (...a: unknown[]) => getReportAlertEvents(...a),
 }))
 
 vi.mock('../contexts/DeviceContext', () => ({
@@ -38,6 +40,7 @@ describe('ReportsPage filter persistence', () => {
   beforeEach(() => {
     localStorage.clear()
     getStats.mockReset().mockResolvedValue({ ain: 'a2', type: 'power', data: [] })
+    getReportAlertEvents.mockReset().mockResolvedValue([])
   })
 
   it('restores a saved filter and auto-runs the query on return', async () => {
@@ -59,5 +62,23 @@ describe('ReportsPage filter persistence', () => {
   it('does not auto-run when nothing was saved', async () => {
     await act(async () => { render(<ReportsPage />) })
     expect(getStats).not.toHaveBeenCalled()
+  })
+
+  it('restores a second device and alert-event overlay', async () => {
+    localStorage.setItem(KEY, JSON.stringify({
+      ain: 'a2', ain2: 'a1', type: 'temperature', presetKey: null,
+      from: '2026-06-01', to: '2026-06-02', fitToData: true, showEvents: true, enabledPeriods: [],
+    }))
+
+    render(<ReportsPage />)
+
+    await waitFor(() => expect(getReportAlertEvents).toHaveBeenCalled())
+    // both devices fetched
+    const fetchedAins = getStats.mock.calls.map((c) => c[0])
+    expect(fetchedAins).toContain('a2')
+    expect(fetchedAins).toContain('a1')
+    // events requested for both selected devices
+    const [, , , devices] = getReportAlertEvents.mock.calls[0]
+    expect(devices).toEqual(expect.arrayContaining(['a2', 'a1']))
   })
 })

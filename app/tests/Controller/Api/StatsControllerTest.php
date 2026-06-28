@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller\Api;
 
+use App\Entity\AlertEvent;
 use App\Entity\AlertRule;
 use App\Entity\SmartDeviceData;
 use App\Entity\User;
@@ -94,6 +95,48 @@ class StatsControllerTest extends WebTestCase
         self::assertSame('test-ain-001', $data['ain']);
         self::assertCount(2, $data['data']);
         self::assertSame('temperature', $data['data'][0]['type']);
+    }
+
+    public function testReportAlertEventsFilteredByDeviceTypeAndRange(): void
+    {
+        // Comparison rule between dev-A and dev-B; a triggered event in June.
+        $rule = (new AlertRule())
+            ->setName('A vs B')->setSid('dev-A')->setType('temperature')
+            ->setMode(AlertRule::MODE_COMPARISON)->setOperator('lt')
+            ->setCompareSid('dev-B')->setCompareType('temperature')->setCompareOffset(0.0);
+        $this->em->persist($rule);
+        $this->em->flush();
+
+        $event = (new AlertEvent())
+            ->setRuleId($rule->getId())->setRuleName('A vs B')->setState('triggered')
+            ->setType('temperature')->setValueDisplay(20.0)->setCompareDisplay(22.0)
+            ->setCreatedAt(new \DateTimeImmutable('2026-06-15 12:00:00'));
+        $this->em->persist($event);
+        $this->em->flush();
+
+        // Available to a ROLE_USER token (unlike admin-only alert config).
+        $this->client->request('GET', '/api/stats/alert-events?type=temperature&from=2026-06-01&to=2026-06-30&devices[]=dev-A', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertCount(1, $data);
+        self::assertSame('A vs B', $data[0]['ruleName']);
+        self::assertSame('dev-A', $data[0]['sid']);
+        self::assertSame('dev-B', $data[0]['compareSid']);
+
+        // A device not involved in any rule yields nothing.
+        $this->client->request('GET', '/api/stats/alert-events?type=temperature&from=2026-06-01&to=2026-06-30&devices[]=dev-Z', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([], json_decode($this->client->getResponse()->getContent(), true));
+
+        // Outside the date range yields nothing.
+        $this->client->request('GET', '/api/stats/alert-events?type=temperature&from=2026-07-01&to=2026-07-31&devices[]=dev-A', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+        self::assertSame([], json_decode($this->client->getResponse()->getContent(), true));
     }
 
     public function testDuplicateReadingRejectedByUniqueIndex(): void

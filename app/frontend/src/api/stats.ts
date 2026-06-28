@@ -31,3 +31,19 @@ export interface RefreshResponse {
 export function refreshStats(): Promise<RefreshResponse> {
   return api.post<RefreshResponse>('/api/stats/refresh')
 }
+
+export interface ReportAlertEvent {
+  ruleName: string
+  state: 'triggered' | 'resolved' | 'rearmed'
+  sid: string
+  compareSid: string | null
+  valueDisplay: number | null
+  compareDisplay: number | null
+  createdAt: string
+}
+
+export function getReportAlertEvents(type: string, from: string, to: string, devices: string[]): Promise<ReportAlertEvent[]> {
+  const params = new URLSearchParams({ type, from, to })
+  for (const d of devices) params.append('devices[]', d)
+  return api.get<ReportAlertEvent[]>(`/api/stats/alert-events?${params}`)
+}
