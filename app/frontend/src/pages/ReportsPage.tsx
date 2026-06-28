@@ -7,8 +7,8 @@ import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { SelectField } from '../components/ui/SelectField'
 import { DateField } from '../components/ui/DateField'
-import { CheckboxGroup } from '../components/ui/CheckboxGroup'
 import { Popover } from '../components/ui/Popover'
+import { ToggleChip } from '../components/ui/ToggleChip'
 import { TimeSeriesChart, Period, ChartEvent, getAvgStyle, selectAveragePeriods } from '../components/charts/TimeSeriesChart'
 
 const STAT_TYPES = [
@@ -197,13 +197,6 @@ export function ReportsPage() {
     doLoad(selectedAin, type, from, to)
   }
 
-  // Presets dropdown value is the active preset, or 'custom' for a manual range.
-  const handlePresetSelect = (value: string) => {
-    if (value === 'custom') return // From/To are always visible; nothing to apply
-    const preset = PRESETS.find((p) => p.key === value)
-    if (preset) handlePreset(preset)
-  }
-
   const handleSecondDeviceChange = (ain2: string) => {
     setSelectedAin2(ain2)
     if (loaded) doLoad(selectedAin, selectedType, from, to, { ain2 })
@@ -277,11 +270,9 @@ export function ReportsPage() {
     ...devices.filter((d) => d.ain !== selectedAin).map((d) => ({ value: d.ain, label: d.name })),
   ]
 
-  const presetValue = presetKey ?? 'custom'
-  const presetOptions = [
-    { value: 'custom', label: t('reports.presetCustom') },
-    ...PRESETS.map((p) => ({ value: p.key, label: t(p.labelKey) })),
-  ]
+  const fmtShort = (d: string) => new Date(d).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
+  const activePreset = PRESETS.find((p) => p.key === presetKey)
+  const dateRangeLabel = activePreset ? t(activePreset.labelKey) : `${fmtShort(from)} – ${fmtShort(to)}`
 
   const titleDevice = deviceName(selectedAin) + (selectedAin2 ? ` + ${deviceName(selectedAin2)}` : '')
 
@@ -326,62 +317,64 @@ export function ReportsPage() {
             options={STAT_TYPES.map((s) => ({ value: s.value, label: t(s.labelKey) }))}
           />
 
-          <DateField
-            className="toolbar-field"
-            label={t('reports.from')}
-            id="report-from"
-            value={from}
-            max={to}
-            onChange={(v) => { setFrom(v); setPresetKey(null); if (v <= to) doLoad(selectedAin, selectedType, v, to) }}
-          />
-
-          <DateField
-            className="toolbar-field"
-            label={t('reports.to')}
-            id="report-to"
-            value={to}
-            min={from}
-            onChange={(v) => { setTo(v); setPresetKey(null); if (from <= v) doLoad(selectedAin, selectedType, from, v) }}
-          />
-
-          <SelectField
-            className="toolbar-field"
-            label={t('reports.presets')}
-            id="report-presets"
-            value={presetValue}
-            onChange={handlePresetSelect}
-            options={presetOptions}
-          />
-
-          <Popover label={`${t('reports.options')} ▾`}>
-            <div className="popover-options">
-              {availablePeriods.length > 0 && (
-                <CheckboxGroup
-                  label={t('reports.averages')}
-                  items={availablePeriods.map((p) => {
-                    const style = getAvgStyle(p)
-                    return { key: p, label: style.name, checked: enabledPeriods.includes(p), color: style.color }
-                  })}
-                  onChange={togglePeriod}
-                />
+          <div className="toolbar-field">
+            <span className="form-label">{t('reports.dateRange')}</span>
+            <Popover triggerClassName="daterange-trigger" align="left" label={`${dateRangeLabel} ▾`}>
+              {(close) => (
+                <div className="daterange-panel">
+                  <span className="daterange-heading">{t('reports.presets')}</span>
+                  <div className="daterange-presets">
+                    {PRESETS.map((p) => (
+                      <button
+                        key={p.key}
+                        type="button"
+                        className={`daterange-preset${presetKey === p.key ? ' daterange-preset--active' : ''}`}
+                        onClick={() => { handlePreset(p); close() }}
+                      >
+                        {t(p.labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="daterange-heading">{t('reports.presetCustom')}</span>
+                  <div className="daterange-custom">
+                    <DateField
+                      label={t('reports.from')}
+                      id="report-from"
+                      value={from}
+                      max={to}
+                      onChange={(v) => { setFrom(v); setPresetKey(null); if (v <= to) doLoad(selectedAin, selectedType, v, to) }}
+                    />
+                    <DateField
+                      label={t('reports.to')}
+                      id="report-to"
+                      value={to}
+                      min={from}
+                      onChange={(v) => { setTo(v); setPresetKey(null); if (from <= v) doLoad(selectedAin, selectedType, from, v) }}
+                    />
+                  </div>
+                  {from > to && <div className="filter-bar-error">{t('reports.invalidRange')}</div>}
+                </div>
               )}
-              <label className="checkbox-group-item">
-                <input type="checkbox" checked={fitToData} onChange={(e) => setFitToData(e.target.checked)} />
-                <span>{t('reports.fitToData')}</span>
-              </label>
-              <label className="checkbox-group-item">
-                <input type="checkbox" checked={showEvents} onChange={(e) => handleShowEventsChange(e.target.checked)} />
-                <span>{t('reports.showEvents')}</span>
-              </label>
-            </div>
-          </Popover>
+            </Popover>
+          </div>
 
-          {from > to && (
-            <div className="filter-bar-error">{t('reports.invalidRange')}</div>
-          )}
           {refreshing && (
             <div className="filter-bar-status">{t('reports.refreshing')}</div>
           )}
+        </div>
+
+        <div className="report-chips">
+          <span className="report-chips-label">{t('reports.display')}</span>
+          {availablePeriods.map((p) => {
+            const style = getAvgStyle(p)
+            return (
+              <ToggleChip key={p} active={enabledPeriods.includes(p)} color={style.color} onClick={() => togglePeriod(p, !enabledPeriods.includes(p))}>
+                {style.name}
+              </ToggleChip>
+            )
+          })}
+          <ToggleChip active={fitToData} onClick={() => setFitToData(!fitToData)}>{t('reports.fitToData')}</ToggleChip>
+          <ToggleChip active={showEvents} onClick={() => handleShowEventsChange(!showEvents)}>{t('reports.showEvents')}</ToggleChip>
         </div>
       </Card>
 
