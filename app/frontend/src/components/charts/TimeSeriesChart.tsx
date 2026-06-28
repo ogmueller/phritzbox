@@ -3,6 +3,21 @@ import ReactECharts from 'echarts-for-react'
 import i18n from '../../i18n'
 import { StatPoint } from '../../api/stats'
 
+export interface ChartEvent {
+  time: string
+  value: number
+  state: 'triggered' | 'resolved' | 'rearmed'
+  // Pre-formatted, notification-style description; identical for an event shown
+  // on both device lines so the tooltip can de-duplicate it.
+  summary: string
+}
+
+const EVENT_COLORS: Record<ChartEvent['state'], string> = {
+  triggered: '#cc0000',
+  resolved: '#5a9216',
+  rearmed: '#6b7280',
+}
+
 interface TimeSeriesChartProps {
   data: StatPoint[]
   label: string
@@ -11,6 +26,18 @@ interface TimeSeriesChartProps {
   height?: number
   enabledAvgPeriods?: Period[]
   fitToData?: boolean
+  data2?: StatPoint[]
+  label2?: string
+  color2?: string
+  events?: ChartEvent[]
+  eventsLabel?: string
+}
+
+interface TooltipParam {
+  seriesName: string
+  marker: string
+  value: [string, number]
+  data?: { summary?: string }
 }
 
 export type Period = 'day' | 'week' | 'month' | 'year'
@@ -96,6 +123,11 @@ export function TimeSeriesChart({
   height = 280,
   enabledAvgPeriods,
   fitToData = true,
+  data2,
+  label2 = '',
+  color2 = '#9B59B6',
+  events = [],
+  eventsLabel = 'Alert events',
 }: TimeSeriesChartProps) {
   const option = useMemo(() => {
     const activePeriods: Period[] = enabledAvgPeriods ?? (() => {
@@ -105,31 +137,50 @@ export function TimeSeriesChart({
       return selectAveragePeriods(diffDays)
     })()
 
-    const rawValues = data.map((p) => p.value)
-    const { displayUnit, scale } = resolveUnit(unit, rawValues)
+    // Unit (and kWh scaling) decided over both series so they stay comparable.
+    const allValues = [...data.map((p) => p.value), ...(data2?.map((p) => p.value) ?? [])]
+    const { displayUnit, scale } = resolveUnit(unit, allValues)
+    const rescale = (d: StatPoint[]) => (scale === 1 ? d : d.map((p) => ({ ...p, value: p.value * scale })))
 
-    const scaledData = scale === 1 ? data : data.map((p) => ({ ...p, value: p.value * scale }))
-    const scaledValues = scale === 1 ? rawValues : rawValues.map((v) => v * scale)
+    const scaledData = rescale(data)
+    const scaledData2 = data2 ? rescale(data2) : undefined
+    const scaledValues = allValues.map((v) => v * scale)
+    const scaledEvents = events.map((e) => ({ ...e, value: e.value * scale }))
 
     const avgSeriesList = scaledData.length < 2 ? [] : activePeriods.map((p) => buildAvgSeries(scaledData, p))
-
     const bounds = fitToData ? yAxisBounds(scaledValues) : null
 
-    const hasLegend = avgSeriesList.length > 0
+    const legendData = [
+      label,
+      ...(scaledData2 ? [label2] : []),
+      ...avgSeriesList.map((s) => s.name),
+      ...(scaledEvents.length > 0 ? [eventsLabel] : []),
+    ]
+    const hasLegend = legendData.length > 1
 
     return {
       tooltip: {
         trigger: 'axis',
-        formatter: (params: { seriesName: string; value: [string, number]; marker: string }[]) => {
+        formatter: (params: TooltipParam[]) => {
           const ts = new Date(params[0].value[0]).toLocaleString()
+          // An event plotted on both device lines yields duplicate params; show it once.
+          const seen = new Set<string>()
           const lines = params
-            .map((p) => `${p.marker}${p.seriesName}: <b>${Number(p.value[1]).toFixed(2)} ${displayUnit}</b>`)
+            .map((p) => {
+              if (p.data?.summary) {
+                if (seen.has(p.data.summary)) return ''
+                seen.add(p.data.summary)
+                return `${p.marker}🔔 ${p.data.summary}`
+              }
+              return `${p.marker}${p.seriesName}: <b>${Number(p.value[1]).toFixed(2)} ${displayUnit}</b>`
+            })
+            .filter((l) => l !== '')
             .join('<br/>')
           return `${ts}<br/>${lines}`
         },
       },
       legend: hasLegend ? {
-        data: [label, ...avgSeriesList.map((s) => s.name)],
+        data: legendData,
         bottom: 4,
         textStyle: { fontSize: 11, color: '#6B7280' },
         itemWidth: 16,
@@ -164,10 +215,30 @@ export function TimeSeriesChart({
           lineStyle: { color, width: 1.5 },
           areaStyle: { color, opacity: 0.07 },
         },
+        ...(scaledData2 ? [{
+          name: label2,
+          type: 'line' as const,
+          smooth: false,
+          showSymbol: false,
+          sampling: 'lttb' as const,
+          data: scaledData2.map((p) => [p.time, p.value]),
+          lineStyle: { color: color2, width: 1.5 },
+        }] : []),
         ...avgSeriesList,
+        ...(scaledEvents.length > 0 ? [{
+          name: eventsLabel,
+          type: 'scatter' as const,
+          symbolSize: 9,
+          z: 5,
+          data: scaledEvents.map((e) => ({
+            value: [e.time, e.value],
+            itemStyle: { color: EVENT_COLORS[e.state], borderColor: '#fff', borderWidth: 1 },
+            summary: e.summary,
+          })),
+        }] : []),
       ],
     }
-  }, [data, label, unit, color, enabledAvgPeriods, fitToData])
+  }, [data, label, unit, color, enabledAvgPeriods, fitToData, data2, label2, color2, events, eventsLabel])
 
   return <ReactECharts option={option} notMerge style={{ height }} />
 }

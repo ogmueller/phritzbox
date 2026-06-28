@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStats, refreshStats, StatPoint } from '../api/stats'
+import { getStats, refreshStats, getReportAlertEvents, StatPoint, ReportAlertEvent } from '../api/stats'
 import { useDeviceContext } from '../contexts/DeviceContext'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Card } from '../components/ui/Card'
@@ -8,7 +8,7 @@ import { Button } from '../components/ui/Button'
 import { SelectField } from '../components/ui/SelectField'
 import { DateField } from '../components/ui/DateField'
 import { CheckboxGroup } from '../components/ui/CheckboxGroup'
-import { TimeSeriesChart, Period, getAvgStyle, selectAveragePeriods } from '../components/charts/TimeSeriesChart'
+import { TimeSeriesChart, Period, ChartEvent, getAvgStyle, selectAveragePeriods } from '../components/charts/TimeSeriesChart'
 
 const STAT_TYPES = [
   { value: 'temperature', labelKey: 'chart.temperature' as const, unit: '°C',  color: '#E8620D' },
@@ -16,6 +16,8 @@ const STAT_TYPES = [
   { value: 'energy',      labelKey: 'chart.energy'       as const, unit: 'Wh',  color: '#4E9A2E' },
   { value: 'voltage',     labelKey: 'chart.voltage'      as const, unit: 'V',   color: '#6B7280' },
 ]
+
+const SECOND_COLOR = '#0E9AA7' // distinct from the metric colours and the avg lines
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
@@ -35,16 +37,33 @@ function presetRange(days: number): { from: string; to: string } {
   return { from: isoDate(start), to: isoDate(new Date()) }
 }
 
+// Data point nearest a timestamp. Markers snap to it so each dot sits exactly on
+// the device's line vertex and shares an x with the line — which makes it appear
+// in the axis tooltip alongside the line values.
+function nearestPoint(series: StatPoint[], iso: string): StatPoint | null {
+  if (series.length === 0) return null
+  const t = new Date(iso).getTime()
+  let best = series[0]
+  let bestDiff = Math.abs(new Date(best.time).getTime() - t)
+  for (const p of series) {
+    const diff = Math.abs(new Date(p.time).getTime() - t)
+    if (diff < bestDiff) { best = p; bestDiff = diff }
+  }
+  return best
+}
+
 // Persisted Reports filter so the page restores the last "search" on return.
 const REPORTS_FILTER_KEY = 'phritzbox_reports_filter'
 
 interface SavedFilter {
   ain: string
+  ain2: string
   type: string
   presetKey: string | null
   from: string
   to: string
   fitToData: boolean
+  showEvents: boolean
   enabledPeriods: Period[]
 }
 
@@ -67,21 +86,27 @@ export function ReportsPage() {
   const savedPresetDays = saved?.presetKey ? PRESETS.find((p) => p.key === saved.presetKey)?.days : undefined
 
   const [selectedAin, setSelectedAin]       = useState('')
+  const [selectedAin2, setSelectedAin2]     = useState('')
   const [selectedType, setSelectedType]     = useState(() => saved?.type ?? 'temperature')
   const [presetKey, setPresetKey]           = useState<string | null>(() => saved?.presetKey ?? null)
   const [from, setFrom]                     = useState(() => savedPresetDays !== undefined ? presetRange(savedPresetDays).from : (saved?.from ?? presetRange(7).from))
   const [to, setTo]                         = useState(() => savedPresetDays !== undefined ? presetRange(savedPresetDays).to   : (saved?.to   ?? presetRange(7).to))
   const [data, setData]                     = useState<StatPoint[]>([])
+  const [data2, setData2]                   = useState<StatPoint[]>([])
+  const [rawEvents, setRawEvents]           = useState<ReportAlertEvent[]>([])
   const [loading, setLoading]               = useState(false)
   const [error, setError]                   = useState<string | null>(null)
   const [availablePeriods, setAvailablePeriods] = useState<Period[]>([])
   const [enabledPeriods, setEnabledPeriods]     = useState<Period[]>([])
   const [fitToData, setFitToData]               = useState(() => saved?.fitToData ?? true)
+  const [showEvents, setShowEvents]             = useState(() => saved?.showEvents ?? false)
   const [loaded, setLoaded]                     = useState(false)
   const [refreshing, setRefreshing]             = useState(false)
 
   // Use a ref to track the latest request so we can ignore stale responses
   const requestIdRef = useRef(0)
+
+  const deviceName = (ain: string) => devices.find((d) => d.ain === ain)?.name ?? ain
 
   // Once devices are available, pick the device and (if a filter was saved)
   // auto-run the last search. Runs only once.
@@ -90,44 +115,69 @@ export function ReportsPage() {
     if (didRestore.current || devices.length === 0) return
     didRestore.current = true
     const ain = saved?.ain && devices.some((d) => d.ain === saved.ain) ? saved.ain : devices[0].ain
+    const ain2 = saved?.ain2 && devices.some((d) => d.ain === saved.ain2) ? saved.ain2 : ''
     setSelectedAin(ain)
+    setSelectedAin2(ain2)
     if (saved) {
-      doLoad(ain, selectedType, from, to, saved.enabledPeriods)
+      doLoad(ain, selectedType, from, to, { restoreAvg: saved.enabledPeriods, ain2, showEvents: saved.showEvents })
     }
   }, [devices])
 
   // Persist the current filter on any change.
   useEffect(() => {
     try {
-      const payload: SavedFilter = { ain: selectedAin, type: selectedType, presetKey, from, to, fitToData, enabledPeriods }
+      const payload: SavedFilter = { ain: selectedAin, ain2: selectedAin2, type: selectedType, presetKey, from, to, fitToData, showEvents, enabledPeriods }
       localStorage.setItem(REPORTS_FILTER_KEY, JSON.stringify(payload))
     } catch {
       // ignore quota / private-mode write failures
     }
-  }, [selectedAin, selectedType, presetKey, from, to, fitToData, enabledPeriods])
+  }, [selectedAin, selectedAin2, selectedType, presetKey, from, to, fitToData, showEvents, enabledPeriods])
 
-  const doLoad = async (ain: string, type: string, fromDate: string, toDate: string, restoreAvg?: Period[]) => {
+  const doLoad = async (
+    ain: string,
+    type: string,
+    fromDate: string,
+    toDate: string,
+    opts?: { restoreAvg?: Period[]; ain2?: string; showEvents?: boolean },
+  ) => {
     if (!ain) return
+    const ain2 = opts?.ain2 ?? selectedAin2
+    const wantEvents = opts?.showEvents ?? showEvents
     const thisRequest = ++requestIdRef.current
     setLoading(true)
     setError(null)
     try {
-      const res = await getStats(ain, type, fromDate, toDate)
-      // Ignore stale responses
+      const [primary, secondary] = await Promise.all([
+        getStats(ain, type, fromDate, toDate),
+        ain2 ? getStats(ain2, type, fromDate, toDate) : Promise.resolve({ data: [] as StatPoint[] }),
+      ])
       if (thisRequest !== requestIdRef.current) return
-      setData(res.data)
+      setData(primary.data)
+      setData2(secondary.data)
       setLoaded(true)
 
       const diffDays = (new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)
-      const periods = res.data.length >= 2 ? selectAveragePeriods(diffDays) : []
+      const periods = primary.data.length >= 2 ? selectAveragePeriods(diffDays) : []
       setAvailablePeriods(periods)
       // On restore, honour the saved averages (intersected with what this range
       // offers); a normal load enables all available periods.
-      setEnabledPeriods(restoreAvg ? periods.filter((p) => restoreAvg.includes(p)) : periods)
+      setEnabledPeriods(opts?.restoreAvg ? periods.filter((p) => opts.restoreAvg!.includes(p)) : periods)
+
+      // Alert events are best-effort: a failure must not blank the chart.
+      if (wantEvents) {
+        try {
+          const ev = await getReportAlertEvents(type, fromDate, toDate, [ain, ain2].filter(Boolean))
+          if (thisRequest === requestIdRef.current) setRawEvents(ev)
+        } catch {
+          if (thisRequest === requestIdRef.current) setRawEvents([])
+        }
+      } else {
+        setRawEvents([])
+      }
     } catch (e) {
       if (thisRequest !== requestIdRef.current) return
       setError(e instanceof Error ? e.message : t('reports.failedToLoad'))
-      setData([])
+      setData([]); setData2([]); setRawEvents([])
       setAvailablePeriods([])
       setEnabledPeriods([])
     } finally {
@@ -137,23 +187,27 @@ export function ReportsPage() {
     }
   }
 
-  const handleLoad = () => {
-    doLoad(selectedAin, selectedType, from, to)
-  }
+  const handleLoad = () => doLoad(selectedAin, selectedType, from, to)
 
   const handleMetricChange = (type: string) => {
     setSelectedType(type)
-    if (loaded) {
-      doLoad(selectedAin, type, from, to)
-    }
+    if (loaded) doLoad(selectedAin, type, from, to)
+  }
+
+  const handleSecondDeviceChange = (ain2: string) => {
+    setSelectedAin2(ain2)
+    if (loaded) doLoad(selectedAin, selectedType, from, to, { ain2 })
+  }
+
+  const handleShowEventsChange = (checked: boolean) => {
+    setShowEvents(checked)
+    if (loaded) doLoad(selectedAin, selectedType, from, to, { showEvents: checked })
   }
 
   const applyPreset = (fromDate: string, toDate: string) => {
     setFrom(fromDate)
     setTo(toDate)
-    if (loaded) {
-      doLoad(selectedAin, selectedType, fromDate, toDate)
-    }
+    if (loaded) doLoad(selectedAin, selectedType, fromDate, toDate)
   }
 
   const handlePreset = (preset: { key: string; days: number }) => {
@@ -167,9 +221,7 @@ export function ReportsPage() {
     setError(null)
     try {
       await refreshStats()
-      if (loaded) {
-        await doLoad(selectedAin, selectedType, from, to)
-      }
+      if (loaded) await doLoad(selectedAin, selectedType, from, to)
     } catch (e) {
       setError(e instanceof Error ? e.message : t('reports.refreshFailed'))
     } finally {
@@ -181,6 +233,41 @@ export function ReportsPage() {
     setEnabledPeriods((prev) => checked ? [...prev, key as Period] : prev.filter((x) => x !== key))
 
   const meta = STAT_TYPES.find((s) => s.value === selectedType)!
+
+  // Map each alert event onto the line(s) of the device(s) it involves.
+  const chartEvents: ChartEvent[] = useMemo(() => {
+    if (!showEvents || rawEvents.length === 0) return []
+    const lines = [
+      { ain: selectedAin, series: data },
+      ...(selectedAin2 ? [{ ain: selectedAin2, series: data2 }] : []),
+    ]
+    const stateKey = { triggered: 'alerts.stateTriggered', resolved: 'alerts.stateResolved', rearmed: 'alerts.stateRearmed' } as const
+    const fmtVal = (v: number) => `${Number(v.toFixed(2))} ${meta.unit}`
+    const out: ChartEvent[] = []
+    for (const e of rawEvents) {
+      // Notification-style summary (matches the Recent activity reading format).
+      let summary = `${e.ruleName} — ${t(stateKey[e.state])}`
+      if (e.valueDisplay !== null) {
+        summary += `: ${fmtVal(e.valueDisplay)}`
+        if (e.compareDisplay !== null) summary += ` ↔ ${fmtVal(e.compareDisplay)}`
+      }
+      for (const line of lines) {
+        if (e.sid !== line.ain && e.compareSid !== line.ain) continue
+        const p = nearestPoint(line.series, e.createdAt)
+        if (!p) continue
+        out.push({ time: p.time, value: p.value, state: e.state, summary })
+      }
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showEvents, rawEvents, data, data2, selectedAin, selectedAin2, meta.unit])
+
+  const secondOptions = [
+    { value: '', label: t('reports.compareNone') },
+    ...devices.filter((d) => d.ain !== selectedAin).map((d) => ({ value: d.ain, label: d.name })),
+  ]
+
+  const titleDevice = deviceName(selectedAin) + (selectedAin2 ? ` + ${deviceName(selectedAin2)}` : '')
 
   return (
     <div className="page">
@@ -202,6 +289,14 @@ export function ReportsPage() {
             value={selectedAin}
             onChange={setSelectedAin}
             options={devices.map((d) => ({ value: d.ain, label: d.name }))}
+          />
+
+          <SelectField
+            label={t('reports.compareDevice')}
+            id="report-device-2"
+            value={selectedAin2}
+            onChange={handleSecondDeviceChange}
+            options={secondOptions}
           />
 
           <DateField
@@ -274,6 +369,14 @@ export function ReportsPage() {
               />
               <span>{t('reports.fitToData')}</span>
             </label>
+            <label className="checkbox-group-item">
+              <input
+                type="checkbox"
+                checked={showEvents}
+                onChange={(e) => handleShowEventsChange(e.target.checked)}
+              />
+              <span>{t('reports.showEvents')}</span>
+            </label>
           </div>
         )}
       </Card>
@@ -283,7 +386,7 @@ export function ReportsPage() {
       {data.length > 0 && (
         <Card title={t('reports.chartTitle', {
           metric: t(meta.labelKey),
-          device: devices.find((d) => d.ain === selectedAin)?.name ?? selectedAin,
+          device: titleDevice,
           from: new Date(from).toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric', year: 'numeric' }),
           to: new Date(to).toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric', year: 'numeric' }),
         })}>
@@ -295,12 +398,17 @@ export function ReportsPage() {
             )}
             <TimeSeriesChart
               data={data}
-              label={t(meta.labelKey)}
+              label={deviceName(selectedAin)}
               unit={meta.unit}
               color={meta.color}
               height={340}
               enabledAvgPeriods={enabledPeriods}
               fitToData={fitToData}
+              data2={selectedAin2 ? data2 : undefined}
+              label2={selectedAin2 ? deviceName(selectedAin2) : undefined}
+              color2={SECOND_COLOR}
+              events={chartEvents}
+              eventsLabel={t('reports.eventsLegend')}
             />
           </div>
         </Card>
