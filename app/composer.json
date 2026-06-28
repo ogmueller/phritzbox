@@ -81,7 +81,7 @@
     "post-update-cmd": [
       "@auto-scripts"
     ],
-    "phpstan": "phpstan analyse -c phpstan.neon --memory-limit=1G"
+    "phpstan": "phpstan analyse -c phpstan.dist.neon --memory-limit=1G"
   },
   "conflict": {
     "symfony/symfony": "*"
