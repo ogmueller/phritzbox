@@ -131,7 +131,7 @@ jobs:
         working-directory: app
 
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse -c phpstan.neon --memory-limit=1G --no-progress
+        run: vendor/bin/phpstan analyse -c phpstan.dist.neon --memory-limit=1G --no-progress
         working-directory: app
 
       - name: Lint YAML config
