@@ -17,5 +17,8 @@ abstract class Feature
 {
     abstract public function setXml(\SimpleXMLElement $xml): void;
 
+    /**
+     * @return array<string, mixed>
+     */
     abstract public function toArray(): array;
 }

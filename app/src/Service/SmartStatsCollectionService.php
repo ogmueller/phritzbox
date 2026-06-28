@@ -95,6 +95,7 @@ class SmartStatsCollectionService
             $last = $lastSeen[$ain] ?? [];
 
             foreach ($stats as $category => $statsList) {
+                $index = 0;
                 if (\count($statsList) > 1) {
                     // find values with shortest interval
                     $tmp = 0;
@@ -104,8 +105,6 @@ class SmartStatsCollectionService
                             $index = $key;
                         }
                     }
-                } else {
-                    $index = 0;
                 }
                 $data = $statsList[$index];
                 $intervalSeconds = $data['interval'];

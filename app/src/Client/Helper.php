@@ -63,6 +63,8 @@ class Helper
     /**
      * Make HTTP request.
      *
+     * @param array<string, mixed> $options
+     *
      * @throws \Psr\Cache\InvalidArgumentException
      * @throws TransportExceptionInterface
      */
@@ -101,7 +103,7 @@ class Helper
      * batch size bounds how many in-flight requests hit the Fritz!Box at once,
      * which is a constrained device.
      *
-     * @param array<string, array{0: string, 1: array}> $requests key => [url, options]
+     * @param array<string, array{0: string, 1: array<string, mixed>}> $requests key => [url, options]
      *
      * @return array<string, string|null> key => response body (or null on failure)
      */
@@ -228,6 +230,8 @@ class Helper
      *
      * @param float  $milliValue Unit has to be given in its milli (0.001) representation
      * @param string $unit       Unit name e.g. V, W, m, ...
+     *
+     * @return array{value: float, unit: string, factor: float}
      */
     public static function bestFactor(float $milliValue, string $unit): array
     {

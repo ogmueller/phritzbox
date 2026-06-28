@@ -91,6 +91,8 @@ class AhaApi
 
     /**
      * Delivers AIN/MAC of all SmartHome outlets.
+     *
+     * @return list<string>|null
      */
     public function getSwitchList(): ?array
     {
@@ -316,6 +318,8 @@ class AhaApi
 
     /**
      * Deliver basic information of a SmartHome device.
+     *
+     * @return array<string, list<array{count: int, interval: int, unit: string, factor: int, values: list<float>}>>
      */
     public function getBasicDeviceStats(string $ain): array
     {
@@ -339,7 +343,7 @@ class AhaApi
      *
      * @throws \Psr\Cache\InvalidArgumentException
      *
-     * @return array<string, array> map of AIN => parsed stats (see getBasicDeviceStats)
+     * @return array<string, array<string, list<array{count: int, interval: int, unit: string, factor: int, values: list<float>}>>> map of AIN => parsed stats (see getBasicDeviceStats)
      */
     public function getBasicDeviceStatsBatch(array $ains, int $concurrency = 4): array
     {
@@ -386,6 +390,8 @@ class AhaApi
      * Parse a getbasicdevicestats XML response into the per-category structure.
      *
      * @throws InvalidResponseException
+     *
+     * @return array<string, list<array{count: int, interval: int, unit: string, factor: int, values: list<float>}>>
      */
     private function parseBasicDeviceStats(string $content): array
     {
@@ -442,8 +448,8 @@ class AhaApi
                     // we convert them into most common representation, e.g. celsius (1) and
                     // force all entries to be floats
                     $arr['values'] = array_map(
-                        static function ($value) use ($factor) {
-                            return $value / $factor;
+                        static function ($value) use ($factor): float {
+                            return (float) $value / $factor;
                         },
                         $arr['values']
                     );

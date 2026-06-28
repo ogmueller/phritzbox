@@ -82,6 +82,11 @@ class CronSmartSaveStats extends Smart
         return 0;
     }
 
+    /**
+     * @param array<int, float> $values
+     *
+     * @return array{0: Linechart, 1: array<int, float>}
+     */
     protected function createChart(array $values, int $factor, Settings $settings): array
     {
         $terminalWidth = getenv('COLUMNS');

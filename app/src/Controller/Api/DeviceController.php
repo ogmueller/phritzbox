@@ -142,6 +142,9 @@ class DeviceController extends AbstractController
         ]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function serializeDevice(Device $device, ?SmartDevice $meta = null): array
     {
         $data = [
@@ -201,6 +204,9 @@ class DeviceController extends AbstractController
         return $data;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function serializeCachedDevice(SmartDevice $sd): array
     {
         $bitMask = $sd->getFunctionBitMask();
