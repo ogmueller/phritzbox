@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, waitFor, act } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { ReportsPage } from './ReportsPage'
 
 const getStats = vi.fn()
@@ -59,9 +59,10 @@ describe('ReportsPage filter persistence', () => {
     expect(from).not.toBe('2020-01-01')
   })
 
-  it('does not auto-run when nothing was saved', async () => {
-    await act(async () => { render(<ReportsPage />) })
-    expect(getStats).not.toHaveBeenCalled()
+  it('auto-loads the default device on a fresh visit (no Load button)', async () => {
+    render(<ReportsPage />)
+    await waitFor(() => expect(getStats).toHaveBeenCalled())
+    expect(getStats.mock.calls[0][0]).toBe('a1')
   })
 
   it('restores a second device and alert-event overlay', async () => {
