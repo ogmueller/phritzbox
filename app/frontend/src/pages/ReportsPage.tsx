@@ -271,6 +271,8 @@ export function ReportsPage() {
   ]
 
   const fmtShort = (d: string) => new Date(d).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
+  // ISO 'YYYY-MM-DD' → 'DD.MM.YYYY' (matches the native date inputs' display).
+  const fmtDate = (d: string) => d.split('-').reverse().join('.')
   const activePreset = PRESETS.find((p) => p.key === presetKey)
   const dateRangeLabel = activePreset ? t(activePreset.labelKey) : `${fmtShort(from)} – ${fmtShort(to)}`
 
@@ -381,8 +383,8 @@ export function ReportsPage() {
         <Card title={t('reports.chartTitle', {
           metric: t(meta.labelKey),
           device: titleDevice,
-          from: new Date(from).toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric', year: 'numeric' }),
-          to: new Date(to).toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric', year: 'numeric' }),
+          from: fmtDate(from),
+          to: fmtDate(to),
         })}>
           <div className="chart-container">
             {loading && (
