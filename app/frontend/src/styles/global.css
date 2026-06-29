@@ -576,6 +576,9 @@ body {
 /* Stacked label-above-control fields (consistent with the rest of the app). */
 .toolbar-field { min-width: 150px; }
 
+/* Dim + lock the filter controls while a data pull is in flight. */
+.is-busy { opacity: 0.55; pointer-events: none; }
+
 /* Popover */
 .popover { position: relative; }
 .popover-panel {
