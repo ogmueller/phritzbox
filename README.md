@@ -10,7 +10,7 @@ Phritzbox
 
 A self-hosted smart home dashboard for smart devices connected to AVM Fritz!Box. Monitor temperatures, power consumption, and energy usage with interactive charts. Control smart outlets and radiator thermostats from your browser or the command line.
 
-Built with Symfony 8, React 18, and [FrankenPHP](https://frankenphp.dev). Ships as a single Docker image.
+Built with Symfony 8, React 19, and [FrankenPHP](https://frankenphp.dev). Ships as a single Docker image.
 
 
 Screenshots
@@ -28,7 +28,7 @@ Screenshots
 
 ![Device detail charts](app/files/screenshots/web-device-detail-charts.png)
 
-**Reports** — query historical data for any device and date range, with selectable metric type and configurable averages:
+**Reports** — query historical data for any device and date range, with selectable metric type, configurable averages, an optional second device overlaid for comparison, and markers where alert rules fired:
 
 ![Reports temperature](app/files/screenshots/web-reports-temp.png)
 ![Reports energy](app/files/screenshots/web-reports-energy.png)
@@ -39,7 +39,7 @@ Features
 
 - Live device status with 30-second auto-refresh (and a fresh pull on every visit)
 - Interactive charts for temperature, power, energy, and voltage
-- Date-range reports with quick presets (today, last 7/30 days), rolling averages, and on-demand data refresh — your last selection is remembered and re-run when you come back
+- Date-range reports with quick presets (today, last 7/30 days), rolling averages, a second device overlaid on the same chart for comparison, and alert events marked where rules fired — plus on-demand data refresh; your last selection is remembered and re-run when you come back
 - Rule-based alerting (threshold, sustained, or device-to-device comparison) via e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, or Slack/Mattermost — with an activity log that shows per-channel delivery status, current-rule state, and a manual re-arm
 - Sortable tables and global error notifications throughout the UI
 - 18 CLI commands for device control and monitoring
@@ -256,7 +256,8 @@ npm run build   # production build → app/public/frontend/
 ### Tests
 
 ```bash
-php app/vendor/bin/phpunit --configuration app/phpunit.xml.dist
+php app/vendor/bin/phpunit --configuration app/phpunit.xml.dist   # backend (PHPUnit)
+cd app/frontend && npm test                                       # frontend (Vitest)
 ```
 
 ### Code Style
@@ -269,10 +270,17 @@ php app/vendor/bin/phpunit --configuration app/phpunit.xml.dist
 ### Lint & Validate
 
 ```bash
+cd app && composer phpstan                          # static analysis (PHPStan, level 6)
 php app/bin/console lint:yaml app/config --parse-tags
 php app/bin/console doctrine:schema:validate --skip-sync
-cd app && composer audit
+cd app && composer audit                            # backend dependency audit
+cd app/frontend && npm run lint                     # ESLint
+cd app/frontend && npm run i18n:check               # en/de translation parity
 ```
+
+These same checks run in CI on every push and pull request (PHPUnit + coverage, php-cs-fixer,
+PHPStan, PHPMD, YAML/Doctrine validation, and a frontend job: ESLint, Vitest, build, `npm audit`).
+Dependency updates are proposed automatically by Dependabot.
 
 ### Building Docker Images Locally
 

@@ -4,7 +4,7 @@
 
 Phritzbox is a self-hosted smart home dashboard for smart devices connected to AVM Fritz!Box. It provides a React web UI and a Symfony REST API that bridge the Fritz!Box AHA (AVM Home Automation) HTTP API, storing time-series telemetry and exposing device control to authenticated users.
 
-**Stack summary:** PHP 8.5 / Symfony 8 · SQLite / Doctrine ORM · JWT authentication · React 18 / Vite · ECharts · Docker (FrankenPHP)
+**Stack summary:** PHP 8.5 / Symfony 8 · SQLite / Doctrine ORM · JWT authentication · React 19 / Vite · ECharts · Docker (FrankenPHP)
 
 ---
 
@@ -197,13 +197,21 @@ A reusable delivery destination. Fields: `id`, `name`, `type` (`email`, `webhook
 
 Append-only audit log of alert lifecycle events, powering the Alerts "Recent activity" view. Fields: `id`, `ruleId` + `ruleName` (denormalised so the history survives rule deletion), `state` (`triggered` | `resolved` | `rearmed`), `type`, `valueDisplay`/`compareDisplay` (the readings at evaluation time, in display units), `deliveries` (JSON array of `{channel, type, ok, error}` — empty for `resolved`/`rearmed`, which send no message), `createdAt` (indexed for recency queries). Written by `AlertEvaluationService` on trigger/resolve and by `AlertController::rearm()` on a manual re-arm.
 
+**`RefreshToken`** (`app/src/Entity/RefreshToken.php`)
+
+Backs the rotating refresh-token flow that keeps the short-lived JWT access token usable without re-login. Fields include the hashed token value, the owning username, and an expiry; `App\Security\RefreshTokenManager` issues a token on login, rotates it on each `/api/auth/refresh`, and revokes it on `/api/auth/logout`. See §2.7.
+
+**`app_state`** (table only — no entity)
+
+A tiny key/value table (`name`, `value`) for singleton runtime state. The only key today is `last_collection_at`, written by the collection service after a successful run and read back — via raw DBAL, not the ORM — by `HealthController` to compute data staleness (see §2.5). Kept entity-free because it's a single scalar, not a domain object.
+
 #### Repositories
 
 All extend `ServiceEntityRepository`. `SmartDeviceDataRepository` filters by AIN/type/time range; `UserRepository` backs the security provider; `AlertRuleRepository` exposes `findEnabled()` and `countUsingChannel()` (used to block deleting an in-use channel); `AlertEventRepository` exposes `findRecent($limit)` for the activity log; `NotificationChannelRepository` is plain CRUD.
 
 #### Migrations
 
-`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `(sid, type, time)` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place); the `alert_event` log table; and a migration that de-duplicates `smart_device_data` and upgrades the index to **UNIQUE** `(sid, type, time)`.
+`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `(sid, type, time)` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place); the `alert_event` log table; a migration that de-duplicates `smart_device_data` and upgrades the index to **UNIQUE** `(sid, type, time)`; the `refresh_token` table; and the `app_state` key/value table (seeding `last_collection_at`).
 
 ---
 
@@ -228,8 +236,15 @@ Responses are hand-serialised into nested JSON mirroring the `Device` / `Feature
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | POST | `/api/stats/refresh` | ROLE_USER | On-demand collection from the Fritz!Box (`SmartStatsCollectionService::collectAll()`), then an immediate `AlertEvaluationService::evaluateAll()` so a manual pull also checks alert rules. Backs the Reports "Pull latest data" button |
+| GET | `/api/stats/alert-events` | ROLE_USER | Alert firings in a window, for the Reports chart markers; query params: `type`, `devices` (CSV of AINs), `from`/`to`. Available to any authenticated user, unlike the admin-only alert *config* |
 | GET | `/api/stats/{ain}` | ROLE_USER | Query time-series data; query params: `type`, `from` (default: `-24 hours`), `to` (default: `now`). Collapses duplicate timestamps defensively |
 | GET | `/api/stats/types/{ain}` | ROLE_USER | List available metric types for a device |
+
+#### `HealthController` — `/api/health`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/health` | ROLE_USER | Reports data freshness: `{lastCollectedAt, ageMinutes}`, read from the `app_state` table via raw DBAL. The frontend `StaleDataBanner` polls this and warns when collection has stalled (e.g. the host slept and a scheduled run was skipped) |
 
 #### `UserController` — `/api/users`
 
@@ -308,19 +323,27 @@ Provides shared concerns so subclasses stay focused:
 Login flow:
 1. `POST /api/auth/login` with JSON `{username, password}` — handled by Symfony's built-in JSON login authenticator
 2. On success, the Lexik bundle generates a JWT signed with the RS256 private key
-3. Token is returned in the response body
+3. The access token (plus a rotating refresh token) is returned in the response body
 4. All subsequent API calls include `Authorization: Bearer <token>`
 5. The `api` firewall validates the signature against the public key on every request (stateless — no session)
+
+**Short-lived access tokens + rotating refresh tokens.** `token_ttl` is set to **3600 s** in
+`config/packages/lexik_jwt_authentication.yaml` — deliberately short. `App\Security\RefreshTokenManager`
+issues a refresh token (persisted as a `RefreshToken` entity) on login and rotates it on each
+`POST /api/auth/refresh`; the SPA's `client.ts` silently renews on a 401 and replays the request, so an
+expired or leaked access token is only briefly useful. `POST /api/auth/logout` revokes the refresh token.
 
 Access control matrix:
 
 | Path | Required role |
 |---|---|
 | `/api/auth/login` | PUBLIC_ACCESS |
+| `/api/auth/refresh` | PUBLIC_ACCESS |
+| `/api/auth/logout` | PUBLIC_ACCESS |
 | `/api/users/**` | ROLE_ADMIN |
 | `/api/alerts/**` | ROLE_ADMIN |
 | `/api/channels/**` | ROLE_ADMIN |
-| `/api/**` | ROLE_USER |
+| `/api/**` (incl. `/api/health`, `/api/stats/**`) | ROLE_USER |
 | `/**` (frontend) | none |
 
 ---
@@ -348,10 +371,11 @@ Access control matrix:
 
 | Package | Purpose |
 |---|---|
-| `phpunit/phpunit` ^11 | Unit and integration testing |
+| `phpunit/phpunit` ^13 | Unit and integration testing |
 | `symfony/phpunit-bridge` | Symfony-aware test utilities (deprecation handler, etc.) |
 | `dama/doctrine-test-bundle` | Wraps each test in a transaction and rolls back, giving fast isolated DB tests without truncating tables |
 | `friendsofphp/php-cs-fixer` | Enforces PSR-12 + custom rules; configured in `.php-cs-fixer.dist.php` |
+| `phpstan/phpstan` (+ `phpstan-symfony`, `phpstan-doctrine`) | Static type analysis at **level 6**; config in `phpstan.dist.neon`, run via `composer phpstan` |
 | `phpmd/phpmd` | Static analysis for code smells |
 | `roave/security-advisories` | Blocks installation of packages with known CVEs |
 
@@ -450,7 +474,7 @@ TypeScript interfaces `Device`, `DeviceFeatures`, `OutletFeature`, `ThermostatFe
 
 #### `stats.ts`
 
-`getStats(ain, type?, from?, to?)`, `getStatTypes(ain)`, and `refreshStats()` (POST `/api/stats/refresh`). The `StatsResponse` interface contains `ain`, `type`, and `data: StatPoint[]` where `StatPoint = {time: string, value: number, type: string}`. `RefreshResponse` adds an `alerts` summary (`{rules, triggered, notified, resolved}`) from the post-collection evaluation.
+`getStats(ain, type?, from?, to?)`, `getStatTypes(ain)`, `refreshStats()` (POST `/api/stats/refresh`), and `getReportAlertEvents(type, from, to, devices[])` (GET `/api/stats/alert-events`, for the Reports chart markers). The `StatsResponse` interface contains `ain`, `type`, and `data: StatPoint[]` where `StatPoint = {time: string, value: number, type: string}`. `RefreshResponse` adds an `alerts` summary (`{rules, triggered, notified, resolved}`) from the post-collection evaluation; `ReportAlertEvent` carries each marker's time/state/reading.
 
 #### `users.ts`
 
@@ -494,7 +518,11 @@ Fetches stats whenever `ain`, `type`, `from`, or `to` change (via `useEffect` de
 
 #### `AppLayout` (`components/layout/AppLayout.tsx`)
 
-Outer shell for all authenticated pages. Renders `<TopBar />`, then a horizontal flex container of `<Sidebar />` + `<main>` (React Router `<Outlet />`).
+Outer shell for all authenticated pages. Renders `<TopBar />`, a `<StaleDataBanner />`, then a horizontal flex container of `<Sidebar />` + `<main>` (React Router `<Outlet />`).
+
+#### `StaleDataBanner` (`components/layout/StaleDataBanner.tsx`)
+
+Polls `GET /api/health` and, when `ageMinutes` exceeds the expected collection interval, shows a dismissible "live data may be stale" warning with how long ago the last collection succeeded — surfacing the case where the host slept and a scheduled run was skipped.
 
 #### `TopBar` (`components/layout/TopBar.tsx`)
 
@@ -502,7 +530,7 @@ Blue horizontal header bar (AVM-style). Shows the diamond logo mark, app title, 
 
 #### `Sidebar` (`components/layout/Sidebar.tsx`)
 
-White left sidebar (200 px wide). Contains `<NavLink>` items for Dashboard, Reports, and (if admin) Users. Active item is highlighted with a blue left border and light blue background, matching AVM's Fritz!Box UI style. No state of its own — purely presentational.
+White left sidebar (200 px wide). Contains `<NavLink>` items for Dashboard and Reports; an admin-only group for Alerts, Channels, and Users; and a bottom group for Help. Active item is highlighted with a blue left border and light blue background, matching AVM's Fritz!Box UI style. No state of its own — purely presentational.
 
 #### `PageHeader` (`components/layout/PageHeader.tsx`)
 
@@ -530,7 +558,16 @@ Reads `:ain` from URL params. Fetches the single device and 7-day history for al
 
 #### `ReportsPage`
 
-Device + metric selectors, a from/to date filter with quick presets (Today / Yesterday / Last 7 / Last 30 days), averages and "Fit to data" toggles, a "Pull latest data" action, and a `TimeSeriesChart`. The full filter is **persisted to `localStorage`** (`phritzbox_reports_filter`) and restored — and auto-run — on return; if a date *preset* was active it is re-resolved relative to today (so "Yesterday" stays current), otherwise the explicit range is restored.
+Historical data explorer with a **compact toolbar**: a device selector, a "compare with" selector that
+**overlays a second device** as a second series on the same chart, a metric selector, and a single
+**date-range control** — a field-styled `Popover` holding the quick presets (Today / Yesterday / Last 7 /
+Last 30 days) plus a custom from/to range. Below it, always-visible `ToggleChip`s control display options:
+each rolling-average period, "Fit to data", and "Show alert events" — the last overlays **markers where
+alert rules fired**, fetched from `GET /api/stats/alert-events`. A "Pull latest data" action (in the
+`PageHeader`) collects fresh readings and re-evaluates alerts. The full filter is **persisted to
+`localStorage`** (`phritzbox_reports_filter`) and restored — and auto-run — on return; if a date *preset*
+was active it is re-resolved relative to today (so "Yesterday" stays current), otherwise the explicit
+range is restored.
 
 #### `UsersPage`
 
@@ -543,6 +580,10 @@ Admin-only. Lists alert rules with a compact condition column (e.g. `outdoor > i
 #### `ChannelsPage`
 
 Admin-only. CRUD for notification channels. The form adapts its `target`/`secret` fields to the chosen type (e.g. "Chat ID" + "Bot token" for Telegram). Deleting a channel still referenced by a rule surfaces the API's 409 message.
+
+#### `HelpPage`
+
+In-app user guide. A sectioned walkthrough (Dashboard, Controlling devices, Reports, Alerts, Channels, Users, Data collection & freshness) plus useful links and the app version. The three admin sections are gated behind `useAuth().isAdmin` so the guide stays relevant to the signed-in role. All copy is translated (en/de).
 
 ---
 
@@ -568,7 +609,7 @@ All charts are thin wrappers over `echarts-for-react`.
 
 #### `TimeSeriesChart` (`components/charts/TimeSeriesChart.tsx`)
 
-Generic base component. Props: `data: StatPoint[]`, `title`, `unit`, `color`. Builds an ECharts option object with a time-axis X axis, value Y axis, and a line series. Handles empty data gracefully.
+Generic base component. Props: `data: StatPoint[]`, `title`, `unit`, `color`. Builds an ECharts option object with a time-axis X axis, value Y axis, and a line series. Handles empty data gracefully. On the Reports page it also renders an **optional second series** (the compared device) and **alert-event markers** overlaid on the timeline.
 
 #### Typed variants
 
@@ -597,6 +638,13 @@ Located in `components/ui/`. These are lightweight CSS-class-based components, n
 | `StatusDot` | `active: boolean` | Small coloured circle for online/offline |
 | `DataTable` | `columns[]`, `rows[]`, `keyFn`, `emptyMessage` | Generic table renderer with zebra striping and a shaded header. A column with a `sortValue` accessor becomes click-to-sort (asc → desc → off) with a chevron indicator |
 | `NotificationHost` | — | Top-centre toast stack fed by the `notifications` bus; renders global error messages (see §3.2) |
+| `Modal` | `title`, `onClose`, `children` | Centred dialog used by the create/edit forms |
+| `ConfirmDialog` + `useConfirm` | — | Styled confirmation dialog (replaces the browser's native `confirm()`); `useConfirm()` returns an async `confirm(opts)` that resolves to a boolean, used before destructive or device-control actions (delete, switch on/off) |
+| `Popover` | `label`, `align`, `triggerClassName`, `children` | Click-toggled panel that closes on outside-click/Escape; backs the Reports date-range control |
+| `ToggleChip` | `active`, `color?`, `onClick` | Pill toggle (filled when active, optional colour dot); the Reports display toggles |
+| `SelectField` / `DateField` / `TextInput` | label + value/onChange | Labelled form-field wrappers used across the forms and the Reports toolbar |
+| `CheckboxGroup` | `options[]`, `selected[]`, `onChange` | Multi-select used to attach channels to an alert rule |
+| `Switch` | `checked`, `onChange` | Inline on/off toggle (e.g. a rule's enabled state) |
 
 The decision to use plain CSS classes (tokens + global styles) rather than a library like shadcn/ui, MUI, or Tailwind was made to keep the bundle small and allow the AVM Fritz!Box visual style to be applied directly without fighting component defaults.
 
@@ -608,17 +656,20 @@ The decision to use plain CSS classes (tokens + global styles) rather than a lib
 
 | Package | Version | Why this, not an alternative |
 |---|---|---|
-| `react` + `react-dom` | ^18.3 | Declarative UI with hooks; industry standard for SPAs. Alternative: Vue — React chosen for broader ecosystem and TypeScript integration. |
-| `react-router-dom` | ^6.28 | Client-side routing with nested routes and data loaders. Alternative: TanStack Router — React Router v6 is the most familiar and has first-class Vite support. |
-| `echarts` + `echarts-for-react` | ^5.6 / ^3.0 | Feature-rich charting with time-axis support, zoom, and tooltips. Alternative: Recharts — ECharts handles large time-series datasets more efficiently and provides built-in zoom/pan without extra plugins. |
+| `react` + `react-dom` | ^19.2 | Declarative UI with hooks; industry standard for SPAs. Alternative: Vue — React chosen for broader ecosystem and TypeScript integration. |
+| `react-router-dom` | ^7.18 | Client-side routing with nested routes and data loaders. Alternative: TanStack Router — React Router is the most familiar and has first-class Vite support. |
+| `echarts` + `echarts-for-react` | ^6.1 / ^3.0 | Feature-rich charting with time-axis support, zoom, and tooltips. Alternative: Recharts — ECharts handles large time-series datasets more efficiently and provides built-in zoom/pan without extra plugins. |
+| `i18next` + `react-i18next` (+ browser language detector) | ^26 / ^17 | English/German UI translations with a typed key catalogue (`src/i18n/resources.d.ts`); `npm run i18n:check` enforces en/de key parity. |
 
 #### Development
 
 | Package | Why |
 |---|---|
-| `vite` ^5 | Extremely fast HMR and ESM-native dev server. Alternative: webpack/CRA — Vite is significantly faster for development iteration and produces smaller bundles. |
+| `vite` ^8 | Extremely fast HMR and ESM-native dev server. Alternative: webpack/CRA — Vite is significantly faster for development iteration and produces smaller bundles. |
 | `@vitejs/plugin-react` | React Fast Refresh in the Vite dev server (no full page reload on component edits). |
-| `typescript` ^5.6 | Static typing catches API shape mismatches at compile time, especially useful for the Device/Feature interfaces. |
+| `typescript` ^6 | Static typing catches API shape mismatches at compile time, especially useful for the Device/Feature interfaces. |
+| `vitest` ^4 + `@testing-library/react` + `jsdom` | Component/unit tests in a jsdom environment (see §6); `npm test` runs the suite. |
+| `eslint` ^10 + `typescript-eslint` + `eslint-plugin-react-hooks` | Flat-config linting (`npm run lint`); the rules-of-hooks + exhaustive-deps checks. |
 
 ---
 
@@ -652,7 +703,7 @@ docker/
 
 - `php_server` — serves static files directly and rewrites non-file requests to `index.php`
 - `/frontend/assets/*` — served with `Cache-Control: max-age=31536000, immutable` (Vite outputs content-hashed filenames)
-- Security headers: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Content-Security-Policy`
+- Security headers: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Content-Security-Policy`, `Strict-Transport-Security` (HSTS; honoured only over HTTPS), and `Permissions-Policy` (locks down camera/microphone/geolocation, which the dashboard never uses)
 
 **Why FrankenPHP instead of Nginx + PHP-FPM?**
 FrankenPHP embeds both the web server (Caddy) and the PHP runtime in a single process, eliminating the need for a separate reverse proxy and FastCGI socket. This simplifies the Docker setup to one container, reduces operational complexity, and provides automatic HTTPS via Let's Encrypt when a domain name is configured.
@@ -676,13 +727,15 @@ Vite uses native ES modules in development (no bundling), making HMR near-instan
 
 ### 4.3 CI/CD Pipelines
 
-Three GitHub Actions workflows in `.github/workflows/`:
+Three GitHub Actions workflows in `.github/workflows/`, plus Dependabot:
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `ci.yml` | Push to `main`, PRs | PHPUnit tests with coverage, php-cs-fixer, YAML lint, Doctrine validation, PHPMD |
+| `ci.yml` | Push to `main`, PRs | Parallel jobs: **Tests** (PHPUnit + coverage → Codecov), **Code Style** (php-cs-fixer), **Lint & Static Analysis** (PHPStan, YAML lint, Doctrine validation, PHPMD), and **Frontend** (`npm ci`, ESLint, Vitest, build, `npm audit`) |
 | `security.yml` | Push, PRs, weekly | `composer audit`, dependency review |
 | `docker.yml` | Push to `main`, tag `v*` | Build and push Docker image to `ghcr.io/ogmueller/phritzbox` |
+
+`.github/dependabot.yml` opens automated dependency-update PRs (Composer, npm, GitHub Actions).
 
 **Docker image tagging:**
 
@@ -770,7 +823,7 @@ DeviceDetailPage mounts, calls useStats(ain, 'temperature', sevenDaysAgo, now)
 
 ## 6. Testing
 
-Test suite lives in `app/tests/` and runs with PHPUnit 11.
+The backend test suite lives in `app/tests/` and runs with PHPUnit 13. The frontend has its own suite (see below).
 
 ### Structure
 
@@ -803,6 +856,10 @@ tests/
 **Feature tests** construct a minimal XML string, call `setXml()`, and assert the parsed property values — verifying the Fritz!Box unit conversions (÷10 for temperature, ÷1000 for power/voltage).
 
 **`dama/doctrine-test-bundle`** wraps integration tests in a transaction that is rolled back after each test, avoiding table truncation and keeping tests fast.
+
+### Frontend tests
+
+Component tests run with **Vitest** in a **jsdom** environment (`@testing-library/react` + `@testing-library/user-event`). `src/test/setup.ts` wires up jsdom (incl. a `localStorage` polyfill) and `@testing-library/jest-dom` matchers. Tests live alongside the code they cover (e.g. `DataTable.test.tsx`, `NotificationHost.test.tsx`). Run with `npm test` (CI uses `vitest run`).
 
 ---
 
