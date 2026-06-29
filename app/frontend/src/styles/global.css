@@ -1056,6 +1056,37 @@ body {
   color: var(--color-text-muted);
   margin-top: 8px;
 }
+.help-intro {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.help-section {
+  margin-bottom: 20px;
+}
+.help-section:last-child {
+  margin-bottom: 0;
+}
+.help-section .help-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.help-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+.help-admin-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-primary-10);
+  color: var(--color-primary-dark);
+}
 
 /* ── Toggle Switch (Fritz!Box style) ───────────────────────── */
 .toggle-switch {

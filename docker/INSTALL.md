@@ -1,5 +1,9 @@
 # Phritzbox — Docker Installation
 
+A self-hosted dashboard for AVM FRITZ!Box smart home devices — live monitoring, control,
+historical charts, and rule-based alerting. For the full feature list and screenshots see the
+[project README](https://github.com/ogmueller/phritzbox#features).
+
 ## Requirements
 
 - [Docker](https://docs.docker.com/get-docker/) with Compose
@@ -47,6 +51,13 @@ Use the included `console` script to run commands inside the container:
 ./console smart:switch:toggle 12345678901
 ./console                          # shows all available commands
 ```
+
+## Data Collection
+
+Readings are collected from the FRITZ!Box every 30 minutes by the bundled `cronado` scheduler.
+It does **not** catch up on missed runs, so keep the host always on — if the machine sleeps,
+collection (and alert evaluation) pauses until it wakes. When data goes stale, the web UI shows a
+"live data may be stale" banner with how long ago the last collection succeeded.
 
 ## Updating
 

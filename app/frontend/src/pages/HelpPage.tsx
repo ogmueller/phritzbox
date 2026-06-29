@@ -1,10 +1,24 @@
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Card } from '../components/ui/Card'
+import { useAuth } from '../contexts/AuthContext'
 import { version } from '../../package.json'
+
+const SECTIONS = [
+  { titleKey: 'help.dashboardTitle', bodyKey: 'help.dashboardBody', admin: false },
+  { titleKey: 'help.devicesTitle', bodyKey: 'help.devicesBody', admin: false },
+  { titleKey: 'help.reportsTitle', bodyKey: 'help.reportsBody', admin: false },
+  { titleKey: 'help.alertsTitle', bodyKey: 'help.alertsBody', admin: true },
+  { titleKey: 'help.channelsTitle', bodyKey: 'help.channelsBody', admin: true },
+  { titleKey: 'help.usersTitle', bodyKey: 'help.usersBody', admin: true },
+  { titleKey: 'help.freshnessTitle', bodyKey: 'help.freshnessBody', admin: false },
+] as const
 
 export function HelpPage() {
   const { t } = useTranslation()
+  const { isAdmin } = useAuth()
+
+  const sections = SECTIONS.filter((s) => !s.admin || isAdmin)
 
   return (
     <div className="page">
@@ -12,16 +26,21 @@ export function HelpPage() {
 
       <Card>
         <div className="card-body">
-          <p style={{ marginBottom: 16, lineHeight: 1.6 }}>{t('help.description')}</p>
+          <p className="help-intro">{t('help.intro')}</p>
+        </div>
+      </Card>
 
-          <h3 className="help-section-title">{t('help.features')}</h3>
-          <ul className="help-list">
-            <li>{t('help.featureMonitor')}</li>
-            <li>{t('help.featureControl')}</li>
-            <li>{t('help.featureReports')}</li>
-            <li>{t('help.featureAlerts')}</li>
-            <li>{t('help.featureUsers')}</li>
-          </ul>
+      <Card>
+        <div className="card-body">
+          {sections.map((s) => (
+            <section key={s.titleKey} className="help-section">
+              <h3 className="help-section-title">
+                {t(s.titleKey)}
+                {s.admin && <span className="help-admin-badge">{t('help.adminBadge')}</span>}
+              </h3>
+              <p className="help-body">{t(s.bodyKey)}</p>
+            </section>
+          ))}
         </div>
       </Card>
 
