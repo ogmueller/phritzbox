@@ -289,7 +289,7 @@ export function ReportsPage() {
       />
 
       <Card>
-        <div className="report-toolbar">
+        <div className={`report-toolbar${refreshing ? ' is-busy' : ''}`}>
           <SelectField
             className="toolbar-field"
             label={t('reports.device')}
@@ -358,12 +358,9 @@ export function ReportsPage() {
             </Popover>
           </div>
 
-          {refreshing && (
-            <div className="filter-bar-status">{t('reports.refreshing')}</div>
-          )}
         </div>
 
-        <div className="report-chips">
+        <div className={`report-chips${refreshing ? ' is-busy' : ''}`}>
           <span className="report-chips-label">{t('reports.display')}</span>
           {availablePeriods.map((p) => {
             const style = getAvgStyle(p)
