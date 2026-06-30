@@ -55,6 +55,7 @@
   "alerts.deleteFailed": "Regel konnte nicht gelöscht werden.",
   "alerts.latencyNote": "Benachrichtigungen werden kurz nach jeder Datenerfassung geprüft und können daher um bis zu das Erfassungsintervall (etwa 30 Minuten) verzögert sein.",
   "alerts.activity": "Letzte Ereignisse",
+  "alerts.show": "Anzeigen",
   "alerts.noActivity": "Bisher wurden keine Benachrichtigungen ausgelöst.",
   "alerts.time": "Zeitpunkt",
   "alerts.rule": "Regel",

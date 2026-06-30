@@ -55,6 +55,7 @@
   "alerts.deleteFailed": "Failed to delete the rule.",
   "alerts.latencyNote": "Alerts are checked shortly after each data collection, so they may lag by up to the collection interval (about 30 minutes).",
   "alerts.activity": "Recent activity",
+  "alerts.show": "Show",
   "alerts.noActivity": "No alerts have fired yet.",
   "alerts.time": "Time",
   "alerts.rule": "Rule",

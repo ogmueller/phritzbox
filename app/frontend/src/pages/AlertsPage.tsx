@@ -19,6 +19,14 @@ const METRIC_TYPES = ['temperature', 'power', 'voltage', 'energy'] as const
 const UNITS: Record<string, string> = { temperature: '°C', power: 'W', voltage: 'V', energy: 'Wh' }
 const OP_SYMBOLS: Record<AlertOperator, string> = { gt: '>', lt: '<', gte: '≥', lte: '≤' }
 
+const EVENT_LIMIT_KEY = 'phritzbox_alert_event_limit'
+const EVENT_LIMIT_OPTIONS = [10, 25, 50, 100, 200, 500]
+const DEFAULT_EVENT_LIMIT = 50
+function loadSavedEventLimit(): number {
+  const n = Number(localStorage.getItem(EVENT_LIMIT_KEY))
+  return EVENT_LIMIT_OPTIONS.includes(n) ? n : DEFAULT_EVENT_LIMIT
+}
+
 interface AlertForm {
   name: string
   enabled: boolean
@@ -83,10 +91,12 @@ export function AlertsPage() {
   const [form, setForm] = useState<AlertForm>(EMPTY)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [eventLimit, setEventLimit] = useState(loadSavedEventLimit)
 
   const load = () => getAlerts().then(setAlerts).catch(() => {})
-  const loadEvents = () => getAlertEvents().then(setEvents).catch(() => {})
-  useEffect(() => { load(); loadEvents(); getChannels().then(setChannels).catch(() => {}) }, [])
+  const loadEvents = (limit = eventLimit) => getAlertEvents(limit).then(setEvents).catch(() => {})
+  const changeLimit = (n: number) => { setEventLimit(n); localStorage.setItem(EVENT_LIMIT_KEY, String(n)); loadEvents(n) }
+  useEffect(() => { load(); getAlertEvents(loadSavedEventLimit()).then(setEvents).catch(() => {}); getChannels().then(setChannels).catch(() => {}) }, [])
 
   const deviceName = (ain: string) => devices.find((d) => d.ain === ain)?.name ?? ain
   const metricLabel = (type: string) => t(`chart.${type}` as 'chart.temperature')
@@ -292,7 +302,23 @@ export function AlertsPage() {
 
       <p className="empty-state" style={{ textAlign: 'left', padding: '8px 0' }}>{t('alerts.latencyNote')}</p>
 
-      <h2 className="section-title">{t('alerts.activity')}</h2>
+      <div className="section-header">
+        <h2 className="section-title">{t('alerts.activity')}</h2>
+        <div className="limit-chips" role="group" aria-label={t('alerts.show')}>
+          <span className="limit-chips-label">{t('alerts.show')}</span>
+          {EVENT_LIMIT_OPTIONS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={`chip${eventLimit === n ? ' chip--active' : ''}`}
+              aria-pressed={eventLimit === n}
+              onClick={() => changeLimit(n)}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
       <Card>
         <DataTable
           rows={events}
