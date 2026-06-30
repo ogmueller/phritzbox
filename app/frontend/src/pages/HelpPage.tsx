@@ -5,13 +5,20 @@ import { useAuth } from '../contexts/AuthContext'
 import { version } from '../../package.json'
 
 const SECTIONS = [
-  { titleKey: 'help.dashboardTitle', bodyKey: 'help.dashboardBody', admin: false },
-  { titleKey: 'help.devicesTitle', bodyKey: 'help.devicesBody', admin: false },
-  { titleKey: 'help.reportsTitle', bodyKey: 'help.reportsBody', admin: false },
-  { titleKey: 'help.alertsTitle', bodyKey: 'help.alertsBody', admin: true },
-  { titleKey: 'help.channelsTitle', bodyKey: 'help.channelsBody', admin: true },
-  { titleKey: 'help.usersTitle', bodyKey: 'help.usersBody', admin: true },
-  { titleKey: 'help.freshnessTitle', bodyKey: 'help.freshnessBody', admin: false },
+  { titleKey: 'help.dashboardTitle', bodyKey: 'help.dashboardBody', bulletsKey: 'help.dashboardBullets', admin: false },
+  { titleKey: 'help.devicesTitle', bodyKey: 'help.devicesBody', bulletsKey: 'help.devicesBullets', admin: false },
+  { titleKey: 'help.reportsTitle', bodyKey: 'help.reportsBody', bulletsKey: 'help.reportsBullets', admin: false },
+  {
+    titleKey: 'help.diagnosticsTitle',
+    bodyKey: 'help.diagnosticsBody',
+    bulletsKey: 'help.diagnosticsBullets',
+    tipKey: 'help.diagnosticsTip',
+    admin: false,
+  },
+  { titleKey: 'help.alertsTitle', bodyKey: 'help.alertsBody', bulletsKey: 'help.alertsBullets', admin: true },
+  { titleKey: 'help.channelsTitle', bodyKey: 'help.channelsBody', bulletsKey: 'help.channelsBullets', admin: true },
+  { titleKey: 'help.usersTitle', bodyKey: 'help.usersBody', bulletsKey: 'help.usersBullets', admin: true },
+  { titleKey: 'help.freshnessTitle', bodyKey: 'help.freshnessBody', bulletsKey: 'help.freshnessBullets', admin: false },
 ] as const
 
 export function HelpPage() {
@@ -32,15 +39,27 @@ export function HelpPage() {
 
       <Card>
         <div className="card-body">
-          {sections.map((s) => (
-            <section key={s.titleKey} className="help-section">
-              <h3 className="help-section-title">
-                {t(s.titleKey)}
-                {s.admin && <span className="help-admin-badge">{t('help.adminBadge')}</span>}
-              </h3>
-              <p className="help-body">{t(s.bodyKey)}</p>
-            </section>
-          ))}
+          {sections.map((s) => {
+            const bullets = t(s.bulletsKey, { returnObjects: true }) as unknown as string[]
+
+            return (
+              <section key={s.titleKey} className="help-section">
+                <h3 className="help-section-title">
+                  {t(s.titleKey)}
+                  {s.admin && <span className="help-admin-badge">{t('help.adminBadge')}</span>}
+                </h3>
+                <p className="help-body">{t(s.bodyKey)}</p>
+                {Array.isArray(bullets) && bullets.length > 0 && (
+                  <ul className="help-bullets">
+                    {bullets.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+                {'tipKey' in s && <p className="help-tip">{t(s.tipKey)}</p>}
+              </section>
+            )
+          })}
         </div>
       </Card>
 
@@ -56,6 +75,11 @@ export function HelpPage() {
             <li>
               <a href="https://github.com/ogmueller/phritzbox" target="_blank" rel="noopener noreferrer">
                 {t('help.githubRepo')}
+              </a>
+            </li>
+            <li>
+              <a href="https://github.com/ogmueller/phritzbox/issues/new" target="_blank" rel="noopener noreferrer">
+                {t('help.githubIssues')}
               </a>
             </li>
           </ul>

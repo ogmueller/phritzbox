@@ -1078,6 +1078,29 @@ body {
   line-height: 1.6;
   color: var(--color-text-muted);
 }
+.help-bullets {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+.help-bullets li {
+  margin-bottom: 4px;
+}
+.help-bullets li:last-child {
+  margin-bottom: 0;
+}
+.help-tip {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-primary-10);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 6px;
+}
 .help-admin-badge {
   display: inline-block;
   padding: 1px 7px;
@@ -1149,7 +1172,14 @@ body {
 .xml-viewer-toolbar {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   padding: 8px 0;
+}
+.xml-viewer-hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
 }
 .xml-viewer-code {
   margin: 0;
