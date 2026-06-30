@@ -20,18 +20,26 @@ Screenshots
 
 ![Dashboard](app/files/screenshots/web-dashboard.png)
 
-**Device detail** — product image, firmware info, and feature cards for switch state, power meter, and temperature sensor:
+**Device detail** — product image, firmware info, and feature cards for switch state, power meter, and temperature sensor, followed by interactive 7-day charts (temperature, power, energy in kWh, and voltage) with rolling averages and a raw-XML view for diagnostics:
 
 ![Device detail](app/files/screenshots/web-device-detail.png)
 
-**7-day charts** — interactive time-series charts for temperature, power, energy (kWh), and voltage with rolling daily averages:
+**Reports** — query historical data for any device and date range, with selectable metric, configurable rolling averages, an optional second device overlaid for comparison, and markers where alert rules fired (hover a marker to see the rule and reading):
 
-![Device detail charts](app/files/screenshots/web-device-detail-charts.png)
+![Reports — 30-day comparison](app/files/screenshots/web-reports-temp-30-days.png)
+![Reports — alert event markers](app/files/screenshots/web-reports-temp-alerts.png)
 
-**Reports** — query historical data for any device and date range, with selectable metric type, configurable averages, an optional second device overlaid for comparison, and markers where alert rules fired:
+**Alerts** _(admin)_ — threshold, sustained, and device-to-device comparison rules with per-channel delivery, a manual re-arm, and an activity log of every firing and resolution:
 
-![Reports temperature](app/files/screenshots/web-reports-temp.png)
-![Reports energy](app/files/screenshots/web-reports-energy.png)
+![Alerts](app/files/screenshots/web-alerts.png)
+
+**Channels** _(admin)_ — reusable notification destinations (e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, Slack/Mattermost) shared across alert rules:
+
+![Channels](app/files/screenshots/web-channels.png)
+
+**Users** _(admin)_ — user management with role-based access: administrators configure everything, while regular users monitor and control devices and view reports:
+
+![Users](app/files/screenshots/web-users.png)
 
 
 Features
