@@ -15,7 +15,6 @@ namespace App\Service;
 
 use App\Client\AhaApi;
 use App\Device;
-use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -58,29 +57,31 @@ class SmartStatsCollectionService
 
         $now = new \DateTimeImmutable();
 
-        // Pre-fetch last stored timestamp for every (sid, type). A single
-        // GROUP BY sid, type over the whole table forces a full scan of all
-        // rows (~52M); instead, derive the distinct (sid, type) pairs and let
-        // the (sid, type, time) index do a per-pair reverse-seek for MAX(time).
-        // This turns a multi-second scan into a handful of millisecond seeks.
         $ains = array_map(static fn (Device $d) => $d->getIdentifier(), $devices);
-        $lastRaw = $ains === [] ? [] : $this->entityManager->getConnection()->executeQuery(
-            'SELECT p.sid AS sid, p.type AS type,'
-            .' (SELECT MAX(d.time) FROM smart_device_data d WHERE d.sid = p.sid AND d.type = p.type) AS last'
-            .' FROM (SELECT DISTINCT sid, type FROM smart_device_data WHERE sid IN (:sids)) p',
-            ['sids' => $ains],
-            ['sids' => ArrayParameterType::STRING],
-        )->fetchAllAssociative();
-
-        // Build lookup: $lastSeen[$sid][$type] = 'Y-m-d H:i:s'
-        $lastSeen = [];
-        foreach ($lastRaw as $row) {
-            $lastSeen[$row['sid']][$row['type']] = $row['last'];
-        }
 
         // Fetch every device's stats concurrently (bounded) instead of one
         // blocking request after another — this is the bulk of the run time.
         $statsByAin = $this->ahaApi->getBasicDeviceStatsBatch($ains, self::FETCH_CONCURRENCY);
+
+        // Pre-fetch the last stored timestamp for exactly the (sid, type) pairs we
+        // just pulled fresh stats for. Each lookup is a single reverse-seek on the
+        // (sid, type, time) index — microseconds. We deliberately do NOT derive the
+        // pairs with SELECT DISTINCT over smart_device_data: on a large table (~52M
+        // rows) SQLite can't satisfy DISTINCT from the index and falls back to a full
+        // scan that can blow past the request time limit (the manual-pull 500 error).
+        $conn = $this->entityManager->getConnection();
+        $lastSeen = [];
+        foreach ($statsByAin as $sid => $stats) {
+            foreach ($stats as $type => $_) {
+                $last = $conn->fetchOne(
+                    'SELECT MAX(time) FROM smart_device_data WHERE sid = ? AND type = ?',
+                    [$sid, $type],
+                );
+                if (\is_string($last) && $last !== '') {
+                    $lastSeen[$sid][$type] = $last;
+                }
+            }
+        }
 
         $perDevice = [];
         $pending = [];
