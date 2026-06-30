@@ -50,7 +50,7 @@ class AlertController extends AbstractController
     #[Route('/events', methods: ['GET'])]
     public function events(Request $request): JsonResponse
     {
-        $limit = max(1, min(200, (int) $request->query->get('limit', '50')));
+        $limit = max(1, min(500, (int) $request->query->get('limit', '50')));
         $events = $this->events->findRecent($limit);
 
         return $this->json(array_map(fn (AlertEvent $e) => $this->serializeEvent($e), $events));
