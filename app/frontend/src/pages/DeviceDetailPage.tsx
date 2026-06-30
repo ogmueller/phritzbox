@@ -100,6 +100,17 @@ export function DeviceDetailPage() {
     setTimeout(() => setXmlCopied(false), 2000)
   }
 
+  const downloadXml = () => {
+    if (!xmlContent || !ain) return
+    const blob = new Blob([xmlContent], { type: 'application/xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `fritzbox-device-${ain.replace(/\s+/g, '')}.xml`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading) return <div className="loading-state">{t('common.loading')}</div>
   if (error || !device) return <div className="alert alert--danger">{error ?? t('device.notFound')}</div>
 
@@ -248,9 +259,13 @@ export function DeviceDetailPage() {
         {xmlError && <div className="alert alert--danger">{xmlError}</div>}
         {xmlContent && (
           <>
+            <p className="xml-viewer-hint">{t('device.xmlHint')}</p>
             <div className="xml-viewer-toolbar">
               <Button variant="secondary" size="sm" onClick={copyXml}>
                 {xmlCopied ? t('device.xmlCopied') : t('device.copyXml')}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={downloadXml}>
+                {t('device.downloadXml')}
               </Button>
             </div>
             <pre className="xml-viewer-code"><code>{xmlContent}</code></pre>

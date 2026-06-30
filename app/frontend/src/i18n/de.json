@@ -170,8 +170,10 @@
 
   "device.showXml": "XML anzeigen",
   "device.copyXml": "In Zwischenablage kopieren",
+  "device.downloadXml": "Herunterladen",
   "device.xmlCopied": "Kopiert!",
   "device.xmlError": "Ger\u00e4te-XML konnte nicht geladen werden.",
+  "device.xmlHint": "Die technischen Rohdaten, die Ihre FRITZ!Box f\u00fcr dieses Ger\u00e4t meldet. Kopieren oder laden Sie sie herunter, um ein Ger\u00e4t zu melden, das die App nicht erkennt.",
 
   "chart.temperature": "Temperatur",
   "chart.power": "Leistung",
@@ -253,26 +255,88 @@
 
   "help.title": "Hilfe",
   "help.subtitle": "Ihr Leitfaden zu Phritzbox",
-  "help.intro": "Phritzbox ist eine Weboberfläche für Ihr AVM FRITZ!Box Smart Home. Überwachen und steuern Sie Steckdosen, Heizkörperthermostate und Temperatursensoren, sehen Sie sich historische Diagramme an und lassen Sie sich benachrichtigen, wenn etwas Ihre Aufmerksamkeit braucht. Die folgenden Abschnitte erklären, was die einzelnen Bereiche der App tun.",
+  "help.intro": "Mit Phritzbox behalten Sie Ihr AVM FRITZ!Box Smart Home in jedem Webbrowser im Blick. Die App verbindet sich mit Ihrer FRITZ!Box und zeigt, was Ihre Steckdosen, Heizkörperthermostate und Temperatursensoren gerade tun. Sie merkt sich die Messwerte außerdem über die Zeit, sodass Sie Tage oder Monate zurückblicken und eine Nachricht erhalten, wann immer etwas Ihre Aufmerksamkeit braucht. Die folgenden Abschnitte erklären jeden Bereich der App in einfacher Sprache – ganz ohne Technikkenntnisse.",
   "help.adminBadge": "Nur Admin",
   "help.dashboardTitle": "Dashboard",
-  "help.dashboardBody": "Das Dashboard listet jedes Gerät mit Live-Status, Temperatur und Leistungsaufnahme auf. Es aktualisiert sich automatisch alle 30 Sekunden und lädt bei jedem Öffnen frische Daten. Schalten Sie eine Steckdose direkt in der Tabelle ein oder aus oder klicken Sie auf ein Gerät, um die Detailseite mit 7-Tage-Diagrammen zu sehen. Stockt die Datenerfassung, weist ein Banner oben darauf hin, wie lange die letzte Erfassung her ist.",
-  "help.devicesTitle": "Geräte steuern",
-  "help.devicesBody": "Schalten Sie eine Steckdose vom Dashboard oder ihrer Detailseite aus; auf Wunsch fragt ein Bestätigungsdialog vor dem Schalten nach, um Versehen zu vermeiden. Bei Heizkörperthermostaten stellen Sie die Zieltemperatur über den Schieberegler auf der Detailseite ein – Änderungen werden beim Verstellen an die FRITZ!Box gesendet.",
+  "help.dashboardBody": "Das Dashboard ist Ihr Ausgangspunkt – eine einzige Seite, die alle Geräte auf einen Blick auflistet. Nutzen Sie es für die schnelle Kontrolle: Ist alles eingeschaltet und verbunden, wie warm ist jeder Raum und was verbraucht gerade Strom?",
+  "help.dashboardBullets": [
+    "Zeigt Status, Temperatur und Stromverbrauch jedes Geräts nebeneinander in einer Liste.",
+    "Aktualisiert sich von selbst alle 30 Sekunden, sodass die Anzeige aktuell bleibt, ohne dass Sie etwas tun müssen.",
+    "Schalten Sie eine Steckdose direkt aus der Liste ein oder aus – ohne das Gerät erst zu öffnen.",
+    "Wählen Sie ein Gerät aus, um seine eigene Seite mit Steuerung und Diagrammen der letzten 7 Tage zu öffnen.",
+    "Konnte die App Ihre Geräte länger nicht auslesen, zeigt ein Hinweis oben, wann es zuletzt geklappt hat.",
+    "Ist Ihre FRITZ!Box kurz nicht erreichbar, zeigt die App die zuletzt gespeicherten Informationen."
+  ],
+  "help.devicesTitle": "Ein Gerät ansehen und steuern",
+  "help.devicesBody": "Wählen Sie ein Gerät aus, um seine eigene Seite zu öffnen. Jedes Gerät zeigt nur die Bedienelemente, die für es sinnvoll sind, sodass ein Temperatursensor anders aussieht als eine Steckdose. Von hier aus bedienen Sie das Gerät und sehen, wie sich seine Werte zuletzt verändert haben.",
+  "help.devicesBullets": [
+    "Steckdose: ein- oder ausschalten und sehen, wie sie eingestellt ist. Damit nichts versehentlich geschaltet wird, kann ein Administrator die App so einstellen, dass sie vorher nachfragt.",
+    "Heizkörperthermostat: schieben Sie den Regler auf die gewünschte Temperatur – sie wird sofort an die Heizung gesendet. Komfort- und Spartemperatur werden zur Orientierung angezeigt.",
+    "Stromverbrauch: wie viel Strom das Gerät im Moment zieht und wie viel es insgesamt verbraucht hat.",
+    "Temperatursensor: die aktuelle Temperatur und eine eventuell von Ihnen eingestellte Korrektur.",
+    "Diagramme: Temperatur, Leistung und Stromverbrauch der letzten 7 Tage – direkt auf der Seite.",
+    "„XML anzeigen“ zeigt die technischen Rohdaten des Geräts – nützlich, falls Sie einmal ein Gerät melden müssen, das die App nicht erkennt (siehe „Ein neues oder nicht erkanntes Gerät hinzufügen“ weiter unten)."
+  ],
   "help.reportsTitle": "Berichte",
-  "help.reportsBody": "Wählen Sie ein Gerät und eine Messgröße und dann einen Zeitraum über die Schnellauswahl (heute, gestern, letzte 7/30 Tage) oder einen eigenen Bereich. Blenden Sie gleitende Durchschnitte ein, passen Sie die Achse an die Daten an und vergleichen Sie ein zweites Gerät im selben Diagramm. Schalten Sie Alarmereignisse ein, um zu markieren, wann Regeln ausgelöst haben. „Aktuelle Daten abrufen“ lädt frische Messwerte und prüft Ihre Alarmregeln sofort erneut. Ihre letzte Auswahl wird gemerkt und bei der Rückkehr erneut ausgeführt.",
+  "help.reportsBody": "In den Berichten blicken Sie über die Zeit zurück. Wählen Sie ein Gerät und was Sie sehen möchten, legen Sie einen Zeitraum fest, und die App zeichnet ein Diagramm. Ideal für Fragen wie „Wie kalt wurde es letzte Woche?“, „Wie viel Strom haben wir diesen Monat verbraucht?“ oder „Welcher Raum bleibt wärmer?“.",
+  "help.reportsBullets": [
+    "Wählen Sie ein beliebiges Gerät und was dargestellt werden soll – Temperatur, Leistung, Stromverbrauch oder Spannung.",
+    "Wählen Sie einen fertigen Zeitraum (heute, gestern, die letzten 7 oder 30 Tage) oder legen Sie eigene Start- und Enddaten fest.",
+    "Blenden Sie Trendlinien ein (nach Tag, Woche, Monat oder Jahr), um die Schwankungen zu glätten und das große Ganze zu sehen.",
+    "„An Daten anpassen“ zoomt das Diagramm enger an die tatsächlichen Werte heran.",
+    "Zeigen Sie ein zweites Gerät im selben Diagramm, um beide zu vergleichen – etwa Außen- gegen Innentemperatur.",
+    "Markieren Sie, wann Ihre Alarme ausgelöst haben, um sie neben den Messwerten zu sehen.",
+    "„Aktuelle Daten abrufen“ holt sofort die neuesten Messwerte und prüft Ihre Alarme erneut.",
+    "Die App merkt sich Ihre letzte Auswahl und zeigt sie beim nächsten Mal wieder an."
+  ],
+  "help.diagnosticsTitle": "Ein neues oder nicht erkanntes Gerät hinzufügen",
+  "help.diagnosticsBody": "Die App ermittelt aus den Informationen, die Ihre FRITZ!Box liefert, was jedes Gerät kann. Die meisten AVM-Smart-Home-Geräte werden automatisch erkannt. Ist ein Gerät ganz neu oder ein Modell, das die App noch nicht kennt, erscheint es vielleicht mit einem einfachen Symbol, ohne Bild oder mit fehlenden Bedienelementen. Am schnellsten lässt es sich ergänzen, indem Sie seine technischen Details an die Entwickler der App senden – und die App liefert Ihnen diese Details mit einem einzigen Klick.",
+  "help.diagnosticsBullets": [
+    "Öffnen Sie die Seite des Geräts und wählen Sie „XML anzeigen“. Das sind die Rohdaten, die Ihre FRITZ!Box über das Gerät meldet – was es ist, was es kann und seine aktuellen Werte – alles an einem Ort.",
+    "Mit „In Zwischenablage kopieren“ kopieren Sie sie, mit „Herunterladen“ speichern Sie sie als Datei, die Sie an eine Nachricht anhängen können.",
+    "Gehen Sie zur Projektseite auf GitHub (unten verlinkt), öffnen Sie eine neue Meldung, fügen Sie die Details ein oder hängen Sie sie an, und beschreiben Sie das Gerät und was falsch aussieht oder fehlt.",
+    "Sie kommen mit der Kommandozeile zurecht? Fortgeschrittene können mit „php bin/console smart:device:xml <Geräte-ID>“ dieselben Details ausgeben.",
+    "Diese Details beschreiben das Gerät und seine Werte – Ihr FRITZ!Box-Passwort ist nicht enthalten – sehen Sie sie aber kurz durch, bevor Sie sie öffentlich teilen."
+  ],
+  "help.diagnosticsTip": "Diese Details zu teilen ist das Hilfreichste, was Sie tun können, um eine neue Steckdose, ein Thermostat oder einen Sensor ergänzen zu lassen.",
   "help.alertsTitle": "Alarme",
-  "help.alertsBody": "Erstellen Sie Regeln, die Sie benachrichtigen, wenn eine Messgröße einen Schwellenwert über- oder unterschreitet, ihn über einen Zeitraum hält oder mit einem anderen Gerät verglichen wird (z. B. draußen kälter als drinnen). Alarme sind flankengesteuert – Sie werden einmal benachrichtigt, wenn eine Bedingung wahr wird, mit optionaler Wiederholungserinnerung. Jede Regel zeigt ihren aktuellen Zustand und kann manuell zurückgesetzt werden; das Ereignisprotokoll erfasst jedes Auslösen, Auflösen und Zurücksetzen mit dem Zustellergebnis je Kanal. Alarme werden kurz nach jeder Datenerfassung geprüft und können daher um bis zu das Erfassungsintervall (etwa 30 Minuten) verzögert sein.",
+  "help.alertsBody": "Alarme halten für Sie Wache und senden eine Nachricht, wenn ein Wert eine von Ihnen festgelegte Grenze überschreitet. Erstellen Sie so viele, wie Sie möchten; jeder überwacht ein einzelnes Gerät und einen Wert und meldet sich, wenn seine Bedingung eintritt.",
+  "help.alertsBullets": [
+    "Über oder unter einem Wert: eine Nachricht, wenn ein Wert eine von Ihnen gewählte Zahl überschreitet oder unterschreitet.",
+    "Für eine Weile: eine Nachricht erst, wenn die Bedingung so lange angehalten hat, wie Sie festgelegt haben, damit kurze Ausschläge Sie nicht stören.",
+    "Im Vergleich zu einem anderen Gerät: ein Gerät gegen ein anderes überwachen – zum Beispiel, wenn es draußen kälter ist als drinnen.",
+    "Sie werden einmal benachrichtigt, wenn etwas passiert, mit optionaler Erinnerung, solange es noch andauert.",
+    "Jeder Alarm zeigt seinen aktuellen Zustand, und Sie können ihn zurücksetzen, damit er erneut auslösen kann.",
+    "Ein Protokoll führt über jeden Alarm Buch: wann er auslöste, wann er sich auflöste und ob jede Nachricht zugestellt wurde.",
+    "Alarme werden direkt nach dem Auslesen Ihrer Geräte geprüft, eine Nachricht kann daher bis zu etwa 30 Minuten später eintreffen."
+  ],
   "help.channelsTitle": "Kanäle",
-  "help.channelsBody": "Kanäle sind wiederverwendbare Benachrichtigungsziele – E-Mail, Webhook, Pushover, Telegram, ntfy, Discord, Gotify oder Slack/Mattermost. Richten Sie hier einen ein und verweisen Sie dann aus einer oder mehreren Alarmregeln darauf. Mit der Schaltfläche „Test“ prüfen Sie die Zustellung, bevor Sie sich darauf verlassen.",
+  "help.channelsBody": "Kanäle sind die Wege, auf denen die App Sie erreichen kann, und Ihre Alarme nutzen sie, um ihre Nachrichten zu senden. Richten Sie einen Kanal einmal ein und verwenden Sie ihn für beliebig viele Alarme wieder, statt die Details jedes Mal einzugeben.",
+  "help.channelsBullets": [
+    "Wege zur Benachrichtigung: E-Mail, Pushover, Telegram, ntfy, Discord, Gotify, Slack/Mattermost oder ein Webhook (eine Adresse, die andere Programme mithören können).",
+    "Ein Kanal kann von beliebig vielen Alarmen genutzt werden.",
+    "Mit der Schaltfläche „Test“ senden Sie sich eine Beispielnachricht und stellen sicher, dass sie ankommt, bevor Sie sich darauf verlassen."
+  ],
   "help.usersTitle": "Benutzer",
-  "help.usersBody": "Verwalten Sie, wer sich anmelden darf und was er tun kann. Administratoren sehen und konfigurieren alles, einschließlich Alarme, Kanäle und Benutzer; normale Benutzer können Geräte überwachen und steuern sowie Berichte einsehen.",
-  "help.freshnessTitle": "Datenerfassung & Aktualität",
-  "help.freshnessBody": "Phritzbox erfasst alle 30 Minuten Messwerte von der FRITZ!Box. Der Scheduler holt verpasste Läufe nicht nach – schläft der Host, pausiert die Erfassung bis zum Aufwachen. Betreiben Sie Phritzbox daher auf dauerhaft eingeschalteter Hardware. Werden die Daten veraltet, zeigt das Banner „Live-Daten möglicherweise veraltet“, wie lange die letzte erfolgreiche Erfassung her ist.",
+  "help.usersBody": "Hier legen Sie fest, wer sich anmelden darf und was er tun darf. Jede Person hat einen eigenen Benutzernamen, eine E-Mail und ein Passwort.",
+  "help.usersBullets": [
+    "Administratoren können alles sehen und ändern, einschließlich Alarme, Kanäle und Benutzer.",
+    "Alle anderen können Geräte beobachten und steuern und Berichte ansehen, aber nicht die Administrator-Einstellungen.",
+    "Jeder kann sein eigenes Passwort jederzeit über das Kontomenü ändern."
+  ],
+  "help.freshnessTitle": "Werte aktuell halten",
+  "help.freshnessBody": "Die gesamte Historie in der App entsteht dadurch, dass Ihre FRITZ!Box regelmäßig ausgelesen und die Werte gespeichert werden. Wer weiß, wie das funktioniert, versteht auch die gelegentliche Lücke in einem Diagramm und den Hinweis „Daten möglicherweise veraltet“.",
+  "help.freshnessBullets": [
+    "Die App liest Ihre Geräte aus und speichert die Werte alle 30 Minuten.",
+    "Verpasste Messungen werden nicht nachträglich ergänzt – geht der Computer, auf dem die App läuft, in den Ruhezustand, pausiert die Erfassung, bis er wieder aufwacht.",
+    "Für eine vollständige Historie ohne Lücken betreiben Sie die App auf etwas, das immer eingeschaltet ist – etwa einem Server, einem NAS oder einem kleinen, dauerhaft laufenden Computer.",
+    "Werden die Werte alt, zeigt ein Hinweis „Live-Daten möglicherweise veraltet“, wann die App Ihre Geräte zuletzt auslesen konnte."
+  ],
   "help.version": "Version",
   "help.links": "N\u00fctzliche Links",
   "help.fritzboxDocs": "FRITZ!Box-Dokumentation",
   "help.githubRepo": "GitHub-Repository",
+  "help.githubIssues": "Ein Problem oder ein nicht erkanntes Gerät melden",
 
   "device.type.outlet": "Steckdose",
   "device.type.thermostat": "Thermostat",

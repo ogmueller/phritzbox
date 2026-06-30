@@ -170,8 +170,10 @@
 
   "device.showXml": "Show XML",
   "device.copyXml": "Copy to clipboard",
+  "device.downloadXml": "Download",
   "device.xmlCopied": "Copied!",
   "device.xmlError": "Could not load device XML.",
+  "device.xmlHint": "The raw technical details your FRITZ!Box reports for this device. Copy or download them to report a device the app doesn't recognise.",
 
   "chart.temperature": "Temperature",
   "chart.power": "Power",
@@ -253,26 +255,88 @@
 
   "help.title": "Help",
   "help.subtitle": "Your guide to Phritzbox",
-  "help.intro": "Phritzbox is a web interface for your AVM FRITZ!Box smart home. Monitor and control smart outlets, radiator thermostats, and temperature sensors, browse historical charts, and get notified when something needs your attention. The sections below explain what each part of the app does.",
+  "help.intro": "Phritzbox lets you keep an eye on your AVM FRITZ!Box smart home from any web browser. It connects to your FRITZ!Box and shows what your smart plugs, radiator thermostats, and temperature sensors are doing right now. It also remembers their readings over time, so you can look back over days or months and get a message whenever something needs your attention. The sections below explain each part of the app in plain language — no technical knowledge needed.",
   "help.adminBadge": "Admin only",
   "help.dashboardTitle": "Dashboard",
-  "help.dashboardBody": "The Dashboard lists every device with its live status, temperature, and power draw. It refreshes automatically every 30 seconds and pulls fresh data each time you open it. Switch an outlet on or off right from the table, or click a device to see its detail page with 7-day charts. If collection has stalled, a banner at the top tells you how long ago data was last gathered.",
-  "help.devicesTitle": "Controlling devices",
-  "help.devicesBody": "Toggle a smart outlet from the Dashboard or its detail page; you can require a confirmation prompt before switching to avoid accidents. For radiator thermostats, drag the setpoint slider on the detail page to set the target temperature — changes are sent to the FRITZ!Box as you adjust.",
+  "help.dashboardBody": "The Dashboard is your starting point — a single page that lists all your devices at a glance. Use it for a quick check: is everything switched on and connected, how warm is each room, and what is using electricity right now?",
+  "help.dashboardBullets": [
+    "Shows the status, temperature, and electricity use of every device, side by side in one list.",
+    "Updates on its own every 30 seconds, so what you see stays current without doing anything.",
+    "Switch a smart plug on or off straight from the list — no need to open the device first.",
+    "Select any device to open its own page, with its controls and charts of the last 7 days.",
+    "If the app hasn't been able to read your devices for a while, a notice at the top tells you when it last succeeded.",
+    "If your FRITZ!Box can't be reached for a moment, the app shows the most recent information it saved."
+  ],
+  "help.devicesTitle": "Looking at and controlling a device",
+  "help.devicesBody": "Select a device to open its own page. Each device only shows the controls that make sense for it, so a temperature sensor looks different from a smart plug. From here you can operate the device and see how its readings have changed recently.",
+  "help.devicesBullets": [
+    "Smart plug: switch it on or off and see how it is set. To avoid switching something by accident, an administrator can have the app ask you to confirm first.",
+    "Radiator thermostat: slide the control to the temperature you want — it is sent to the heater right away. The comfort and energy-saving temperatures are shown for reference.",
+    "Electricity use: how much power the device is drawing at the moment, and how much it has used in total.",
+    "Temperature sensor: the current temperature, plus any adjustment you have set.",
+    "Charts: see temperature, power, and electricity use over the last 7 days, right on the page.",
+    "\"Show XML\" reveals the device's raw technical details — useful if you ever need to report a device the app doesn't recognise (see \"Adding a new or unrecognised device\" below)."
+  ],
   "help.reportsTitle": "Reports",
-  "help.reportsBody": "Pick a device and metric, then choose a date range with the quick presets (today, yesterday, last 7/30 days) or a custom range. Overlay rolling averages, fit the axis to the data, and compare a second device on the same chart. Turn on alert events to mark when rules fired. \"Pull latest data\" fetches fresh readings and re-checks your alert rules immediately. Your last selection is remembered and re-run when you come back.",
+  "help.reportsBody": "Reports is where you look back over time. Choose a device and what you want to see, pick a time period, and the app draws a chart for you. It's ideal for questions like \"how cold did it get last week?\", \"how much electricity did we use this month?\", or \"which room stays warmer?\".",
+  "help.reportsBullets": [
+    "Choose any device and what to chart — temperature, power, electricity use, or voltage.",
+    "Pick a ready-made period (today, yesterday, the last 7 days, or the last 30 days), or set your own start and end dates.",
+    "Add trend lines (by day, week, month, or year) to smooth out the ups and downs and see the bigger picture.",
+    "\"Fit to data\" zooms the chart in around the actual values for a closer look.",
+    "Show a second device on the same chart to compare them — for example, outdoor against indoor temperature.",
+    "Mark when your alerts went off, so you can see them against the readings.",
+    "\"Pull latest data\" fetches the newest readings straight away and re-checks your alerts.",
+    "The app remembers your last choice and shows it again next time you come back."
+  ],
+  "help.diagnosticsTitle": "Adding a new or unrecognised device",
+  "help.diagnosticsBody": "The app works out what each device can do from the information your FRITZ!Box provides about it. Most AVM smart home devices are recognised automatically. If a device is very new, or a model the app hasn't seen before, it might show up with a plain icon, no picture, or missing controls. The quickest way to get it added is to send its technical details to the people who develop the app — and the app gives you those details with a single click.",
+  "help.diagnosticsBullets": [
+    "Open the device's page and select \"Show XML\". This is the raw information your FRITZ!Box reports about the device — what it is, what it can do, and its current readings — all in one place.",
+    "Use \"Copy to clipboard\" to copy it, or \"Download\" to save it as a file you can attach to a message.",
+    "Go to the project's page on GitHub (linked below), open a new report, paste or attach the details, and describe the device and what looks wrong or missing.",
+    "Comfortable with a command line? Advanced users can run \"php bin/console smart:device:xml <device id>\" to print the same details.",
+    "These details describe the device and its readings — they do not include your FRITZ!Box password — but it's worth a quick look before sharing them publicly."
+  ],
+  "help.diagnosticsTip": "Sharing these details is the single most helpful thing you can do to get a new plug, thermostat, or sensor added.",
   "help.alertsTitle": "Alerts",
-  "help.alertsBody": "Create rules that notify you when a metric crosses a threshold, stays past it for a sustained period, or compares against another device (e.g. outdoor colder than indoor). Alerts are edge-triggered — you're notified once when a condition becomes true, with an optional repeat reminder. Each rule shows its current state and can be re-armed manually; the activity log records every firing, resolution, and re-arm with the per-channel delivery result. Alerts are checked shortly after each data collection, so they can lag by up to the collection interval (about 30 minutes).",
+  "help.alertsBody": "Alerts keep watch for you and send a message when a reading crosses a line you set. Create as many as you like; each one watches a single device and reading and lets you know when its condition comes true.",
+  "help.alertsBullets": [
+    "Above or below a value: get a message when a reading passes a number you choose.",
+    "For a while: only get a message once the condition has lasted as long as you set, so brief blips don't bother you.",
+    "Compared with another device: watch one device against another — for example, when it's colder outside than inside.",
+    "You're told once when something happens, with an optional reminder while it is still going on.",
+    "Each alert shows its current state, and you can reset it so it can trigger again.",
+    "A log keeps a history of every alert: when it went off, when it cleared, and whether each message was delivered.",
+    "Alerts are checked just after the app reads your devices, so a message can arrive up to about 30 minutes later."
+  ],
   "help.channelsTitle": "Channels",
-  "help.channelsBody": "Channels are reusable notification destinations — e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, or Slack/Mattermost. Set one up here, then reference it from one or more alert rules. Use the Test button to confirm delivery works before relying on it.",
+  "help.channelsBody": "Channels are the ways the app can reach you, and your alerts use them to send their messages. Set up a channel once and reuse it for as many alerts as you like, instead of entering the details every time.",
+  "help.channelsBullets": [
+    "Ways to be notified: email, Pushover, Telegram, ntfy, Discord, Gotify, Slack/Mattermost, or a webhook (a link other apps can listen to).",
+    "One channel can be used by any number of alerts.",
+    "Use the \"Test\" button to send yourself a sample message and make sure it arrives before you rely on it."
+  ],
   "help.usersTitle": "Users",
-  "help.usersBody": "Manage who can sign in and what they can do. Administrators can see and configure everything, including Alerts, Channels, and Users; regular users can monitor and control devices and view reports.",
-  "help.freshnessTitle": "Data collection & freshness",
-  "help.freshnessBody": "Phritzbox collects readings from the FRITZ!Box every 30 minutes. The scheduler does not catch up on missed runs, so if the host sleeps, collection pauses until it wakes — run Phritzbox on always-on hardware. When data goes stale, the \"live data may be stale\" banner shows how long ago the last collection succeeded.",
+  "help.usersBody": "This is where you decide who can sign in and what they are allowed to do. Each person has their own username, email, and password.",
+  "help.usersBullets": [
+    "Administrators can see and change everything, including Alerts, Channels, and Users.",
+    "Everyone else can watch and control devices and look at reports, but not the administrator settings.",
+    "Anyone can change their own password from the account menu whenever they like."
+  ],
+  "help.freshnessTitle": "Keeping readings up to date",
+  "help.freshnessBody": "All the history in the app comes from regularly reading your FRITZ!Box and saving the values. Knowing how that works explains the occasional gap in a chart and the \"data may be out of date\" notice.",
+  "help.freshnessBullets": [
+    "The app reads your devices and saves the values every 30 minutes.",
+    "It doesn't go back and fill in readings it missed, so if the computer running the app goes to sleep, collecting pauses until it wakes up again.",
+    "For a complete history with no gaps, run the app on something that's always on — such as a server, a NAS, or a small computer left running.",
+    "If the readings start to get old, a \"live data may be out of date\" notice shows when the app last managed to read your devices."
+  ],
   "help.version": "Version",
   "help.links": "Useful Links",
   "help.fritzboxDocs": "FRITZ!Box Documentation",
   "help.githubRepo": "GitHub Repository",
+  "help.githubIssues": "Report a problem or an unrecognised device",
 
   "device.type.outlet": "Outlet",
   "device.type.thermostat": "Thermostat",
