@@ -110,11 +110,23 @@ class SmartStatsCollectionService
                 $data = $statsList[$index];
                 $intervalSeconds = $data['interval'];
 
-                // calculate current interval starting point
-                // go to the beginning of the last full time slot
-                $seconds = (int) $now->format('U');
-                $back = $intervalSeconds + $seconds % $intervalSeconds;
-                $end = $now->modify('-'.$back.' seconds');
+                // Timestamp of the NEWEST value in the series.
+                // Prefer the box-supplied `datatime` (its own clock for the most
+                // recent sample): it captures the freshest completed slot and is
+                // immune to server/box clock and timezone drift. Reconstructing
+                // from the server clock instead lags a full grid interval behind
+                // — e.g. it stores 00:00 for a 15-min series pulled at 00:16,
+                // hiding the 00:15 sample the box already has. Fall back to the
+                // server clock only when the box omits datatime (older FRITZ!OS).
+                if (!empty($data['datatime'])) {
+                    $endTs = $data['datatime'] - ($data['datatime'] % $intervalSeconds);
+                    $end = $now->setTimestamp($endTs);
+                } else {
+                    // go to the beginning of the last full time slot
+                    $seconds = (int) $now->format('U');
+                    $back = $intervalSeconds + $seconds % $intervalSeconds;
+                    $end = $now->modify('-'.$back.' seconds');
+                }
                 $start = $end->modify('-'.($intervalSeconds * ($data['count'] - 1)).' seconds');
 
                 $step = new \DateInterval('PT'.$intervalSeconds.'S');

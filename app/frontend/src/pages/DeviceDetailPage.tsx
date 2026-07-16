@@ -21,7 +21,13 @@ import { EnergyChart } from '../components/charts/EnergyChart'
 import { VoltageChart } from '../components/charts/VoltageChart'
 
 function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10)
+  // Local calendar date (YYYY-MM-DD). toISOString() would format in UTC, which
+  // rolls to the wrong day just after local midnight for users ahead of UTC —
+  // e.g. "Today" at 00:16 CEST would resolve to yesterday.
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 export function DeviceDetailPage() {
