@@ -319,7 +319,7 @@ class AhaApi
     /**
      * Deliver basic information of a SmartHome device.
      *
-     * @return array<string, list<array{count: int, interval: int, unit: string, factor: int, values: list<float>}>>
+     * @return array<string, list<array{count: int, interval: int, unit: string, factor: int, datatime?: int, values: list<float>}>>
      */
     public function getBasicDeviceStats(string $ain): array
     {
@@ -343,7 +343,7 @@ class AhaApi
      *
      * @throws \Psr\Cache\InvalidArgumentException
      *
-     * @return array<string, array<string, list<array{count: int, interval: int, unit: string, factor: int, values: list<float>}>>> map of AIN => parsed stats (see getBasicDeviceStats)
+     * @return array<string, array<string, list<array{count: int, interval: int, unit: string, factor: int, datatime?: int, values: list<float>}>>> map of AIN => parsed stats (see getBasicDeviceStats)
      */
     public function getBasicDeviceStatsBatch(array $ains, int $concurrency = 4): array
     {
@@ -391,7 +391,7 @@ class AhaApi
      *
      * @throws InvalidResponseException
      *
-     * @return array<string, list<array{count: int, interval: int, unit: string, factor: int, values: list<float>}>>
+     * @return array<string, list<array{count: int, interval: int, unit: string, factor: int, datatime?: int, values: list<float>}>>
      */
     private function parseBasicDeviceStats(string $content): array
     {
@@ -442,6 +442,12 @@ class AhaApi
                     $arr['interval'] = (int) $attr['grid'];
                     $arr['unit'] = $unit[$name]['name'];
                     $arr['factor'] = $unit[$name]['factor'];
+                    // Unix timestamp of the newest value, as reported by the box
+                    // itself. Only present on FRITZ!OS versions that send it —
+                    // kept optional so older responses parse unchanged.
+                    if (isset($attr['datatime'])) {
+                        $arr['datatime'] = (int) $attr['datatime'];
+                    }
                     $arr['values'] = explode(',', (string) $stats);
 
                     // some values are delivered with an unusual factor, e.g. tenth part of celsius (0.1)

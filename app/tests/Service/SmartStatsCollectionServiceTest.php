@@ -93,6 +93,40 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
         self::assertSame(3, $this->rowCount($ain), 'no duplicate rows');
     }
 
+    public function testUsesBoxDatatimeForNewestTimestamp(): void
+    {
+        $ain = 'collect-datatime';
+        // datatime 1784156459 = 2026-07-15 23:00:59 UTC. Floored to the 900s
+        // grid that is 23:00:00 — the newest stored row must carry that instant
+        // (the box's own clock), not a server-clock reconstruction one interval
+        // behind. count=2 => a second row exactly one grid step earlier.
+        $datatime = 1784156459;
+        $grid = 900;
+        $aha = $this->aha(
+            [$this->device($ain, 'Sensor')],
+            [$ain => ['temperature' => [[
+                'interval' => $grid,
+                'count' => 2,
+                'datatime' => $datatime,
+                'values' => [21.0, 22.0],
+            ]]]],
+        );
+
+        $result = $this->service($aha)->collectAll();
+
+        self::assertSame(2, $result['rows']);
+
+        $floored = $datatime - ($datatime % $grid);
+        // Render the expected timestamps with the same timezone the service uses
+        // so the assertion holds regardless of the test host's local timezone.
+        $expectedNewest = (new \DateTimeImmutable())->setTimestamp($floored)->format('Y-m-d H:i:s');
+        $expectedOldest = (new \DateTimeImmutable())->setTimestamp($floored - $grid)->format('Y-m-d H:i:s');
+
+        $conn = $this->em->getConnection();
+        self::assertSame($expectedNewest, $conn->fetchOne('SELECT MAX(time) FROM smart_device_data WHERE sid = ?', [$ain]));
+        self::assertSame($expectedOldest, $conn->fetchOne('SELECT MIN(time) FROM smart_device_data WHERE sid = ?', [$ain]));
+    }
+
     public function testDeviceMissingFromBatchIsSkippedWithoutAbortingRun(): void
     {
         $ok = 'collect-ok';
