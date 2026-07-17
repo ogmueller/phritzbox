@@ -230,7 +230,22 @@ export function ReportsPage() {
     setError(null)
     try {
       await refreshStats()
-      if (loaded) await doLoad(selectedAin, selectedType, from, to)
+      if (!loaded) return
+      // If a preset is active, re-resolve it against *today* before re-fetching.
+      // Otherwise a page left open across midnight (e.g. on "Yesterday") would
+      // pull the stale dates captured on load instead of the new day's window.
+      // A custom range is left untouched — the user picked those dates on purpose.
+      let fromDate = from
+      let toDate = to
+      const preset = presetKey ? PRESETS.find((p) => p.key === presetKey) : undefined
+      if (preset) {
+        const range = presetRange(preset.days)
+        fromDate = range.from
+        toDate = range.to
+        setFrom(fromDate)
+        setTo(toDate)
+      }
+      await doLoad(selectedAin, selectedType, fromDate, toDate)
     } catch (e) {
       setError(e instanceof Error ? e.message : t('reports.refreshFailed'))
     } finally {
