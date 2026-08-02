@@ -91,11 +91,35 @@ function buildAvgSeries(data: StatPoint[], period: Period) {
   }
 }
 
+// ECharts' time axis silently falls back to a coarser unit at boundaries, so a
+// midnight tick renders as the bare day-of-month ("2") wedged between "20:00"
+// and "04:00". Label every tick ourselves, picking granularity from the span.
+export function formatAxisTime(value: number, spanMs: number, locale?: string): string {
+  const d = new Date(value)
+  if (spanMs > 400 * PERIOD_MS.day) {
+    return d.toLocaleDateString(locale, { month: 'short', year: 'numeric' })
+  }
+  const date = d.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+  if (spanMs > 60 * PERIOD_MS.day) return date
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  // Beyond a few days the hourly ticks thin out, so day starts carry the date.
+  if (spanMs > 3 * PERIOD_MS.day) return d.getHours() === 0 && d.getMinutes() === 0 ? date : time
+  return time
+}
+
 export function selectAveragePeriods(diffDays: number): Period[] {
   if (diffDays > 365) return ['year', 'month']
   if (diffDays > 30)  return ['month', 'week']
   if (diffDays > 7)   return ['week', 'day']
   return ['day']
+}
+
+/** Time covered by the chart, across both series (each is sorted ascending). */
+function timeSpan(...series: (StatPoint[] | undefined)[]): number {
+  const times = series.flatMap((s) =>
+    s && s.length > 0 ? [new Date(s[0].time).getTime(), new Date(s[s.length - 1].time).getTime()] : [],
+  )
+  return times.length === 0 ? 0 : Math.max(...times) - Math.min(...times)
 }
 
 function yAxisBounds(values: number[]): { min: number; max: number } | null {
@@ -149,6 +173,7 @@ export function TimeSeriesChart({
 
     const avgSeriesList = scaledData.length < 2 ? [] : activePeriods.map((p) => buildAvgSeries(scaledData, p))
     const bounds = fitToData ? yAxisBounds(scaledValues) : null
+    const spanMs = timeSpan(data, data2)
 
     const legendData = [
       label,
@@ -189,7 +214,11 @@ export function TimeSeriesChart({
       grid: { left: 60, right: 20, top: 16, bottom: hasLegend ? 52 : 40 },
       xAxis: {
         type: 'time',
-        axisLabel: { color: '#6B7280', fontSize: 11 },
+        axisLabel: {
+          color: '#6B7280',
+          fontSize: 11,
+          formatter: (v: number) => formatAxisTime(v, spanMs, i18n.language),
+        },
         axisLine: { lineStyle: { color: '#D4D9E0' } },
       },
       yAxis: {
