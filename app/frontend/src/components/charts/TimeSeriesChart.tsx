@@ -26,6 +26,7 @@ interface TimeSeriesChartProps {
   height?: number
   enabledAvgPeriods?: Period[]
   fitToData?: boolean
+  showMinMax?: boolean
   data2?: StatPoint[]
   label2?: string
   color2?: string
@@ -131,6 +132,56 @@ function yAxisBounds(values: number[]): { min: number; max: number } | null {
   return { min: Math.max(0, Math.floor(lo - margin)), max: Math.ceil(hi + margin) }
 }
 
+/** Highest and lowest reading of a series; ties resolve to the earliest point. */
+export function computeExtremes(data: StatPoint[]): { min: StatPoint; max: StatPoint } | null {
+  if (data.length === 0) return null
+  let min = data[0]
+  let max = data[0]
+  for (const p of data) {
+    if (p.value < min.value) min = p
+    if (p.value > max.value) max = p
+  }
+  return { min, max }
+}
+
+// Min/max highlight: a dashed horizontal line at each extreme (so the level can be
+// read off the axis) plus a dot on the exact reading (so its time is visible too).
+// A flat series collapses to a single marker instead of two lines on top of each other.
+function buildMinMaxMarkers(data: StatPoint[], color: string, fmtValue: (v: number) => string) {
+  const ext = computeExtremes(data)
+  if (!ext) return {}
+  const marks = [{ point: ext.max, key: 'chart.max', position: 'insideEndTop' }]
+  if (ext.min.value !== ext.max.value) {
+    marks.push({ point: ext.min, key: 'chart.min', position: 'insideEndBottom' })
+  }
+  return {
+    markLine: {
+      silent: true,
+      symbol: 'none',
+      animation: false,
+      lineStyle: { color, width: 1, type: 'dashed' as const, opacity: 0.6 },
+      data: marks.map((m) => ({
+        yAxis: m.point.value,
+        label: {
+          position: m.position,
+          color,
+          fontSize: 10,
+          formatter: () => `${i18n.t(m.key as never)} ${fmtValue(m.point.value)}`,
+        },
+      })),
+    },
+    markPoint: {
+      silent: true,
+      symbol: 'circle',
+      symbolSize: 7,
+      animation: false,
+      itemStyle: { color, borderColor: '#fff', borderWidth: 1 },
+      label: { show: false },
+      data: marks.map((m) => ({ coord: [m.point.time, m.point.value] })),
+    },
+  }
+}
+
 /** Decide whether to display Wh values as kWh and return the display unit + scaling factor. */
 function resolveUnit(unit: string, values: number[]): { displayUnit: string; scale: number } {
   if (unit === 'Wh' && values.length > 0 && Math.max(...values) >= 1000) {
@@ -147,6 +198,7 @@ export function TimeSeriesChart({
   height = 280,
   enabledAvgPeriods,
   fitToData = true,
+  showMinMax = false,
   data2,
   label2 = '',
   color2 = '#9B59B6',
@@ -170,6 +222,9 @@ export function TimeSeriesChart({
     const scaledData2 = data2 ? rescale(data2) : undefined
     const scaledValues = allValues.map((v) => v * scale)
     const scaledEvents = events.map((e) => ({ ...e, value: e.value * scale }))
+
+    const fmtValue = (v: number) => `${Number(v.toFixed(2))} ${displayUnit}`
+    const minMax = (d: StatPoint[], c: string) => (showMinMax ? buildMinMaxMarkers(d, c, fmtValue) : {})
 
     const avgSeriesList = scaledData.length < 2 ? [] : activePeriods.map((p) => buildAvgSeries(scaledData, p))
     const bounds = fitToData ? yAxisBounds(scaledValues) : null
@@ -243,6 +298,7 @@ export function TimeSeriesChart({
           data: scaledData.map((p) => [p.time, p.value]),
           lineStyle: { color, width: 1.5 },
           areaStyle: { color, opacity: 0.07 },
+          ...minMax(scaledData, color),
         },
         ...(scaledData2 ? [{
           name: label2,
@@ -252,6 +308,7 @@ export function TimeSeriesChart({
           sampling: 'lttb' as const,
           data: scaledData2.map((p) => [p.time, p.value]),
           lineStyle: { color: color2, width: 1.5 },
+          ...minMax(scaledData2, color2),
         }] : []),
         ...avgSeriesList,
         ...(scaledEvents.length > 0 ? [{
@@ -267,7 +324,7 @@ export function TimeSeriesChart({
         }] : []),
       ],
     }
-  }, [data, label, unit, color, enabledAvgPeriods, fitToData, data2, label2, color2, events, eventsLabel])
+  }, [data, label, unit, color, enabledAvgPeriods, fitToData, showMinMax, data2, label2, color2, events, eventsLabel])
 
   return <ReactECharts option={option} notMerge style={{ height }} />
 }
