@@ -71,6 +71,7 @@ interface SavedFilter {
   to: string
   fitToData: boolean
   showEvents: boolean
+  showMinMax: boolean
   enabledPeriods: Period[]
 }
 
@@ -107,6 +108,7 @@ export function ReportsPage() {
   const [enabledPeriods, setEnabledPeriods]     = useState<Period[]>([])
   const [fitToData, setFitToData]               = useState(() => saved?.fitToData ?? true)
   const [showEvents, setShowEvents]             = useState(() => saved?.showEvents ?? false)
+  const [showMinMax, setShowMinMax]             = useState(() => saved?.showMinMax ?? false)
   const [loaded, setLoaded]                     = useState(false)
   const [refreshing, setRefreshing]             = useState(false)
 
@@ -132,12 +134,12 @@ export function ReportsPage() {
   // Persist the current filter on any change.
   useEffect(() => {
     try {
-      const payload: SavedFilter = { ain: selectedAin, ain2: selectedAin2, type: selectedType, presetKey, from, to, fitToData, showEvents, enabledPeriods }
+      const payload: SavedFilter = { ain: selectedAin, ain2: selectedAin2, type: selectedType, presetKey, from, to, fitToData, showEvents, showMinMax, enabledPeriods }
       localStorage.setItem(REPORTS_FILTER_KEY, JSON.stringify(payload))
     } catch {
       // ignore quota / private-mode write failures
     }
-  }, [selectedAin, selectedAin2, selectedType, presetKey, from, to, fitToData, showEvents, enabledPeriods])
+  }, [selectedAin, selectedAin2, selectedType, presetKey, from, to, fitToData, showEvents, showMinMax, enabledPeriods])
 
   const doLoad = async (
     ain: string,
@@ -394,6 +396,7 @@ export function ReportsPage() {
             )
           })}
           <ToggleChip active={fitToData} onClick={() => setFitToData(!fitToData)}>{t('reports.fitToData')}</ToggleChip>
+          <ToggleChip active={showMinMax} onClick={() => setShowMinMax(!showMinMax)}>{t('reports.showMinMax')}</ToggleChip>
           <ToggleChip active={showEvents} onClick={() => handleShowEventsChange(!showEvents)}>{t('reports.showEvents')}</ToggleChip>
         </div>
       </Card>
@@ -421,6 +424,7 @@ export function ReportsPage() {
               height={340}
               enabledAvgPeriods={enabledPeriods}
               fitToData={fitToData}
+              showMinMax={showMinMax}
               data2={selectedAin2 ? data2 : undefined}
               label2={selectedAin2 ? deviceName(selectedAin2) : undefined}
               color2={SECOND_COLOR}
