@@ -50,7 +50,7 @@ Features
 - Date-range reports with quick presets (today, last 7/30 days), rolling averages, a second device overlaid on the same chart for comparison, and alert events marked where rules fired — plus on-demand data refresh; your last selection is remembered and re-run when you come back
 - Rule-based alerting (threshold, sustained, or device-to-device comparison) via e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, or Slack/Mattermost — with an activity log that shows per-channel delivery status, current-rule state, and a manual re-arm
 - Sortable tables and global error notifications throughout the UI
-- 18 CLI commands for device control and monitoring
+- 20 CLI commands for device control and monitoring
 - User management with role-based access (admin only)
 - German and English interface
 - Automated data collection every 30 minutes (via [cronado](https://github.com/teqneers/cronado))
@@ -109,7 +109,7 @@ All settings are configured via environment variables in `.env`:
 | `APP_API_DOMAIN` | No | `http://fritz.box` | Fritz!Box address (or MyFRITZ! URL) |
 | `APP_SECRET` | No | `change-me...` | Symfony application secret |
 | `JWT_PASSPHRASE` | No | `change-me` | Passphrase for JWT key encryption |
-| `SERVER_NAME` | No | `localhost` | Server hostname for Caddy |
+| `SERVER_NAME` | No | `http://localhost` | Server hostname for Caddy (use a bare domain, e.g. `phritzbox.example.com`, to get automatic HTTPS) |
 | `PHRITZBOX_PORT` | No | `80` | Port to expose the web UI |
 | `MAILER_DSN` | No | `null://null` | Mail transport for e-mail alerts (e.g. `smtp://user:pass@host:587`); default discards mail |
 | `APP_ALERT_FROM` | No | `alerts@phritzbox.local` | Sender address for alert e-mails |
@@ -140,6 +140,7 @@ php app/bin/console COMMAND
 |---------|-------------|
 | `smart:device:list` | List all available SmartHome devices |
 | `smart:device:stats` | Show statistics of a SmartHome device |
+| `smart:device:xml <ain>` | Dump raw AHA XML for a device (useful for bug reports) |
 | `smart:switch:list` | List all known SmartHome outlets |
 | `smart:switch:on <ain>` | Turn on a SmartHome outlet |
 | `smart:switch:off <ain>` | Turn off a SmartHome outlet |
@@ -209,6 +210,25 @@ Set up channels under **Channels**, then reference them from **Alerts** (both ar
 
 Alert rules are evaluated shortly after each data collection (the `cron:smart:alerts` command, scheduled automatically in the Docker setup). Because evaluation runs on collected data, alerts can lag real-time by up to the collection interval (~30 minutes). To check immediately, the Reports **"Pull latest data"** button collects fresh readings *and* evaluates the rules right away.
 
+**No alerts arriving?** Work through this in order — the command prints exactly what it did:
+
+```bash
+docker compose exec app php /application/app/bin/console cron:smart:alerts
+# → Evaluated 3 rule(s): 3 triggered, 0 notified, 0 resolved
+```
+
+- **`Evaluated 0 rule(s)`** — no *enabled* rules exist in that installation's database.
+- **`0 triggered`** — the conditions genuinely aren't met. A *sustained* rule additionally needs **every** sample in its window to satisfy the condition, and is skipped entirely if the window contains no readings.
+- **triggered but `0 notified`** — the rules are already in the *Triggered* state. With "alert once" they stay silent until the condition clears, so a rule whose condition is permanently true never alerts again. Use **Re-arm** on the Alerts page, or set a *reminder interval* to be re-notified while it stays true.
+- **notified but nothing received** — check the per-channel delivery result in **Recent activity**, and use the channel's **Test** button.
+- **the command works by hand but nothing happens on its own** — the scheduler isn't running it. The cron jobs come from **labels in your `compose.yaml`**, not from the image, so an installation created before alerting shipped keeps collecting data without ever evaluating rules. Verify with:
+
+  ```bash
+  docker inspect --format '{{json .Config.Labels}}' "$(docker compose ps -q app)" | tr ',' '\n' | grep cronado
+  ```
+
+  You should see both a `cronado.savestats.*` and a `cronado.alerts.*` set. If the alerts labels are missing, refresh your `compose.yaml` (see [Updating](docker/INSTALL.md#updating)).
+
 
 Development
 -----------
@@ -253,11 +273,15 @@ The container mounts `app/`, `data/`, and `var/` as volumes for live code editin
 
 > **Note:** The Docker dev setup only runs the PHP backend. To work on the frontend, you need to start the Vite dev server separately (see below) or uncomment the `vite` service in `docker/compose.yaml`.
 
+> **Port:** the Vite dev server proxies `/api` to `http://localhost:38080`, so publish the dev
+> container on that port — put `PHRITZBOX_PORT=38080` in `docker/.env` (the production default of
+> `80` would leave the frontend dev server without a backend).
+
 ### Frontend
 
 ```bash
 cd app/frontend && npm install
-npm run dev     # dev server on :5173 (proxies /api to :80)
+npm run dev     # dev server on :5173 (proxies /api to the app container on :38080)
 npm run build   # production build → app/public/frontend/
 ```
 

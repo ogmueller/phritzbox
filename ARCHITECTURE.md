@@ -288,7 +288,8 @@ Catch-all for non-API routes. Serves `app/public/frontend/index.html` so React R
 
 ### 2.6 Console Commands
 
-All commands extend the abstract `Smart` base class in `app/src/Command/`.
+All commands live in `app/src/Command/` and extend the abstract `Smart` base class — except
+`cron:smart:alerts`, which talks only to the database and is a plain Symfony `Command`.
 
 #### `Smart` (base class)
 
@@ -695,7 +696,7 @@ docker/
 | Service | Image | Responsibility |
 |---|---|---|
 | `app` | `ghcr.io/ogmueller/phritzbox:latest` | FrankenPHP — serves static assets, runs PHP, handles all HTTP |
-| `cronado` | `ghcr.io/teqneers/cronado:latest` | Watches Docker socket and triggers `cron:smart:savestats` every 30 min via container labels |
+| `cronado` | `ghcr.io/teqneers/cronado:latest` | Watches the Docker socket and runs the jobs declared in the `app` service's labels: `cron:smart:savestats` every 30 min, `cron:smart:alerts` at `5,35`. The schedules come from the operator's compose file, so a deployment on an older file silently lacks any job added since. |
 
 **Development** uses `compose.yaml` with `Dockerfile.dev` — same FrankenPHP base image but mounts `app/`, `data/`, and `var/` as volumes for live editing.
 
