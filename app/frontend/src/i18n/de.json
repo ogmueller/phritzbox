@@ -70,6 +70,7 @@
   "alerts.rearm": "Reaktivieren",
   "alerts.rearmTitle": "Alarm auf OK zurücksetzen, damit er erneut auslösen kann",
   "alerts.noChannels": "Keine Kanäle konfiguriert. Bitte zuerst auf der Seite „Kanäle“ einen anlegen.",
+  "alerts.selfComparison": "Bitte ein anderes Vergleichsgerät wählen. Ein Gerät mit sich selbst zu vergleichen ist immer wahr (oder immer falsch) — die Regel würde einmal auslösen und danach nie wieder.",
   "nav.channels": "Kanäle",
   "channels.breadcrumbSystem": "System",
   "channels.breadcrumbChannels": "Kanäle",

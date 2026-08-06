@@ -232,6 +232,12 @@ class AlertController extends AbstractController
             if (!MetricUnits::isValidType($compareType)) {
                 return 'compareType must be one of: '.implode(', ', MetricUnits::TYPES);
             }
+            // Comparing a metric against itself is a tautology (or a contradiction):
+            // "value >= value - 1" is true at every reading, so the rule latches on
+            // its first evaluation and can never clear again.
+            if ($compareSid === $sid && $compareType === $type) {
+                return 'compareSid must reference a different device than sid (a metric compared with itself is always true or always false)';
+            }
             $rule->setCompareSid($compareSid);
             $rule->setCompareType($compareType);
             $rule->setThreshold(null);

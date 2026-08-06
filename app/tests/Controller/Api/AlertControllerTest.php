@@ -138,6 +138,30 @@ class AlertControllerTest extends WebTestCase
         self::assertSame(400, $status);
     }
 
+    /**
+     * A comparison rule whose two sides are the same device *and* the same metric
+     * evaluates to a constant — it latches on the first run and never clears.
+     */
+    public function testComparisonRuleRejectsSelfComparison(): void
+    {
+        $selfCompare = ['name' => 'self', 'enabled' => true, 'mode' => 'comparison', 'sid' => 'a', 'type' => 'temperature',
+            'compareSid' => 'a', 'compareType' => 'temperature', 'compareOffset' => -1, 'operator' => 'gte',
+            'channelIds' => [$this->channelId], 'durationMinutes' => 0, 'cooldownMinutes' => 60];
+
+        [$status, $body] = $this->request('POST', '/api/alerts', $this->adminToken, $selfCompare);
+        self::assertSame(400, $status);
+        self::assertStringContainsString('different device', $body['error']);
+
+        // The same device is fine when the two sides read different metrics.
+        [$status] = $this->request('POST', '/api/alerts', $this->adminToken, ['compareType' => 'power'] + $selfCompare);
+        self::assertSame(201, $status);
+
+        // Updating an existing rule into a self-comparison is rejected too.
+        [, $created] = $this->request('POST', '/api/alerts', $this->adminToken, $this->validPayload());
+        [$status] = $this->request('PUT', '/api/alerts/'.$created['id'], $this->adminToken, $selfCompare);
+        self::assertSame(400, $status);
+    }
+
     public function testMultipleChannels(): void
     {
         $second = (new NotificationChannel())->setName('Webhook')->setType('webhook')->setTarget('https://example.test/h');
