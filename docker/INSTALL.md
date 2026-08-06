@@ -68,6 +68,28 @@ docker compose pull
 docker compose up -d
 ```
 
+**Also refresh `compose.yaml` when a release adds a scheduled job.** The cron schedules live in
+the `labels:` of *your* `compose.yaml`, not inside the image — so pulling a new image alone never
+adds them. Alert evaluation (`cronado.alerts.*`) was added this way: an installation set up before
+it shipped keeps collecting readings but never evaluates any alert rule.
+
+```bash
+# compare your file against the current one
+curl -L https://raw.githubusercontent.com/ogmueller/phritzbox/main/docker/compose.prod.yaml \
+  | diff - compose.yaml
+
+# after updating the file: recreate the app container so the new labels apply,
+# and restart the scheduler so it re-reads them
+docker compose up -d
+docker compose restart cronado
+
+# verify — both label sets must be present
+docker inspect --format '{{json .Config.Labels}}' "$(docker compose ps -q app)" | tr ',' '\n' | grep cronado
+```
+
+Your readings, users, and alert rules live in named volumes, so recreating the container leaves
+them untouched.
+
 ## More Information
 
 - Project: https://github.com/ogmueller/phritzbox
