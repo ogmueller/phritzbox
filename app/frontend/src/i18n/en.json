@@ -70,6 +70,7 @@
   "alerts.rearm": "Re-arm",
   "alerts.rearmTitle": "Reset this alert to OK so it can fire again",
   "alerts.noChannels": "No channels configured. Create one on the Channels page first.",
+  "alerts.selfComparison": "Pick a different device to compare with. Comparing a device with itself is always true (or always false), so the rule would fire once and never again.",
   "nav.channels": "Channels",
   "channels.breadcrumbSystem": "System",
   "channels.breadcrumbChannels": "Channels",

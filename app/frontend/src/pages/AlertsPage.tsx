@@ -102,13 +102,30 @@ export function AlertsPage() {
   const metricLabel = (type: string) => t(`chart.${type}` as 'chart.temperature')
 
   const openCreate = () => {
-    setForm({ ...EMPTY, sid: devices[0]?.ain ?? '', compareSid: devices[0]?.ain ?? '', channelIds: channels[0] ? [channels[0].id] : [] })
+    setForm({
+      ...EMPTY,
+      sid: devices[0]?.ain ?? '',
+      // Default the second side to a *different* device: a comparison against the
+      // same device and metric is constant, so pre-filling both with devices[0]
+      // invited a rule that can never clear.
+      compareSid: devices[1]?.ain ?? '',
+      channelIds: channels[0] ? [channels[0].id] : [],
+    })
     setEditing(null); setCreating(true); setError(null)
   }
   const openEdit = (a: Alert) => { setForm(toForm(a)); setEditing(a); setCreating(true); setError(null) }
   const closeModal = () => { setCreating(false); setEditing(null) }
 
+  // Both sides of a comparison always use the same metric (see toPayload), so the
+  // same device on both sides makes the condition constant — always true or always
+  // false, depending on operator and offset. The rule would latch and never clear.
+  const selfComparison = form.mode === 'comparison' && form.compareSid !== '' && form.compareSid === form.sid
+
   const save = async () => {
+    if (selfComparison) {
+      setError(t('alerts.selfComparison'))
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -387,6 +404,7 @@ export function AlertsPage() {
               ) : (
                 <>
                   <SelectField label={t('alerts.compareDevice')} id="alert-cmp-device" value={form.compareSid} onChange={(v) => setForm({ ...form, compareSid: v })} options={deviceOptions} />
+                  {selfComparison && <div className="alert alert--danger">{t('alerts.selfComparison')}</div>}
                   <TextInput label={`${t('alerts.offset')} (${UNITS[form.type] ?? ''})`} id="alert-offset" value={form.compareOffset} onChange={(v) => setForm({ ...form, compareOffset: v })} />
                 </>
               )}
@@ -412,7 +430,7 @@ export function AlertsPage() {
 
             <div className="modal-footer">
               <Button variant="ghost" onClick={closeModal}>{t('common.cancel')}</Button>
-              <Button onClick={save} disabled={saving || form.channelIds.length === 0}>{saving ? t('common.saving') : t('common.save')}</Button>
+              <Button onClick={save} disabled={saving || form.channelIds.length === 0 || selfComparison}>{saving ? t('common.saving') : t('common.save')}</Button>
             </div>
           </div>
         </div>
