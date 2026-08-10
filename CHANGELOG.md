@@ -12,17 +12,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Alert activity log — a "Recent activity" section on the Alerts page (and `GET /api/alerts/events`) records every firing, resolution, and manual re-arm with the readings and **per-channel delivery status** (sent / failed + error message), so a silently failing notification is now visible. Stored in the new `alert_event` table.
 - Alert rule state + manual re-arm — each rule row shows its current state (OK / Triggered); a **Re-arm** action (`POST /api/alerts/{id}/rearm`) resets a latched rule so it can fire again on the next evaluation.
 - "Pull latest data" in Reports now also evaluates alert rules immediately against the freshly collected readings (previously only the scheduled cron evaluated them).
-- Reports can overlay a **second device** on the same chart for side-by-side comparison, and mark **alert events** on the timeline where rules fired (`GET /api/stats/alert-events`), via a redesigned compact toolbar (date-range presets/custom popover plus always-visible display toggles).
+- Reports can overlay a **second device** on the same chart for side-by-side comparison, and mark **alert events** on the timeline where rules fired (`GET /api/stats/alert-events`), via a redesigned compact toolbar (time-range quick ranges/custom popover plus always-visible display toggles).
 - Data-staleness detection — `GET /api/health` reports how long ago collection last succeeded (tracked in a new `app_state` table), and the UI shows a "live data may be stale" banner when the host has been asleep or the scheduler stalled.
 - Styled, in-app confirmation dialogs replace the browser's native `confirm()` for destructive and device-control actions (delete, switch on/off).
 - Sortable, zebra-striped tables with a shaded header across the app (Dashboard, Alerts, Users, Channels, and the activity log); click a column header to sort, click again to reverse.
 - Global "system message" toasts for serious HTTP errors (5xx responses or an unreachable server), so background data loads no longer fail silently.
-- Reports remembers your last selection (device, compared device, metric, date preset/range, averages, "Fit to data") and auto-runs it on return; a saved preset such as "Yesterday" re-resolves relative to the current day.
+- Reports remembers your last selection (device, compared device, metric, time range, averages, "Fit to data") and auto-runs it on return; a saved quick range such as "Last 24 hours" re-resolves against the current moment.
 - Dashboard fetches fresh data on every visit, in addition to the 30-second auto-refresh.
 - In-app Help page rewritten as a sectioned, role-aware user guide (admin sections shown only to admins), in English and German.
 - Continuous integration now also runs **PHPStan** (level 6) and a dedicated **frontend job** (ESLint, Vitest, build, `npm audit`); **Dependabot** opens dependency-update PRs.
 
 ### Changed
+- Reports quick ranges are now **rolling windows that always end at "now"** instead of calendar spans: "Today" and "Yesterday" are replaced by **Last 24 hours** and **Last 48 hours** (alongside Last 7/30 days). The old labels were misleading — "Yesterday" actually queried *yesterday 00:00 until the end of today*, roughly a 48-hour window, which the German label already admitted with "Seit gestern". Saved filters holding the old preset keys migrate automatically. The field is now labelled **Time range** and its heading **Quick ranges**.
+- `GET /api/stats/{ain}` and `GET /api/stats/alert-events` accept `from`/`to` as an offset-bearing ISO 8601 instant in addition to a bare `Y-m-d` (which still covers the whole day). This fixes a timezone bug: the UI sent a browser-local date that the server, running in UTC, read as UTC midnight — so every range was shifted by the viewer's UTC offset. A malformed bound now returns `400` instead of `500`.
 - Alerts notify only when a condition becomes true (the triggering edge). When a condition clears again, the resolution is recorded in the activity log but **no "resolved" message is sent**.
 - Upgraded core dependencies: Symfony 8.1, PHPUnit 13, React 19, echarts 6, Vite 8, TypeScript 6.
 

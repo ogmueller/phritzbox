@@ -24,7 +24,7 @@ Screenshots
 
 ![Device detail](app/files/screenshots/web-device-detail.png)
 
-**Reports** — query historical data for any device and date range, with selectable metric, configurable rolling averages, an optional second device overlaid for comparison, and markers where alert rules fired (hover a marker to see the rule and reading):
+**Reports** — query historical data for any device and time range, with selectable metric, configurable rolling averages, an optional second device overlaid for comparison, and markers where alert rules fired (hover a marker to see the rule and reading):
 
 ![Reports — 30-day comparison](app/files/screenshots/web-reports-temp-30-days.png)
 ![Reports — alert event markers](app/files/screenshots/web-reports-temp-alerts.png)
@@ -47,7 +47,7 @@ Features
 
 - Live device status with 30-second auto-refresh (and a fresh pull on every visit)
 - Interactive charts for temperature, power, energy, and voltage
-- Date-range reports with quick presets (today, last 7/30 days), rolling averages, a second device overlaid on the same chart for comparison, and alert events marked where rules fired — plus on-demand data refresh; your last selection is remembered and re-run when you come back
+- Time-range reports with rolling quick ranges (last 24/48 hours, last 7/30 days — always ending *now*), rolling averages, a second device overlaid on the same chart for comparison, and alert events marked where rules fired — plus on-demand data refresh; your last selection is remembered and re-run when you come back
 - Rule-based alerting (threshold, sustained, or device-to-device comparison) via e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, or Slack/Mattermost — with an activity log that shows per-channel delivery status, current-rule state, and a manual re-arm
 - Sortable tables and global error notifications throughout the UI
 - 20 CLI commands for device control and monitoring

@@ -19,16 +19,7 @@ import { TemperatureChart } from '../components/charts/TemperatureChart'
 import { PowerChart } from '../components/charts/PowerChart'
 import { EnergyChart } from '../components/charts/EnergyChart'
 import { VoltageChart } from '../components/charts/VoltageChart'
-
-function isoDate(d: Date) {
-  // Local calendar date (YYYY-MM-DD). toISOString() would format in UTC, which
-  // rolls to the wrong day just after local midnight for users ahead of UTC —
-  // e.g. "Today" at 00:16 CEST would resolve to yesterday.
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+import { rollingRange } from './timeRange'
 
 export function DeviceDetailPage() {
   const { t } = useTranslation()
@@ -43,11 +34,9 @@ export function DeviceDetailPage() {
   const [xmlError, setXmlError] = useState<string | null>(null)
   const [xmlCopied, setXmlCopied] = useState(false)
 
-  const today = new Date()
-  const weekAgo = new Date(today)
-  weekAgo.setDate(today.getDate() - 7)
-  const [from] = useState(isoDate(weekAgo))
-  const [to] = useState(isoDate(today))
+  // Fixed rolling window, resolved once on mount — matches the "last 7 days"
+  // the chart titles promise. Resolved lazily so it is computed a single time.
+  const [{ from, to }] = useState(() => rollingRange(24 * 7))
 
   const [tempData, setTempData] = useState<StatPoint[]>([])
   const [powerData, setPowerData] = useState<StatPoint[]>([])

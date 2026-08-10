@@ -96,10 +96,12 @@ class StatsController extends AbstractController
             return $this->json([]);
         }
 
-        $fromStr = $request->query->getString('from');
-        $toStr = $request->query->getString('to');
-        $from = ($fromStr !== '' ? new \DateTimeImmutable($fromStr) : new \DateTimeImmutable('-24 hours'))->format('Y-m-d H:i:s');
-        $to = ($toStr !== '' ? new \DateTimeImmutable($toStr.' 23:59:59') : new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        try {
+            $from = $this->parseBound($request->query->getString('from'), '-24 hours', endOfDay: false)->format('Y-m-d H:i:s');
+            $to = $this->parseBound($request->query->getString('to'), 'now', endOfDay: true)->format('Y-m-d H:i:s');
+        } catch (\Exception) {
+            return $this->json(['error' => 'from and to must be an ISO 8601 instant or a Y-m-d date'], Response::HTTP_BAD_REQUEST);
+        }
 
         $data = array_map(static fn (array $e): array => [
             'ruleName' => $e['ruleName'],
@@ -118,11 +120,22 @@ class StatsController extends AbstractController
     public function show(string $ain, Request $request): JsonResponse
     {
         $type = $request->query->getString('type', '');
-        $fromStr = $request->query->getString('from', '');
-        $toStr = $request->query->getString('to', '');
 
-        $from = $fromStr ? new \DateTimeImmutable($fromStr) : new \DateTimeImmutable('-24 hours');
-        $to = $toStr ? new \DateTimeImmutable($toStr.' 23:59:59') : new \DateTimeImmutable();
+        try {
+            $from = $this->parseBound($request->query->getString('from', ''), '-24 hours', endOfDay: false);
+            $to = $this->parseBound($request->query->getString('to', ''), 'now', endOfDay: true);
+        } catch (\Exception) {
+            return $this->json(['error' => 'from and to must be an ISO 8601 instant or a Y-m-d date'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // The box reports energy once per day (grid 86400) and stamps each value
+        // at midnight, so a window that starts mid-day can only ever clip a bar
+        // off the left edge — never refine one. Widen the start to that midnight.
+        // Only for an explicit energy request: on the all-types query ($type ===
+        // '') this would drag in extra temperature and power rows.
+        if ($type === 'energy') {
+            $from = $from->setTime(0, 0);
+        }
 
         $diffDays = (int) $from->diff($to)->days;
 
@@ -227,6 +240,37 @@ class StatsController extends AbstractController
         }
 
         return $this->json(['ain' => $ain, 'type' => $type, 'data' => $data]);
+    }
+
+    /**
+     * Parse a `from`/`to` query bound.
+     *
+     * Accepts an offset-bearing ISO 8601 instant — what the UI sends, so a
+     * rolling window means the same moment regardless of where browser and
+     * server sit — or a bare `Y-m-d`, kept for older clients and hand-made API
+     * calls. A bare date carries no time, so an end bound is widened to that
+     * day's last second (the long-standing behaviour, now applied only when the
+     * value really is a bare date).
+     *
+     * The result is converted to the server timezone because readings are
+     * stored formatted in it; without this an incoming +02:00 instant would
+     * format two hours off and silently shift the window.
+     *
+     * @throws \Exception when the value cannot be parsed
+     */
+    private function parseBound(string $raw, string $fallback, bool $endOfDay): \DateTimeImmutable
+    {
+        $tz = new \DateTimeZone(date_default_timezone_get());
+
+        if ($raw === '') {
+            return new \DateTimeImmutable($fallback, $tz);
+        }
+
+        if ($endOfDay && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1) {
+            $raw .= ' 23:59:59';
+        }
+
+        return (new \DateTimeImmutable($raw))->setTimezone($tz);
     }
 
     #[Route('/types/{ain}', methods: ['GET'])]

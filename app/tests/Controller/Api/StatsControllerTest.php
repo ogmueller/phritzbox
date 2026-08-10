@@ -172,6 +172,93 @@ class StatsControllerTest extends WebTestCase
         self::assertEquals(50.0, $data['data'][0]['value']);
     }
 
+    /**
+     * A bare Y-m-d `to` is widened to the end of that day (see
+     * testShowStatsWithDateRange); an explicit instant must not be, otherwise a
+     * rolling window would always spill to midnight.
+     */
+    public function testShowStatsAcceptsIsoInstantBounds(): void
+    {
+        $time = new \DateTimeImmutable('2026-04-15 12:00:00');
+        $entry = new SmartDeviceData();
+        $entry->setSid('test-ain-instant')
+            ->setType('power')
+            ->setValue(5000)
+            ->setTime($time);
+        $this->em->persist($entry);
+        $this->em->flush();
+
+        // ATOM carries the server's own offset, so this holds in any timezone.
+        $query = static fn (\DateTimeImmutable $from, \DateTimeImmutable $to): string => http_build_query([
+            'type' => 'power',
+            'from' => $from->format(\DateTimeInterface::ATOM),
+            'to' => $to->format(\DateTimeInterface::ATOM),
+        ]);
+
+        $this->client->request('GET', '/api/stats/test-ain-instant?'.$query($time->modify('-1 hour'), $time->modify('+1 hour')), server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertCount(1, $data['data'], 'a reading inside the window is returned');
+
+        $this->client->request('GET', '/api/stats/test-ain-instant?'.$query($time->modify('+1 hour'), $time->modify('+2 hours')), server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertEmpty($data['data'], 'the same-day reading is excluded — `to` was not widened to 23:59:59');
+    }
+
+    /**
+     * The box reports energy once per day and stamps it at midnight, so a window
+     * starting mid-day must still reach back to that day's value.
+     */
+    public function testShowStatsSnapsEnergyWindowToWholeDays(): void
+    {
+        $day = new \DateTimeImmutable('2026-04-15 00:00:00');
+        $entry = new SmartDeviceData();
+        $entry->setSid('test-ain-energy')
+            ->setType('energy')
+            ->setValue(120)
+            ->setTime($day);
+        $this->em->persist($entry);
+        $this->em->flush();
+
+        $query = http_build_query([
+            'type' => 'energy',
+            'from' => $day->modify('+12 hours')->format(\DateTimeInterface::ATOM),
+            'to' => $day->modify('+18 hours')->format(\DateTimeInterface::ATOM),
+        ]);
+
+        $this->client->request('GET', '/api/stats/test-ain-energy?'.$query, server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertCount(1, $data['data']);
+        self::assertEquals(120.0, $data['data'][0]['value']);
+    }
+
+    public function testShowStatsRejectsMalformedBound(): void
+    {
+        $this->client->request('GET', '/api/stats/test-ain-002?type=power&from=abc', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+    }
+
+    public function testReportAlertEventsRejectsMalformedBound(): void
+    {
+        $this->client->request('GET', '/api/stats/alert-events?type=temperature&from=abc&devices[]=dev-A', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+        ]);
+
+        self::assertResponseStatusCodeSame(400);
+    }
+
     public function testShowStatsVoltageConversion(): void
     {
         $entry = new SmartDeviceData();

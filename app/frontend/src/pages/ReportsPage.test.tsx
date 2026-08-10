@@ -43,7 +43,10 @@ describe('ReportsPage filter persistence', () => {
     getReportAlertEvents.mockReset().mockResolvedValue([])
   })
 
-  it('restores a saved filter and auto-runs the query on return', async () => {
+  it('migrates the legacy "yesterday" preset to a rolling 48h window', async () => {
+    const now = new Date(2026, 7, 9, 14, 32, 0)
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
     localStorage.setItem(KEY, JSON.stringify({
       ain: 'a2', type: 'power', presetKey: 'yesterday',
       from: '2020-01-01', to: '2020-01-02', fitToData: false, enabledPeriods: [],
@@ -51,12 +54,15 @@ describe('ReportsPage filter persistence', () => {
 
     render(<ReportsPage />)
 
-    await waitFor(() => expect(getStats).toHaveBeenCalled())
-    const [ain, type, from] = getStats.mock.calls[0]
+    await vi.waitFor(() => expect(getStats).toHaveBeenCalled())
+    const [ain, type, from, to] = getStats.mock.calls[0]
     expect(ain).toBe('a2')
     expect(type).toBe('power')
-    // The "yesterday" preset must re-resolve relative to today, not reuse the stale stored date.
-    expect(from).not.toBe('2020-01-01')
+    // "yesterday" mapped onto last48h, re-resolved against now — not the stale
+    // stored dates. Compare instants so the assertion holds in any timezone.
+    expect(new Date(to).getTime()).toBe(now.getTime())
+    expect(new Date(to).getTime() - new Date(from).getTime()).toBe(48 * 60 * 60 * 1000)
+    vi.useRealTimers()
   })
 
   it('auto-loads the default device on a fresh visit (no Load button)', async () => {

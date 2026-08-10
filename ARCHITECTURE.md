@@ -238,6 +238,13 @@ Responses are hand-serialised into nested JSON mirroring the `Device` / `Feature
 | POST | `/api/stats/refresh` | ROLE_USER | On-demand collection from the Fritz!Box (`SmartStatsCollectionService::collectAll()`), then an immediate `AlertEvaluationService::evaluateAll()` so a manual pull also checks alert rules. Backs the Reports "Pull latest data" button |
 | GET | `/api/stats/alert-events` | ROLE_USER | Alert firings in a window, for the Reports chart markers; query params: `type`, `devices` (CSV of AINs), `from`/`to`. Available to any authenticated user, unlike the admin-only alert *config* |
 | GET | `/api/stats/{ain}` | ROLE_USER | Query time-series data; query params: `type`, `from` (default: `-24 hours`), `to` (default: `now`). Collapses duplicate timestamps defensively |
+
+Both endpoints accept `from`/`to` either as an **offset-bearing ISO 8601 instant**
+(`2026-08-09T14:32:00+02:00` — what the UI sends, so a window means the same moment regardless of
+the server's timezone) or as a bare `Y-m-d`, in which case `to` is widened to that day's last
+second. A malformed bound yields `400`. For `type=energy` the start is floored to its day's midnight:
+the box reports energy once per day (grid 86400) stamped at midnight, so a sub-day boundary could
+only clip a value off the left edge.
 | GET | `/api/stats/types/{ain}` | ROLE_USER | List available metric types for a device |
 
 #### `HealthController` — `/api/health`
@@ -509,10 +516,6 @@ JWT payload decoding is done with `atob(token.split('.')[1])` — no library nee
 
 Fetches the device list on mount and re-fetches every 30 seconds (configurable). Returns `{devices, loading, error, refresh}`. The polling keeps the dashboard live without requiring WebSockets.
 
-#### `useStats` (`hooks/useStats.ts`)
-
-Fetches stats whenever `ain`, `type`, `from`, or `to` change (via `useEffect` dependency array). Skips the fetch if any parameter is empty, which prevents spurious requests during initial render.
-
 ---
 
 ### 3.4 Layout & Navigation
@@ -561,14 +564,19 @@ Reads `:ain` from URL params. Fetches the single device and 7-day history for al
 
 Historical data explorer with a **compact toolbar**: a device selector, a "compare with" selector that
 **overlays a second device** as a second series on the same chart, a metric selector, and a single
-**date-range control** — a field-styled `Popover` holding the quick presets (Today / Yesterday / Last 7 /
-Last 30 days) plus a custom from/to range. Below it, always-visible `ToggleChip`s control display options:
-each rolling-average period, "Fit to data", and "Show alert events" — the last overlays **markers where
-alert rules fired**, fetched from `GET /api/stats/alert-events`. A "Pull latest data" action (in the
-`PageHeader`) collects fresh readings and re-evaluates alerts. The full filter is **persisted to
-`localStorage`** (`phritzbox_reports_filter`) and restored — and auto-run — on return; if a date *preset*
-was active it is re-resolved relative to today (so "Yesterday" stays current), otherwise the explicit
-range is restored.
+**time-range control** — a field-styled `Popover` holding the quick ranges (Last 24 hours / Last 48
+hours / Last 7 days / Last 30 days) plus a custom from/to range. Below it, always-visible `ToggleChip`s
+control display options: each rolling-average period, "Fit to data", and "Show alert events" — the last
+overlays **markers where alert rules fired**, fetched from `GET /api/stats/alert-events`. A "Pull latest
+data" action (in the `PageHeader`) collects fresh readings and re-evaluates alerts. The full filter is
+**persisted to `localStorage`** (`phritzbox_reports_filter`) and restored — and auto-run — on return.
+
+The quick ranges are **rolling windows that always end at `now`**, not calendar spans, so a chart is
+always full width and never half empty just after midnight. `pages/timeRange.ts` holds the presets and
+`resolveRange()`, which turns the UI state (an active preset key, or the custom `YYYY-MM-DD` pickers)
+into the absolute instants sent to the API — a preset re-resolves against `now` on every load and
+refresh, while a custom range covers whole local days. Preset keys written by earlier versions are
+migrated on read (`today` → `last24h`, `yesterday` → `last48h`); neither was ever a calendar day.
 
 #### `UsersPage`
 
@@ -808,15 +816,15 @@ Cron: php bin/console cron:smart:savestats
 ### 5.3 Stats Query (frontend chart)
 
 ```
-DeviceDetailPage mounts, calls useStats(ain, 'temperature', sevenDaysAgo, now)
+DeviceDetailPage mounts, resolves rollingRange(24 * 7) once, then calls
+getStats(ain, type, from, to) directly for each of its four metrics
   → api.get('/api/stats/{ain}?type=temperature&from=...&to=...')
-  → StatsController::stats(ain)
-  → SmartDeviceDataRepository
-      ->createQueryBuilder('d')
-      ->where('d.sid = :ain AND d.type = :type AND d.time BETWEEN :from AND :to')
-      ->getResult()
-  → JSON: {ain, type, data: [{timestamp, value}, ...]}
-  → useStats stores in local state
+  → StatsController::show(ain)
+      parseBound() on from/to → server timezone
+      raw DBAL SELECT on smart_device_data, WHERE sid/type/time BETWEEN,
+      GROUP BY strftime(...) once the range exceeds 2 days
+  → JSON: {ain, type, data: [{time, value, type}, ...]}
+  → stored in local state
   → TemperatureChart renders ECharts line series
 ```
 
