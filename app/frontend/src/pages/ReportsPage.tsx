@@ -10,6 +10,7 @@ import { DateField } from '../components/ui/DateField'
 import { Popover } from '../components/ui/Popover'
 import { ToggleChip } from '../components/ui/ToggleChip'
 import { TimeSeriesChart, Period, ChartEvent, getAvgStyle, selectAveragePeriods } from '../components/charts/TimeSeriesChart'
+import { HOUR_MS, PRESETS, DEFAULT_PRESET_KEY, localDate, normalisePresetKey, presetDates, resolveRange } from './timeRange'
 
 const STAT_TYPES = [
   { value: 'temperature', labelKey: 'chart.temperature' as const, unit: '°C',  color: '#E8620D' },
@@ -19,30 +20,6 @@ const STAT_TYPES = [
 ]
 
 const SECOND_COLOR = '#0E9AA7' // distinct from the metric colours and the avg lines
-
-function isoDate(d: Date) {
-  // Local calendar date (YYYY-MM-DD). toISOString() would format in UTC, which
-  // rolls to the wrong day just after local midnight for users ahead of UTC —
-  // e.g. "Today" at 00:16 CEST would resolve to yesterday.
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-// Date-range quick picks. `days` = how many days back the range starts from today.
-const PRESETS = [
-  { key: 'today',      labelKey: 'reports.today'      as const, days: 0 },
-  { key: 'yesterday',  labelKey: 'reports.yesterday'  as const, days: 1 },
-  { key: 'last7Days',  labelKey: 'reports.last7Days'  as const, days: 7 },
-  { key: 'last30Days', labelKey: 'reports.last30Days' as const, days: 30 },
-]
-
-function presetRange(days: number): { from: string; to: string } {
-  const start = new Date()
-  start.setDate(start.getDate() - days)
-  return { from: isoDate(start), to: isoDate(new Date()) }
-}
 
 // Data point nearest a timestamp. Markers snap to it so each dot sits exactly on
 // the device's line vertex and shares an x with the line — which makes it appear
@@ -84,21 +61,36 @@ function loadSavedFilter(): SavedFilter | null {
   }
 }
 
+/**
+ * Where the time range starts on mount. A saved preset re-resolves against
+ * *now*, so coming back a day later still shows a full window; a saved custom
+ * range is kept verbatim because the user picked those dates on purpose.
+ */
+function initialRange(saved: SavedFilter | null): { presetKey: string | null; from: string; to: string } {
+  const presetKey = saved ? normalisePresetKey(saved.presetKey) : DEFAULT_PRESET_KEY
+  const preset = PRESETS.find((p) => p.key === presetKey)
+  if (preset) {
+    return { presetKey, ...presetDates(preset.hours) }
+  }
+  const fallback = presetDates(24 * 7)
+  return { presetKey, from: saved?.from ?? fallback.from, to: saved?.to ?? fallback.to }
+}
+
 export function ReportsPage() {
   const { t, i18n } = useTranslation()
   const { devices } = useDeviceContext()
-  // Read the persisted filter once. A saved preset re-resolves to dates relative
-  // to *today*, so e.g. "Yesterday" stays correct when returning on a later day.
+  // Read the persisted filter once, then resolve the range it implies in a
+  // single step — two separate `new Date()` calls could straddle midnight.
   const savedRef = useRef(loadSavedFilter())
   const saved = savedRef.current
-  const savedPresetDays = saved?.presetKey ? PRESETS.find((p) => p.key === saved.presetKey)?.days : undefined
+  const [initial] = useState(() => initialRange(saved))
 
   const [selectedAin, setSelectedAin]       = useState('')
   const [selectedAin2, setSelectedAin2]     = useState('')
   const [selectedType, setSelectedType]     = useState(() => saved?.type ?? 'temperature')
-  const [presetKey, setPresetKey]           = useState<string | null>(() => saved?.presetKey ?? null)
-  const [from, setFrom]                     = useState(() => savedPresetDays !== undefined ? presetRange(savedPresetDays).from : (saved?.from ?? presetRange(7).from))
-  const [to, setTo]                         = useState(() => savedPresetDays !== undefined ? presetRange(savedPresetDays).to   : (saved?.to   ?? presetRange(7).to))
+  const [presetKey, setPresetKey]           = useState<string | null>(initial.presetKey)
+  const [from, setFrom]                     = useState(initial.from)
+  const [to, setTo]                         = useState(initial.to)
   const [data, setData]                     = useState<StatPoint[]>([])
   const [data2, setData2]                   = useState<StatPoint[]>([])
   const [rawEvents, setRawEvents]           = useState<ReportAlertEvent[]>([])
@@ -128,7 +120,7 @@ export function ReportsPage() {
     setSelectedAin(ain)
     setSelectedAin2(ain2)
     // No Load button: always run the initial query (saved filter, or defaults).
-    doLoad(ain, selectedType, from, to, { restoreAvg: saved?.enabledPeriods, ain2, showEvents: saved?.showEvents ?? showEvents })
+    doLoad(ain, selectedType, resolveRange(presetKey, from, to), { restoreAvg: saved?.enabledPeriods, ain2, showEvents: saved?.showEvents ?? showEvents })
   }, [devices])
 
   // Persist the current filter on any change.
@@ -144,11 +136,11 @@ export function ReportsPage() {
   const doLoad = async (
     ain: string,
     type: string,
-    fromDate: string,
-    toDate: string,
+    range: { from: string; to: string },
     opts?: { restoreAvg?: Period[]; ain2?: string; showEvents?: boolean },
   ) => {
     if (!ain) return
+    const { from: fromDate, to: toDate } = range
     const ain2 = opts?.ain2 ?? selectedAin2
     const wantEvents = opts?.showEvents ?? showEvents
     const thisRequest = ++requestIdRef.current
@@ -164,7 +156,7 @@ export function ReportsPage() {
       setData2(secondary.data)
       setLoaded(true)
 
-      const diffDays = (new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)
+      const diffDays = (new Date(toDate).getTime() - new Date(fromDate).getTime()) / (24 * HOUR_MS)
       const periods = primary.data.length >= 2 ? selectAveragePeriods(diffDays) : []
       setAvailablePeriods(periods)
       // On restore, honour the saved averages (intersected with what this range
@@ -197,34 +189,39 @@ export function ReportsPage() {
 
   const handleDeviceChange = (ain: string) => {
     setSelectedAin(ain)
-    doLoad(ain, selectedType, from, to)
+    doLoad(ain, selectedType, resolveRange(presetKey, from, to))
   }
 
   const handleMetricChange = (type: string) => {
     setSelectedType(type)
-    doLoad(selectedAin, type, from, to)
+    doLoad(selectedAin, type, resolveRange(presetKey, from, to))
   }
 
   const handleSecondDeviceChange = (ain2: string) => {
     setSelectedAin2(ain2)
-    if (loaded) doLoad(selectedAin, selectedType, from, to, { ain2 })
+    if (loaded) doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to), { ain2 })
   }
 
   const handleShowEventsChange = (checked: boolean) => {
     setShowEvents(checked)
-    if (loaded) doLoad(selectedAin, selectedType, from, to, { showEvents: checked })
+    if (loaded) doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to), { showEvents: checked })
   }
 
-  const applyPreset = (fromDate: string, toDate: string) => {
-    setFrom(fromDate)
-    setTo(toDate)
-    if (loaded) doLoad(selectedAin, selectedType, fromDate, toDate)
-  }
-
-  const handlePreset = (preset: { key: string; days: number }) => {
+  const handlePreset = (preset: { key: string; hours: number }) => {
     setPresetKey(preset.key)
-    const { from: f, to: t2 } = presetRange(preset.days)
-    applyPreset(f, t2)
+    // Mirror the window onto the custom pickers so switching to Custom starts
+    // from what is on screen rather than a stale range.
+    const dates = presetDates(preset.hours)
+    setFrom(dates.from)
+    setTo(dates.to)
+    if (loaded) doLoad(selectedAin, selectedType, resolveRange(preset.key, dates.from, dates.to))
+  }
+
+  const handleCustomDate = (nextFrom: string, nextTo: string) => {
+    setFrom(nextFrom)
+    setTo(nextTo)
+    setPresetKey(null)
+    if (nextFrom <= nextTo) doLoad(selectedAin, selectedType, resolveRange(null, nextFrom, nextTo))
   }
 
   const handleRefresh = async () => {
@@ -233,21 +230,16 @@ export function ReportsPage() {
     try {
       await refreshStats()
       if (!loaded) return
-      // If a preset is active, re-resolve it against *today* before re-fetching.
-      // Otherwise a page left open across midnight (e.g. on "Yesterday") would
-      // pull the stale dates captured on load instead of the new day's window.
+      // A preset re-resolves against *now*, so a page left open for hours pulls
+      // the window its label promises rather than the one captured on load.
       // A custom range is left untouched — the user picked those dates on purpose.
-      let fromDate = from
-      let toDate = to
-      const preset = presetKey ? PRESETS.find((p) => p.key === presetKey) : undefined
+      const preset = PRESETS.find((p) => p.key === presetKey)
       if (preset) {
-        const range = presetRange(preset.days)
-        fromDate = range.from
-        toDate = range.to
-        setFrom(fromDate)
-        setTo(toDate)
+        const dates = presetDates(preset.hours)
+        setFrom(dates.from)
+        setTo(dates.to)
       }
-      await doLoad(selectedAin, selectedType, fromDate, toDate)
+      await doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to))
     } catch (e) {
       setError(e instanceof Error ? e.message : t('reports.refreshFailed'))
     } finally {
@@ -293,11 +285,13 @@ export function ReportsPage() {
     ...devices.filter((d) => d.ain !== selectedAin).map((d) => ({ value: d.ain, label: d.name })),
   ]
 
-  const fmtShort = (d: string) => new Date(d).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
+  const fmtShort = (d: string) => localDate(d).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
   // ISO 'YYYY-MM-DD' → 'DD.MM.YYYY' (matches the native date inputs' display).
   const fmtDate = (d: string) => d.split('-').reverse().join('.')
   const activePreset = PRESETS.find((p) => p.key === presetKey)
-  const dateRangeLabel = activePreset ? t(activePreset.labelKey) : `${fmtShort(from)} – ${fmtShort(to)}`
+  // A preset names itself ("Last 24 hours"); only a custom range spells out dates.
+  const rangeLabel = activePreset ? t(activePreset.labelKey) : `${fmtShort(from)} – ${fmtShort(to)}`
+  const rangeLabelLong = activePreset ? t(activePreset.labelKey) : `${fmtDate(from)} – ${fmtDate(to)}`
 
   const titleDevice = deviceName(selectedAin) + (selectedAin2 ? ` + ${deviceName(selectedAin2)}` : '')
 
@@ -343,11 +337,11 @@ export function ReportsPage() {
           />
 
           <div className="toolbar-field">
-            <span className="form-label">{t('reports.dateRange')}</span>
-            <Popover triggerClassName="daterange-trigger" align="left" label={`${dateRangeLabel} ▾`}>
+            <span className="form-label">{t('reports.timeRange')}</span>
+            <Popover triggerClassName="daterange-trigger" align="left" label={`${rangeLabel} ▾`}>
               {(close) => (
                 <div className="daterange-panel">
-                  <span className="daterange-heading">{t('reports.presets')}</span>
+                  <span className="daterange-heading">{t('reports.quickRanges')}</span>
                   <div className="daterange-presets">
                     {PRESETS.map((p) => (
                       <button
@@ -367,14 +361,14 @@ export function ReportsPage() {
                       id="report-from"
                       value={from}
                       max={to}
-                      onChange={(v) => { setFrom(v); setPresetKey(null); if (v <= to) doLoad(selectedAin, selectedType, v, to) }}
+                      onChange={(v) => handleCustomDate(v, to)}
                     />
                     <DateField
                       label={t('reports.to')}
                       id="report-to"
                       value={to}
                       min={from}
-                      onChange={(v) => { setTo(v); setPresetKey(null); if (from <= v) doLoad(selectedAin, selectedType, from, v) }}
+                      onChange={(v) => handleCustomDate(from, v)}
                     />
                   </div>
                   {from > to && <div className="filter-bar-error">{t('reports.invalidRange')}</div>}
@@ -407,8 +401,7 @@ export function ReportsPage() {
         <Card title={t('reports.chartTitle', {
           metric: t(meta.labelKey),
           device: titleDevice,
-          from: fmtDate(from),
-          to: fmtDate(to),
+          range: rangeLabelLong,
         })}>
           <div className="chart-container">
             {loading && (
