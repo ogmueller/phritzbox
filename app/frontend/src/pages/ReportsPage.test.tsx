@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor, screen, fireEvent } from '@testing-library/react'
 import { ReportsPage } from './ReportsPage'
 
 const getStats = vi.fn()
@@ -27,11 +27,16 @@ vi.mock('../contexts/DeviceContext', () => ({
 vi.mock('../components/charts/TimeSeriesChart', () => ({
   TimeSeriesChart: () => null,
   getAvgStyle: () => ({ name: 'avg', color: '#000' }),
-  selectAveragePeriods: () => [],
+  selectAveragePeriods: () => ['day'],
 }))
 
+// Keys pass through, but interpolated values are appended so assertions can see
+// what went into a composed string such as the chart title.
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    t: (k: string, vars?: Record<string, unknown>) => (vars ? `${k} ${Object.values(vars).join(' | ')}` : k),
+    i18n: { language: 'en' },
+  }),
 }))
 
 const KEY = 'phritzbox_reports_filter'
@@ -63,6 +68,113 @@ describe('ReportsPage filter persistence', () => {
     expect(new Date(to).getTime()).toBe(now.getTime())
     expect(new Date(to).getTime() - new Date(from).getTime()).toBe(48 * 60 * 60 * 1000)
     vi.useRealTimers()
+  })
+
+  it('slides a rolling preset window forward when the data is pulled again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const t0 = new Date(2026, 7, 9, 14, 0, 0)
+    const twoHours = 2 * 60 * 60 * 1000
+    vi.setSystemTime(t0)
+    refreshStats.mockReset().mockResolvedValue({ status: 'ok' })
+    localStorage.setItem(KEY, JSON.stringify({
+      ain: 'a2', type: 'power', presetKey: 'last48h',
+      from: '2020-01-01', to: '2020-01-02', fitToData: false, enabledPeriods: [],
+    }))
+    getStats.mockResolvedValue({ ain: 'a2', type: 'power', data: [{ time: t0.toISOString(), value: 1, type: 'power' }] })
+
+    render(<ReportsPage />)
+    await waitFor(() => expect(getStats).toHaveBeenCalled())
+    // Wait for the chart to appear: the refresh is a no-op until a load succeeded.
+    await waitFor(() => expect(screen.queryByText(/reports.chartTitle/)).not.toBeNull())
+
+    // Two hours pass with the page open, then the user pulls fresh data.
+    vi.setSystemTime(new Date(t0.getTime() + twoHours))
+    fireEvent.click(screen.getByText('reports.refresh'))
+    await waitFor(() => expect(getStats.mock.calls.length).toBeGreaterThan(1))
+
+    // Both bounds move with the clock — the window stays 48h wide but now ends
+    // at the new "now" instead of the instant the page was loaded.
+    const [, , from, to] = getStats.mock.calls[getStats.mock.calls.length - 1]
+    expect(new Date(to as string).getTime()).toBe(t0.getTime() + twoHours)
+    expect(new Date(to as string).getTime() - new Date(from as string).getTime()).toBe(48 * 60 * 60 * 1000)
+    vi.useRealTimers()
+  })
+
+  it('names the resolved window in the chart title and moves it on a pull', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const t0 = new Date(2026, 7, 9, 14, 0, 0)
+    vi.setSystemTime(t0)
+    refreshStats.mockReset().mockResolvedValue({ status: 'ok' })
+    localStorage.setItem(KEY, JSON.stringify({
+      ain: 'a2', type: 'power', presetKey: 'last48h', from: '2020-01-01', to: '2020-01-02',
+    }))
+    getStats.mockResolvedValue({ ain: 'a2', type: 'power', data: [{ time: t0.toISOString(), value: 1, type: 'power' }] })
+
+    render(<ReportsPage />)
+
+    // The title carries the instants, not the preset's name — that name reads
+    // the same before and after a pull and would only make the title longer.
+    const title = await screen.findByText(/reports\.chartTitle/)
+    expect(title.textContent).toContain('Aug 7, 14:00 – Aug 9, 14:00')
+    expect(title.textContent).not.toContain('reports.last48h')
+
+    vi.setSystemTime(new Date(t0.getTime() + 2 * 60 * 60 * 1000))
+    fireEvent.click(screen.getByText('reports.refresh'))
+
+    await waitFor(() =>
+      expect(screen.getByText(/reports\.chartTitle/).textContent)
+        .toContain('Aug 7, 16:00 – Aug 9, 16:00'))
+    vi.useRealTimers()
+  })
+
+  it('keeps an average the user switched off when data is pulled', async () => {
+    refreshStats.mockReset().mockResolvedValue({ status: 'ok' })
+    getStats.mockResolvedValue({
+      ain: 'a1',
+      type: 'temperature',
+      data: [{ time: '2026-08-09T12:00:00Z', value: 1, type: 'temperature' }, { time: '2026-08-09T13:00:00Z', value: 2, type: 'temperature' }],
+    })
+
+    render(<ReportsPage />)
+
+    const chip = await screen.findByRole('button', { name: 'avg' })
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(chip)
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(screen.getByText('reports.refresh'))
+    await waitFor(() => expect(getStats.mock.calls.length).toBeGreaterThan(1))
+
+    // The reload offers 'day' again, but the user's choice survives it.
+    expect(screen.getByRole('button', { name: 'avg' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('keeps an average switched off across every reload that leaves the range alone', async () => {
+    getStats.mockResolvedValue({
+      ain: 'a1',
+      type: 'temperature',
+      data: [{ time: '2026-08-09T12:00:00Z', value: 1, type: 'temperature' }, { time: '2026-08-09T13:00:00Z', value: 2, type: 'temperature' }],
+    })
+
+    render(<ReportsPage />)
+
+    const chip = await screen.findByRole('button', { name: 'avg' })
+    fireEvent.click(chip)
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+
+    // Metric, device, compare device and the events overlay all reload the same
+    // window, so none of them may resurrect the average.
+    fireEvent.change(screen.getByLabelText('reports.metric'), { target: { value: 'power' } })
+    await waitFor(() => expect(getStats.mock.calls.some((c) => c[1] === 'power')).toBe(true))
+    expect(screen.getByRole('button', { name: 'avg' })).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.change(screen.getByLabelText('reports.device'), { target: { value: 'a2' } })
+    await waitFor(() => expect(getStats.mock.calls.some((c) => c[0] === 'a2')).toBe(true))
+    expect(screen.getByRole('button', { name: 'avg' })).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'reports.showEvents' }))
+    await waitFor(() => expect(getReportAlertEvents).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: 'avg' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('auto-loads the default device on a fresh visit (no Load button)', async () => {
