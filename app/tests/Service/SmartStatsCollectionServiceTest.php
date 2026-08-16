@@ -60,6 +60,14 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
         );
     }
 
+    private function rowCountOfType(string $ain, string $type): int
+    {
+        return (int) $this->em->getConnection()->fetchOne(
+            'SELECT COUNT(*) FROM smart_device_data WHERE sid = ? AND type = ?',
+            [$ain, $type],
+        );
+    }
+
     /** @param array<string, mixed> $batch */
     private function aha(array $devices, array $batch): AhaApi
     {
@@ -81,8 +89,10 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
         $result = $this->service($aha)->collectAll();
 
         self::assertSame(1, $result['devices']);
-        self::assertSame(3, $result['rows']);
-        self::assertSame(3, $this->rowCount($ain));
+        // 3 temperature samples + 1 presence sample recorded from the device list.
+        self::assertSame(4, $result['rows']);
+        self::assertSame(3, $this->rowCountOfType($ain, 'temperature'));
+        self::assertSame(1, $this->rowCountOfType($ain, 'presence'));
     }
 
     public function testSecondRunIsIdempotent(): void
@@ -93,10 +103,13 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
         $this->service($this->aha([$this->device($ain, 'Sensor')], $batch))->collectAll();
         // Same grid again: the UNIQUE (sid, type, time) index + INSERT OR IGNORE
         // (and the "only newer" guard) must not create duplicate rows.
-        $second = $this->service($this->aha([$this->device($ain, 'Sensor')], $batch))->collectAll();
+        $this->service($this->aha([$this->device($ain, 'Sensor')], $batch))->collectAll();
 
-        self::assertSame(0, $second['rows'], 'a repeated grid must insert nothing');
-        self::assertSame(3, $this->rowCount($ain), 'no duplicate rows');
+        // Asserted per type rather than as a total: the presence sample is
+        // timestamped from the wall clock, so a run straddling a minute boundary
+        // legitimately adds a second one and would make a total-row assertion flaky.
+        self::assertSame(3, $this->rowCountOfType($ain, 'temperature'), 'no duplicate temperature rows');
+        self::assertGreaterThanOrEqual(1, $this->rowCountOfType($ain, 'presence'));
     }
 
     public function testUsesBoxDatatimeForNewestTimestamp(): void
@@ -120,7 +133,8 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
 
         $result = $this->service($aha)->collectAll();
 
-        self::assertSame(2, $result['rows']);
+        // 2 temperature samples + 1 presence sample.
+        self::assertSame(3, $result['rows']);
 
         $floored = $datatime - ($datatime % $grid);
         // Render the expected timestamps with the same timezone the service uses
@@ -128,9 +142,12 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
         $expectedNewest = (new \DateTimeImmutable())->setTimestamp($floored)->format('Y-m-d H:i:s');
         $expectedOldest = (new \DateTimeImmutable())->setTimestamp($floored - $grid)->format('Y-m-d H:i:s');
 
+        // Scoped to the temperature series: the presence sample is stamped with
+        // the wall clock, which is newer than this fixture's historical datatime
+        // and would otherwise be the MAX(time) for the device.
         $conn = $this->em->getConnection();
-        self::assertSame($expectedNewest, $conn->fetchOne('SELECT MAX(time) FROM smart_device_data WHERE sid = ?', [$ain]));
-        self::assertSame($expectedOldest, $conn->fetchOne('SELECT MIN(time) FROM smart_device_data WHERE sid = ?', [$ain]));
+        self::assertSame($expectedNewest, $conn->fetchOne("SELECT MAX(time) FROM smart_device_data WHERE sid = ? AND type = 'temperature'", [$ain]));
+        self::assertSame($expectedOldest, $conn->fetchOne("SELECT MIN(time) FROM smart_device_data WHERE sid = ? AND type = 'temperature'", [$ain]));
     }
 
     public function testDeviceMissingFromBatchIsSkippedWithoutAbortingRun(): void
@@ -147,8 +164,12 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
         $result = $this->service($aha)->collectAll();
 
         self::assertSame(2, $result['devices']);
-        self::assertSame(2, $result['rows']);
-        self::assertSame(2, $this->rowCount($ok));
-        self::assertSame(0, $this->rowCount($missing));
+        // 2 temperature samples for the good device + 1 presence sample each.
+        self::assertSame(4, $result['rows']);
+        self::assertSame(2, $this->rowCountOfType($ok, 'temperature'));
+        self::assertSame(0, $this->rowCountOfType($missing, 'temperature'));
+        // A device the stats batch dropped still gets a presence sample — that is
+        // precisely the device an "offline" alert needs to be able to see.
+        self::assertSame(1, $this->rowCountOfType($missing, 'presence'));
     }
 }

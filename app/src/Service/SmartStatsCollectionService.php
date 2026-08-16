@@ -88,6 +88,11 @@ class SmartStatsCollectionService
         $perDevice = [];
         $pending = [];
 
+        // Device-state samples share one timestamp for the whole run, floored to
+        // the minute: two manual pulls in the same minute then collapse onto the
+        // same (sid, type, time) key and INSERT OR IGNORE discards the second.
+        $stateTime = $now->setTime((int) $now->format('H'), (int) $now->format('i'))->format('Y-m-d H:i:s');
+
         /** @var Device $device */
         foreach ($devices as $device) {
             $ain = $device->getIdentifier();
@@ -147,6 +152,11 @@ class SmartStatsCollectionService
                 $deviceCount += $count;
             }
 
+            foreach ($this->deviceStateRows($device, $stateTime) as $row) {
+                $pending[] = $row;
+                ++$deviceCount;
+            }
+
             $perDevice[$ain] = ['name' => $device->getName(), 'rows' => $deviceCount];
         }
 
@@ -181,5 +191,39 @@ class SmartStatsCollectionService
             'rows' => $inserted,
             'perDevice' => $perDevice,
         ];
+    }
+
+    /**
+     * Instantaneous device state, recorded as ordinary metric rows.
+     *
+     * The box keeps no history for these — they are attributes of the device
+     * list, not a getbasicdevicestats series — so one sample is written per run.
+     * Writing only on change would be far more compact and would also silently
+     * break the feature: a sustained rule ("offline for 60 minutes") selects rows
+     * with `time >= now - duration` and returns "no data, leave the state alone"
+     * when that window is empty, so a device that went offline hours ago and has
+     * not changed since would never trigger anything.
+     *
+     * Presence is recorded for every device the box lists, including absent ones
+     * — an absent device still appears with <present>0</present>, which is
+     * exactly what makes an offline alert possible.
+     *
+     * @return list<array{0: string, 1: string, 2: string, 3: float}>
+     */
+    private function deviceStateRows(Device $device, string $stateTime): array
+    {
+        $ain = $device->getIdentifier();
+        $rows = [[$ain, MetricUnits::TYPE_PRESENCE, $stateTime, $device->isPresent() ? 1.0 : 0.0]];
+
+        if ($device->hasThermostat()) {
+            $feature = $device->feature(Device::FEATURE_THERMOSTAT);
+            // Older FRITZ!OS reports only a low-battery flag and no percentage;
+            // there is nothing meaningful to store in that case.
+            if ($feature instanceof Device\Feature\Thermostat && $feature->getBattery() !== null) {
+                $rows[] = [$ain, MetricUnits::TYPE_BATTERY, $stateTime, (float) $feature->getBattery()];
+            }
+        }
+
+        return $rows;
     }
 }

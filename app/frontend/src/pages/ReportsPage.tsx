@@ -11,13 +11,7 @@ import { Popover } from '../components/ui/Popover'
 import { ToggleChip } from '../components/ui/ToggleChip'
 import { TimeSeriesChart, Period, ChartEvent, getAvgStyle, selectAveragePeriods } from '../components/charts/TimeSeriesChart'
 import { HOUR_MS, PRESETS, DEFAULT_PRESET_KEY, localDate, normalisePresetKey, presetDates, resolveRange } from './timeRange'
-
-const STAT_TYPES = [
-  { value: 'temperature', labelKey: 'chart.temperature' as const, unit: '°C',  color: '#E8620D' },
-  { value: 'power',       labelKey: 'chart.power'       as const, unit: 'W',   color: '#0046A8' },
-  { value: 'energy',      labelKey: 'chart.energy'       as const, unit: 'Wh',  color: '#4E9A2E' },
-  { value: 'voltage',     labelKey: 'chart.voltage'      as const, unit: 'V',   color: '#6B7280' },
-]
+import { METRICS, DEFAULT_METRIC, metric as metricMeta } from '../metrics'
 
 const SECOND_COLOR = '#0E9AA7' // distinct from the metric colours and the avg lines
 
@@ -87,7 +81,7 @@ export function ReportsPage() {
 
   const [selectedAin, setSelectedAin]       = useState('')
   const [selectedAin2, setSelectedAin2]     = useState('')
-  const [selectedType, setSelectedType]     = useState(() => saved?.type ?? 'temperature')
+  const [selectedType, setSelectedType]     = useState(() => saved?.type ?? DEFAULT_METRIC)
   const [presetKey, setPresetKey]           = useState<string | null>(initial.presetKey)
   const [from, setFrom]                     = useState(initial.from)
   const [to, setTo]                         = useState(initial.to)
@@ -258,7 +252,7 @@ export function ReportsPage() {
   const togglePeriod = (key: string, checked: boolean) =>
     setEnabledPeriods((prev) => checked ? [...prev, key as Period] : prev.filter((x) => x !== key))
 
-  const meta = STAT_TYPES.find((s) => s.value === selectedType)!
+  const meta = metricMeta(selectedType)
 
   // Map each alert event onto the line(s) of the device(s) it involves.
   const chartEvents: ChartEvent[] = useMemo(() => {
@@ -353,7 +347,7 @@ export function ReportsPage() {
             id="report-metric"
             value={selectedType}
             onChange={handleMetricChange}
-            options={STAT_TYPES.map((s) => ({ value: s.value, label: t(s.labelKey) }))}
+            options={METRICS.map((s) => ({ value: s.value, label: t(s.labelKey) }))}
           />
 
           <div className="toolbar-field">
