@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller\Api;
 
+use App\Client\AhaApi;
+use App\Device;
 use App\Entity\SmartDevice;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -128,5 +130,85 @@ class DeviceControllerTest extends WebTestCase
     {
         $this->putProtection('does-not-exist', $this->adminToken, ['confirmOn' => true, 'confirmOff' => true]);
         self::assertResponseStatusCodeSame(404);
+    }
+
+    /**
+     * Regression: serializeDevice() had branches for temperature, outlet and
+     * power meter but none for the thermostat, so `thermostat` was hard-coded to
+     * null. The frontend guards on it, which made the whole thermostat card —
+     * setpoint slider included — impossible to render.
+     */
+    public function testListSerializesThermostatState(): void
+    {
+        $xml = simplexml_load_string(
+            '<device identifier="hkr-001" id="21" functionbitmask="320" fwversion="05.16" manufacturer="AVM" productname="FRITZ!DECT 301">'
+            .'<present>1</present><name>Radiator</name>'
+            .'<hkr><tsoll>43</tsoll><komfort>44</komfort><absenk>32</absenk>'
+            .'<battery>65</battery><batterylow>0</batterylow><windowopenactiv>1</windowopenactiv>'
+            .'<boostactive>0</boostactive><errorcode>0</errorcode></hkr>'
+            .'</device>'
+        );
+
+        $aha = $this->createStub(AhaApi::class);
+        $aha->method('getDeviceListInfos')->willReturn([Device::xmlFactory($xml)]);
+        static::getContainer()->set(AhaApi::class, $aha);
+
+        $this->client->request('GET', '/api/devices', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->userToken,
+        ]);
+
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $device = null;
+        foreach ($data as $row) {
+            if ($row['ain'] === 'hkr-001') {
+                $device = $row;
+                break;
+            }
+        }
+
+        self::assertNotNull($device, 'thermostat device missing from the response');
+        self::assertTrue($device['features']['thermostat']);
+        self::assertNotNull($device['thermostat'], 'thermostat block must not be null for a thermostat device');
+        self::assertSame(21.5, $device['thermostat']['setpoint']);
+        // JSON has no int/float distinction, so whole degrees decode as int.
+        self::assertEquals(22.0, $device['thermostat']['comfort']);
+        self::assertEquals(16.0, $device['thermostat']['saving']);
+        self::assertSame('temperature', $device['thermostat']['mode']);
+        self::assertSame(65, $device['thermostat']['battery']);
+        self::assertFalse($device['thermostat']['batteryLow']);
+        self::assertTrue($device['thermostat']['windowOpen']);
+        self::assertSame(0, $device['thermostat']['errorCode']);
+    }
+
+    public function testListReportsOffValveWithoutInventingATemperature(): void
+    {
+        $xml = simplexml_load_string(
+            '<device identifier="hkr-off" id="22" functionbitmask="320" fwversion="05.16" manufacturer="AVM" productname="FRITZ!DECT 301">'
+            .'<present>1</present><name>Radiator</name><hkr><tsoll>253</tsoll></hkr></device>'
+        );
+
+        $aha = $this->createStub(AhaApi::class);
+        $aha->method('getDeviceListInfos')->willReturn([Device::xmlFactory($xml)]);
+        static::getContainer()->set(AhaApi::class, $aha);
+
+        $this->client->request('GET', '/api/devices', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->userToken,
+        ]);
+
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $device = null;
+        foreach ($data as $row) {
+            if ($row['ain'] === 'hkr-off') {
+                $device = $row;
+                break;
+            }
+        }
+
+        self::assertNotNull($device);
+        // 253 is "valve closed", not 126.5 °C.
+        self::assertNull($device['thermostat']['setpoint']);
+        self::assertSame('off', $device['thermostat']['mode']);
     }
 }

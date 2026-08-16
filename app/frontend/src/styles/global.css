@@ -473,6 +473,15 @@ body {
 }
 .detail-row:last-child { border-bottom: none; }
 
+/* Several status badges on one detail row (e.g. an active thermostat's window-open
+   plus boost). Wraps rather than pushing the row wider than its card. */
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));

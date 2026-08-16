@@ -201,6 +201,25 @@ class DeviceController extends AbstractController
             ];
         }
 
+        if ($device->hasThermostat()) {
+            /** @var Device\Feature\Thermostat $f */
+            $f = $device->feature(Device::FEATURE_THERMOSTAT);
+            $data['thermostat'] = [
+                // null when mode is off/max — the valve is not tracking a temperature.
+                'setpoint' => $f->getSetpointCelsius(),
+                'comfort' => $f->getComfortCelsius(),
+                'saving' => $f->getSavingCelsius(),
+                'mode' => $f->getMode(),
+                'battery' => $f->getBattery(),
+                'batteryLow' => $f->isBatteryLow(),
+                'windowOpen' => $f->isWindowOpen(),
+                'boostActive' => $f->isBoostActive(),
+                'holidayActive' => $f->isHolidayActive(),
+                'summerActive' => $f->isSummerActive(),
+                'errorCode' => $f->getErrorCode(),
+            ];
+        }
+
         return $data;
     }
 

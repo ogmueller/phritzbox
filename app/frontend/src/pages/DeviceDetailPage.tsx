@@ -10,7 +10,7 @@ import { Modal } from '../components/ui/Modal'
 import { Switch } from '../components/ui/Switch'
 import { Card } from '../components/ui/Card'
 import { DashboardIcon } from '../components/ui/NavIcons'
-import { PresentBadge, OnOffBadge } from '../components/ui/Badge'
+import { Badge, PresentBadge, OnOffBadge } from '../components/ui/Badge'
 import { OutletToggle } from '../components/device/OutletToggle'
 import { SetpointControl } from '../components/device/SetpointControl'
 import { DeviceIcon } from '../components/device/DeviceIcon'
@@ -109,6 +109,21 @@ export function DeviceDetailPage() {
   if (loading) return <div className="loading-state">{t('common.loading')}</div>
   if (error || !device) return <div className="alert alert--danger">{error ?? t('device.notFound')}</div>
 
+  // AVM's HKR diagnostics are codes 1-6. Anything else falls back to the bare
+  // number rather than rendering a missing-translation key.
+  const hkrErrorLabel = (code: number) => (code >= 1 && code <= 6
+    ? t(`detail.hkrError${code}` as 'detail.hkrError1')
+    : t('detail.hkrErrorUnknown', { code }))
+
+  // Only surfaced while active, so an idle thermostat shows no status row at all.
+  const th = device.thermostat
+  const thermostatFlags = ([
+    th?.windowOpen && 'detail.windowOpen',
+    th?.boostActive && 'detail.boostActive',
+    th?.holidayActive && 'detail.holidayActive',
+    th?.summerActive && 'detail.summerActive',
+  ] as const).filter((k): k is 'detail.windowOpen' => typeof k === 'string')
+
   return (
     <div className="page">
       <nav className="breadcrumb">
@@ -201,13 +216,56 @@ export function DeviceDetailPage() {
           <Card title={t('detail.thermostat')}>
             <div className="detail-row">
               <span>{t('detail.setpoint')}</span>
+              {/* The slider stays available in off/max mode — setting a
+                  temperature is how the valve is brought back under control. */}
               <SetpointControl ain={device.ain} currentSetpoint={device.thermostat.setpoint} onChanged={loadDevice} />
             </div>
+            {device.thermostat.mode !== 'temperature' && (
+              <div className="detail-row">
+                <span>{t('detail.valveMode')}</span>
+                <Badge
+                  label={t(device.thermostat.mode === 'off' ? 'detail.valveOff' : 'detail.valveMax')}
+                  variant={device.thermostat.mode === 'off' ? 'neutral' : 'warning'}
+                />
+              </div>
+            )}
             {device.thermostat.comfort != null && (
               <div className="detail-row"><span>{t('detail.comfort')}</span><span>{device.thermostat.comfort} °C</span></div>
             )}
             {device.thermostat.saving != null && (
               <div className="detail-row"><span>{t('detail.saving')}</span><span>{device.thermostat.saving} °C</span></div>
+            )}
+            {device.thermostat.battery != null && (
+              <div className="detail-row">
+                <span>{t('detail.battery')}</span>
+                {device.thermostat.batteryLow
+                  ? <Badge label={`${device.thermostat.battery} %`} variant="danger" />
+                  : <span>{device.thermostat.battery} %</span>}
+              </div>
+            )}
+            {/* Older firmware reports only the flag, with no percentage. */}
+            {device.thermostat.battery == null && device.thermostat.batteryLow != null && (
+              <div className="detail-row">
+                <span>{t('detail.battery')}</span>
+                <Badge
+                  label={t(device.thermostat.batteryLow ? 'detail.batteryLow' : 'detail.batteryOk')}
+                  variant={device.thermostat.batteryLow ? 'danger' : 'success'}
+                />
+              </div>
+            )}
+            {thermostatFlags.length > 0 && (
+              <div className="detail-row">
+                <span>{t('detail.thermostatStatus')}</span>
+                <span className="badge-row">
+                  {thermostatFlags.map((f) => <Badge key={f} label={t(f)} variant="warning" />)}
+                </span>
+              </div>
+            )}
+            {device.thermostat.errorCode != null && device.thermostat.errorCode > 0 && (
+              <div className="detail-row">
+                <span>{t('detail.thermostatError')}</span>
+                <Badge label={hkrErrorLabel(device.thermostat.errorCode)} variant="danger" />
+              </div>
             )}
           </Card>
         )}

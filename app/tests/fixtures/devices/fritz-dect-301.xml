@@ -1,0 +1,23 @@
+<device identifier="09995 0123456" id="21" functionbitmask="320" fwversion="05.16" manufacturer="AVM"
+        productname="FRITZ!DECT 301">
+    <present>1</present>
+    <name>FRITZ!DECT 301 (Living room)</name>
+    <temperature>
+        <celsius>215</celsius>
+        <offset>-5</offset>
+    </temperature>
+    <hkr>
+        <tsoll>43</tsoll>
+        <komfort>44</komfort>
+        <absenk>32</absenk>
+        <battery>65</battery>
+        <batterylow>0</batterylow>
+        <windowopenactiv>0</windowopenactiv>
+        <boostactive>0</boostactive>
+        <holidayactive>0</holidayactive>
+        <summeractive>0</summeractive>
+        <lock>0</lock>
+        <devicelock>0</devicelock>
+        <errorcode>0</errorcode>
+    </hkr>
+</device>

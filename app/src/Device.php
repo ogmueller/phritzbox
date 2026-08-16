@@ -43,6 +43,8 @@ class Device
 
     public const FEATURE_OUTLET = 'outlet';
 
+    public const FEATURE_THERMOSTAT = 'thermostat';
+
     protected bool $present = false;
 
     protected string $name;
@@ -209,6 +211,10 @@ class Device
 
         if ($this->hasTemperature()) {
             $this->featureList[self::FEATURE_TEMPERATURE_SENSOR] = new Feature\Temperature();
+        }
+
+        if ($this->hasThermostat()) {
+            $this->featureList[self::FEATURE_THERMOSTAT] = new Feature\Thermostat();
         }
 
         return $this;
