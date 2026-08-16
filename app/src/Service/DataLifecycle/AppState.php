@@ -32,6 +32,9 @@ class AppState
     /** Timestamp (ATOM) of the last successful stats collection. */
     public const LAST_COLLECTION_AT = 'last_collection_at';
 
+    /** Timestamp (ATOM) of the last successful database backup. */
+    public const LAST_BACKUP_AT = 'last_backup_at';
+
     public function __construct(private readonly Connection $connection)
     {
     }
