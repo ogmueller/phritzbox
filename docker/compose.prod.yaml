@@ -17,6 +17,10 @@ services:
             # the default discards mail (webhook alerts work without it).
             MAILER_DSN: ${MAILER_DSN:-null://null}
             APP_ALERT_FROM: ${APP_ALERT_FROM:-alerts@phritzbox.local}
+            # Database backups. The default target is inside the data volume:
+            # it survives image updates, but not the loss of the volume itself.
+            APP_BACKUP_DIR: ${APP_BACKUP_DIR:-/application/data/backups}
+            APP_BACKUP_KEEP: ${APP_BACKUP_KEEP:-3}
         volumes:
             - phritzbox-data:/application/data
             # Persist logs only — NOT the whole var/. The cache must stay ephemeral
@@ -33,6 +37,12 @@ services:
             cronado.alerts.enabled: "true"
             cronado.alerts.schedule: "5,35 * * * *"
             cronado.alerts.cmd: "php /application/app/bin/console cron:smart:alerts"
+            # Nightly verified snapshot of the database, off-peak of collection.
+            # Snapshots land in APP_BACKUP_DIR (the data volume by default) and
+            # rotate at APP_BACKUP_KEEP.
+            cronado.backup.enabled: "true"
+            cronado.backup.schedule: "20 4 * * *"
+            cronado.backup.cmd: "php /application/app/bin/console cron:data:backup"
         healthcheck:
             test: ["CMD-SHELL", "curl -sf http://localhost/ > /dev/null || exit 1"]
             interval: 30s

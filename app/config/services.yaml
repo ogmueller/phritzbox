@@ -2,6 +2,13 @@ parameters:
     # Fallback used when REFRESH_TOKEN_TTL is not set in the environment (30 days).
     env(REFRESH_TOKEN_TTL): '2592000'
 
+    # Where cron:data:backup writes, and how many compressed snapshots it keeps.
+    # The default lives inside the persisted data volume, which protects against
+    # corruption and bad migrations but NOT against losing the volume — point it
+    # at a bind mount to get off-host copies.
+    env(APP_BACKUP_DIR): '%kernel.project_dir%/../data/backups'
+    env(APP_BACKUP_KEEP): '3'
+
 services:
     _defaults:
         autowire: true

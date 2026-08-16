@@ -158,6 +158,7 @@ php app/bin/console COMMAND
 | `smart:template:list` | List all available SmartHome templates |
 | `cron:smart:savestats` | Collect and persist all device data |
 | `cron:smart:alerts` | Evaluate alert rules and send notifications |
+| `cron:data:backup` | Write a verified, compressed snapshot of the database |
 
 
 Data Collection
@@ -227,7 +228,7 @@ docker compose exec app php /application/app/bin/console cron:smart:alerts
   docker inspect --format '{{json .Config.Labels}}' "$(docker compose ps -q app)" | tr ',' '\n' | grep cronado
   ```
 
-  You should see both a `cronado.savestats.*` and a `cronado.alerts.*` set. If the alerts labels are missing, refresh your `compose.yaml` (see [Updating](docker/INSTALL.md#updating)).
+  You should see a `cronado.savestats.*`, a `cronado.alerts.*` and a `cronado.backup.*` set. If any are missing, refresh your `compose.yaml` (see [Updating](docker/INSTALL.md#updating)).
 
 
 Development
