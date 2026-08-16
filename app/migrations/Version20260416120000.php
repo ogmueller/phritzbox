@@ -25,6 +25,14 @@ final class Version20260416120000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        // smart_device_data predates this migration set — it was created by
+        // doctrine:schema:update on the original collector, so no migration ever
+        // declared it. Without this guard a *fresh* database dies on the backfill
+        // SELECT below. Existing installs already have the table and skip it.
+        // The UNIQUE index is added later, by Version20260627100000.
+        $this->addSql('CREATE TABLE IF NOT EXISTS smart_device_data (data_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, sid VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, time DATETIME NOT NULL --(DC2Type:datetime_immutable)
+, value DOUBLE PRECISION NOT NULL)');
+
         $this->addSql('CREATE TABLE IF NOT EXISTS smart_device (ain VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL DEFAULT \'\', manufacturer VARCHAR(255) NOT NULL DEFAULT \'\', product_name VARCHAR(255) NOT NULL DEFAULT \'\', firmware_version VARCHAR(50) NOT NULL DEFAULT \'\', function_bit_mask INTEGER NOT NULL DEFAULT 0, first_seen_at DATETIME NOT NULL --(DC2Type:datetime_immutable)
 , last_seen_at DATETIME NOT NULL --(DC2Type:datetime_immutable)
 , PRIMARY KEY(ain))');

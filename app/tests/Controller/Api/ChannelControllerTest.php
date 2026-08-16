@@ -89,7 +89,39 @@ class ChannelControllerTest extends WebTestCase
         ]);
         self::assertSame(201, $status);
         self::assertSame('pushover', $created['type']);
-        self::assertSame('aTok3napp', $created['secret']);
+        // The token is write-only: the response says one is stored, never what it is.
+        self::assertArrayNotHasKey('secret', $created);
+        self::assertTrue($created['hasSecret']);
+    }
+
+    public function testSecretIsKeptWhenLeftBlankOnEdit(): void
+    {
+        [, $created] = $this->request('POST', '/api/channels', [
+            'name' => 'Phone', 'type' => 'pushover', 'target' => 'uQ123userkey', 'secret' => 'aTok3napp',
+        ]);
+        $id = $created['id'];
+
+        // The edit form cannot echo the token back, so a blank secret must mean
+        // "keep the stored one" rather than "clear it" (which would 400 here).
+        [$status, $updated] = $this->request('PUT', '/api/channels/'.$id, [
+            'name' => 'Phone 2', 'type' => 'pushover', 'target' => 'uQ123userkey', 'secret' => '',
+        ]);
+        self::assertSame(200, $status);
+        self::assertSame('Phone 2', $updated['name']);
+        self::assertTrue($updated['hasSecret']);
+    }
+
+    public function testSecretIsDroppedWhenTypeNoLongerUsesOne(): void
+    {
+        [, $created] = $this->request('POST', '/api/channels', [
+            'name' => 'Phone', 'type' => 'pushover', 'target' => 'uQ123userkey', 'secret' => 'aTok3napp',
+        ]);
+
+        [$status, $updated] = $this->request('PUT', '/api/channels/'.$created['id'], [
+            'name' => 'Hook', 'type' => 'webhook', 'target' => 'https://example.test/h',
+        ]);
+        self::assertSame(200, $status);
+        self::assertFalse($updated['hasSecret']);
     }
 
     public function testTelegramRequiresSecret(): void

@@ -137,13 +137,23 @@ class ChannelController extends AbstractController
             NotificationChannel::TYPE_TELEGRAM,
             NotificationChannel::TYPE_GOTIFY,
         ];
-        $secret = mb_trim((string) ($body['secret'] ?? ''));
-        if (\in_array($type, $secretRequired, true) && $secret === '') {
-            return 'secret (token) is required for '.$type;
-        }
         // ntfy: optional auth token. Everything else ignores the secret.
-        if ($secret === '' || (!\in_array($type, $secretRequired, true) && $type !== NotificationChannel::TYPE_NTFY)) {
+        $usesSecret = \in_array($type, $secretRequired, true) || $type === NotificationChannel::TYPE_NTFY;
+        $submitted = mb_trim((string) ($body['secret'] ?? ''));
+
+        // The API never hands the stored secret back out, so an edit form cannot
+        // echo it: blank means "keep what is stored". Switching to a type that
+        // has no use for a secret drops it instead.
+        if (!$usesSecret) {
             $secret = null;
+        } elseif ($submitted !== '') {
+            $secret = $submitted;
+        } else {
+            $secret = $channel->getSecret();
+        }
+
+        if (\in_array($type, $secretRequired, true) && ($secret === null || $secret === '')) {
+            return 'secret (token) is required for '.$type;
         }
 
         $channel->setName($name)
@@ -165,7 +175,9 @@ class ChannelController extends AbstractController
             'name' => $channel->getName(),
             'type' => $channel->getType(),
             'target' => $channel->getTarget(),
-            'secret' => $channel->getSecret(),
+            // Write-only: the token never leaves the server. The flag is enough
+            // for the UI to say whether one is stored.
+            'hasSecret' => $channel->getSecret() !== null && $channel->getSecret() !== '',
             'enabled' => $channel->isEnabled(),
             'createdAt' => $channel->getCreatedAt()->format(\DateTimeInterface::ATOM),
         ];
