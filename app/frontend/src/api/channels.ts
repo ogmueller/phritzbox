@@ -7,7 +7,8 @@ export interface Channel {
   name: string
   type: ChannelType
   target: string
-  secret: string | null
+  /** The token itself is write-only; this only says whether one is stored. */
+  hasSecret: boolean
   enabled: boolean
   createdAt: string
 }
@@ -16,6 +17,7 @@ export interface ChannelPayload {
   name: string
   type: ChannelType
   target: string
+  /** Blank on edit keeps the stored token — the form cannot echo it back. */
   secret?: string | null
   enabled: boolean
 }

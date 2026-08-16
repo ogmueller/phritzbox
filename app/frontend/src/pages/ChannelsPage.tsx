@@ -57,7 +57,9 @@ export function ChannelsPage() {
 
   const openCreate = () => { setForm(EMPTY); setEditing(null); setCreating(true); setError(null) }
   const openEdit = (c: Channel) => {
-    setForm({ name: c.name, type: c.type, target: c.target, secret: c.secret ?? '', enabled: c.enabled })
+    // The secret is write-only, so the field starts blank and blank means
+    // "keep the stored one" (same contract as the password field on Users).
+    setForm({ name: c.name, type: c.type, target: c.target, secret: '', enabled: c.enabled })
     setEditing(c); setCreating(true); setError(null)
   }
   const closeModal = () => { setCreating(false); setEditing(null) }
@@ -153,8 +155,11 @@ export function ChannelsPage() {
               />
               {SECRET_LABEL[form.type] && (
                 <TextInput
-                  label={t(SECRET_LABEL[form.type] as 'channels.secretPushover')}
+                  label={editing?.hasSecret
+                    ? `${t(SECRET_LABEL[form.type] as 'channels.secretPushover')} ${t('channels.secretEditHint')}`
+                    : t(SECRET_LABEL[form.type] as 'channels.secretPushover')}
                   id="channel-secret"
+                  type="password"
                   value={form.secret ?? ''}
                   onChange={(v) => setForm({ ...form, secret: v })}
                 />

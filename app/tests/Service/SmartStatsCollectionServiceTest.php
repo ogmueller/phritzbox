@@ -15,6 +15,7 @@ namespace App\Tests\Service;
 
 use App\Client\AhaApi;
 use App\Device;
+use App\Service\DataLifecycle\AppState;
 use App\Service\SmartDeviceService;
 use App\Service\SmartStatsCollectionService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -32,7 +33,12 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
 
     private function service(AhaApi $aha): SmartStatsCollectionService
     {
-        return new SmartStatsCollectionService($aha, $this->em, static::getContainer()->get(SmartDeviceService::class));
+        return new SmartStatsCollectionService(
+            $aha,
+            $this->em,
+            static::getContainer()->get(SmartDeviceService::class),
+            static::getContainer()->get(AppState::class),
+        );
     }
 
     private function device(string $ain, string $name): Device

@@ -13,32 +13,30 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Device;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
- * A console command to read out all available smart home devices.
+ * A console command to list all SmartHome templates defined on the Fritz!Box.
  *
  * To use this command, open a terminal window, enter into your project
  * directory and execute the following:
  *
- *     $ php bin/console smart:device:list
+ *     $ php bin/console smart:template:list
  *
- * To output detailed information, increase the command verbosity:
+ * To print only the template identifiers (one per line), add --simple:
  *
- *     $ php bin/console smart:device:list -vv
+ *     $ php bin/console smart:template:list --simple
  *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 #[AsCommand(name: 'smart:template:list', description: 'List all available SmartHome templates')]
 class SmartTemplateList extends Smart
 {
-    protected int $requiredFeatures = Device::FUNCTION_BIT_THERMOSTAT;
-
     protected function configure(): void
     {
         $this
@@ -60,7 +58,53 @@ class SmartTemplateList extends Smart
         $simpleOutput = $input->getOption('simple');
         $templateList = $this->ahaApi->getTemplateListInfos();
 
+        $rows = [];
+        foreach ($templateList->template as $template) {
+            $devices = [];
+            foreach ($template->devices->device ?? [] as $device) {
+                $devices[] = (string) $device['identifier'];
+            }
+
+            $rows[] = [
+                (string) $template['identifier'],
+                (string) $template['id'],
+                self::templateName($template),
+                \count($devices) > 0 ? implode(', ', $devices) : '-',
+            ];
+        }
+
+        if ($rows === []) {
+            $errOutput->writeln('No templates available');
+
+            return 1;
+        }
+
+        if ($simpleOutput) {
+            foreach ($rows as $row) {
+                $this->io->writeln($row[0]);
+            }
+
+            return 0;
+        }
+
+        $table = new Table($output);
+        $table->setHeaders(['Identifier', 'ID', 'Name', 'Devices']);
+        $table->addRows($rows);
+        $table->render();
+
         return 0;
+    }
+
+    /**
+     * FRITZ!OS carries the template name in a <name> child element; some
+     * firmware revisions expose it as a `name` attribute instead. Prefer the
+     * element and fall back, so both shapes render.
+     */
+    private static function templateName(\SimpleXMLElement $template): string
+    {
+        $child = (string) $template->name;
+
+        return $child !== '' ? $child : (string) $template['name'];
     }
 
     /**
@@ -71,26 +115,15 @@ class SmartTemplateList extends Smart
     private function getCommandHelp(): string
     {
         return <<<'HELP'
-The <info>%command.name%</info> command creates new users and saves them in the database:
- 
-  <info>php %command.full_name%</info> <comment>username password email</comment>
+The <info>%command.name%</info> command lists the SmartHome templates stored on
+the Fritz!Box, with the devices each one applies to:
 
-By default the command creates regular users. To create administrator users,
-add the <comment>--admin</comment> option:
-
-  <info>php %command.full_name%</info> username password email <comment>--admin</comment>
-
-If you omit any of the three required arguments, the command will ask you to
-provide the missing values:
-
-  # command will ask you for the email
-  <info>php %command.full_name%</info> <comment>username password</comment>
-
-  # command will ask you for the email and password
-  <info>php %command.full_name%</info> <comment>username</comment>
-
-  # command will ask you for all arguments
   <info>php %command.full_name%</info>
+
+To print only the template identifiers, one per line (useful for scripting),
+add the <comment>--simple</comment> option:
+
+  <info>php %command.full_name%</info> <comment>--simple</comment>
 
 HELP;
     }

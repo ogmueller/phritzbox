@@ -213,6 +213,55 @@ class UserControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(400);
     }
 
+    public function testRegularUserCanChangeOwnPassword(): void
+    {
+        // /api/users/me/password sits under the ^/api/users -> ROLE_ADMIN rule,
+        // so without a preceding ^/api/users/me -> ROLE_USER entry a plain user
+        // is locked out of the TopBar "Change password" dialog. Both other
+        // password tests use the admin token, which hides this.
+        $user = new User();
+        $user->setUsername('pwuser')
+            ->setEmail('pwuser@test.com')
+            ->setRoles(['ROLE_USER']);
+        $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
+        $user->setPassword($hasher->hashPassword($user, 'pass'));
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $jwt = static::getContainer()->get(JWTTokenManagerInterface::class);
+
+        $this->client->request('PUT', '/api/users/me/password', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$jwt->create($user),
+            'CONTENT_TYPE' => 'application/json',
+        ], content: json_encode([
+            'currentPassword' => 'pass',
+            'newPassword' => 'newpassword123',
+        ]));
+
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testRegularUserStillCannotListUsers(): void
+    {
+        // The self-service exception must not widen into the admin surface.
+        $user = new User();
+        $user->setUsername('pwuser2')
+            ->setEmail('pwuser2@test.com')
+            ->setRoles(['ROLE_USER']);
+        $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
+        $user->setPassword($hasher->hashPassword($user, 'pass'));
+        $this->em->persist($user);
+        $this->em->flush();
+
+        $jwt = static::getContainer()->get(JWTTokenManagerInterface::class);
+
+        $this->client->request('GET', '/api/users', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$jwt->create($user),
+        ]);
+
+        self::assertResponseStatusCodeSame(403);
+    }
+
     public function testRegularUserCannotAccessUsers(): void
     {
         $user = new User();

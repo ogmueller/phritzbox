@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use Doctrine\DBAL\Connection;
+use App\Service\DataLifecycle\AppState;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -21,7 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/health')]
 class HealthController extends AbstractController
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(private readonly AppState $appState)
     {
     }
 
@@ -32,11 +32,7 @@ class HealthController extends AbstractController
     #[Route('', methods: ['GET'])]
     public function health(): JsonResponse
     {
-        $last = $this->connection->fetchOne(
-            "SELECT value FROM app_state WHERE name = 'last_collection_at'",
-        );
-
-        $iso = \is_string($last) && $last !== '' ? $last : null;
+        $iso = $this->appState->get(AppState::LAST_COLLECTION_AT);
         $ageMinutes = $iso !== null
             ? (int) floor(((new \DateTimeImmutable())->getTimestamp() - (new \DateTimeImmutable($iso))->getTimestamp()) / 60)
             : null;

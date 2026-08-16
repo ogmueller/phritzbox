@@ -27,13 +27,6 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/stats')]
 class StatsController extends AbstractController
 {
-    // DB stores raw Fritz!Box values. These factors convert to display units.
-    // voltage: mV → V (÷1000), power: cW → W (÷100), temperature/energy: already correct
-    private const VALUE_DIVISORS = [
-        'voltage' => 1000,
-        'power' => 100,
-    ];
-
     public function __construct(
         private readonly Connection $connection,
         private readonly SmartStatsCollectionService $collectionService,
@@ -181,19 +174,13 @@ class StatsController extends AbstractController
 
         $rows = $conn->fetchAllAssociative($sql, $params);
 
-        $data = array_map(static function (array $r) {
-            $value = (float) $r['value'];
-            $divisor = self::VALUE_DIVISORS[$r['type']] ?? null;
-            if ($divisor !== null) {
-                $value /= $divisor;
-            }
-
-            return [
-                'time' => (new \DateTimeImmutable($r['time']))->format(\DateTimeInterface::ATOM),
-                'value' => $value,
-                'type' => $r['type'],
-            ];
-        }, $rows);
+        // The DB stores raw Fritz!Box units; MetricUnits owns the conversion so
+        // adding a metric type does not mean hunting down a second divisor table.
+        $data = array_map(static fn (array $r): array => [
+            'time' => (new \DateTimeImmutable($r['time']))->format(\DateTimeInterface::ATOM),
+            'value' => MetricUnits::toDisplay($r['type'], (float) $r['value']),
+            'type' => $r['type'],
+        ], $rows);
 
         // If energy is requested and the date range includes today, compute
         // today's partial energy from power readings (trapezoidal integration).

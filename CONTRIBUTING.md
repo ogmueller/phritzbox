@@ -53,10 +53,10 @@ Commit Messages
 Pull Requests
 -------------
 
-1. Fork the repository and create a feature branch from `master`
+1. Fork the repository and create a feature branch from `main`
 2. Add or update tests for any changed behaviour
 3. Ensure all CI checks pass (tests, code style, lint, security audit)
-4. Open a pull request against `master` with a clear description of what changed and why
+4. Open a pull request against `main` with a clear description of what changed and why
 
 
 Reporting Issues

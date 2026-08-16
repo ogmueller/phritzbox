@@ -37,6 +37,10 @@ security:
         - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/refresh, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/logout, roles: PUBLIC_ACCESS }
+        # Self-service routes must precede the admin rule: access_control stops at
+        # the first matching path, so ^/api/users would otherwise lock a plain
+        # ROLE_USER out of changing their own password.
+        - { path: ^/api/users/me, roles: ROLE_USER }
         - { path: ^/api/users, roles: ROLE_ADMIN }
         - { path: ^/api/alerts, roles: ROLE_ADMIN }
         - { path: ^/api/channels, roles: ROLE_ADMIN }
