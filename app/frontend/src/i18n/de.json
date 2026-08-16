@@ -201,6 +201,8 @@
   "chart.power": "Leistung",
   "chart.energy": "Energie",
   "chart.voltage": "Spannung",
+  "chart.battery": "Batterie",
+  "chart.presence": "Verfügbarkeit",
   "chart.avgDaily": "Tagesdurchschnitt",
   "chart.avgWeekly": "Wochendurchschnitt",
   "chart.avgMonthly": "Monatsdurchschnitt",

@@ -201,6 +201,8 @@
   "chart.power": "Power",
   "chart.energy": "Energy",
   "chart.voltage": "Voltage",
+  "chart.battery": "Battery",
+  "chart.presence": "Availability",
   "chart.avgDaily": "Daily avg",
   "chart.avgWeekly": "Weekly avg",
   "chart.avgMonthly": "Monthly avg",

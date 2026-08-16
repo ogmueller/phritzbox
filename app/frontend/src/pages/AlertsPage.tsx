@@ -14,9 +14,8 @@ import { pushNotification } from '../notifications/bus'
 import { TextInput } from '../components/ui/TextInput'
 import { SelectField } from '../components/ui/SelectField'
 import { CheckboxGroup } from '../components/ui/CheckboxGroup'
+import { METRICS, metricUnit } from '../metrics'
 
-const METRIC_TYPES = ['temperature', 'power', 'voltage', 'energy'] as const
-const UNITS: Record<string, string> = { temperature: '°C', power: 'W', voltage: 'V', energy: 'Wh' }
 const OP_SYMBOLS: Record<AlertOperator, string> = { gt: '>', lt: '<', gte: '≥', lte: '≤' }
 
 const EVENT_LIMIT_KEY = 'phritzbox_alert_event_limit'
@@ -99,7 +98,6 @@ export function AlertsPage() {
   useEffect(() => { load(); getAlertEvents(loadSavedEventLimit()).then(setEvents).catch(() => {}); getChannels().then(setChannels).catch(() => {}) }, [])
 
   const deviceName = (ain: string) => devices.find((d) => d.ain === ain)?.name ?? ain
-  const metricLabel = (type: string) => t(`chart.${type}` as 'chart.temperature')
 
   const openCreate = () => {
     setForm({
@@ -201,10 +199,10 @@ export function AlertsPage() {
 
   const renderCondition = (a: Alert) => {
     const op = OP_SYMBOLS[a.operator]
-    const unit = UNITS[a.type] ?? ''
+    const unit = metricUnit(a.type)
 
     if (a.mode === 'comparison') {
-      const compareUnit = UNITS[a.compareType ?? a.type] ?? ''
+      const compareUnit = metricUnit(a.compareType ?? a.type)
       // Same metric on both sides (the normal case): show the unit once at the end.
       if ((a.compareType ?? a.type) === a.type) {
         return (
@@ -230,7 +228,7 @@ export function AlertsPage() {
   }
 
   const deviceOptions = devices.map((d) => ({ value: d.ain, label: d.name }))
-  const metricOptions = METRIC_TYPES.map((tp) => ({ value: tp, label: metricLabel(tp) }))
+  const metricOptions = METRICS.map((m) => ({ value: m.value, label: t(m.labelKey) }))
   const operatorOptions: { value: AlertOperator; label: string }[] = [
     { value: 'gt', label: `${OP_SYMBOLS.gt} ${t('alerts.opAbove')}` },
     { value: 'gte', label: OP_SYMBOLS.gte },
@@ -398,14 +396,14 @@ export function AlertsPage() {
 
               {form.mode === 'threshold' ? (
                 <>
-                  <TextInput label={`${t('alerts.threshold')} (${UNITS[form.type] ?? ''})`} id="alert-threshold" value={form.threshold} onChange={(v) => setForm({ ...form, threshold: v })} />
+                  <TextInput label={`${t('alerts.threshold')} (${metricUnit(form.type)})`} id="alert-threshold" value={form.threshold} onChange={(v) => setForm({ ...form, threshold: v })} />
                   <TextInput label={t('alerts.duration')} id="alert-duration" value={form.durationMinutes} onChange={(v) => setForm({ ...form, durationMinutes: v })} />
                 </>
               ) : (
                 <>
                   <SelectField label={t('alerts.compareDevice')} id="alert-cmp-device" value={form.compareSid} onChange={(v) => setForm({ ...form, compareSid: v })} options={deviceOptions} />
                   {selfComparison && <div className="alert alert--danger">{t('alerts.selfComparison')}</div>}
-                  <TextInput label={`${t('alerts.offset')} (${UNITS[form.type] ?? ''})`} id="alert-offset" value={form.compareOffset} onChange={(v) => setForm({ ...form, compareOffset: v })} />
+                  <TextInput label={`${t('alerts.offset')} (${metricUnit(form.type)})`} id="alert-offset" value={form.compareOffset} onChange={(v) => setForm({ ...form, compareOffset: v })} />
                 </>
               )}
 

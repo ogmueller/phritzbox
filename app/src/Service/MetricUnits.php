@@ -22,23 +22,50 @@ namespace App\Service;
  *   energy       stored Wh                            -> display Wh
  *   voltage      stored mV                            -> display V   (/1000)
  *   power        stored cW                            -> display W   (/100)
+ *   battery      stored %                             -> display %
+ *   presence     stored 0/1                           -> display 0/1
+ *
+ * battery and presence are not series the Fritz!Box keeps history for — they are
+ * instantaneous device state, sampled once per collection run. Modelling them as
+ * metrics rather than as a separate concept means the whole alerting stack
+ * (sustained thresholds, cooldown, channels, event log, chart overlay) applies to
+ * "battery below 20%" and "offline for an hour" without a single change to it.
  */
 final class MetricUnits
 {
-    public const TYPES = ['temperature', 'power', 'voltage', 'energy'];
+    public const TYPE_TEMPERATURE = 'temperature';
+    public const TYPE_POWER = 'power';
+    public const TYPE_VOLTAGE = 'voltage';
+    public const TYPE_ENERGY = 'energy';
+    public const TYPE_BATTERY = 'battery';
+    public const TYPE_PRESENCE = 'presence';
+
+    public const TYPES = [
+        self::TYPE_TEMPERATURE,
+        self::TYPE_POWER,
+        self::TYPE_VOLTAGE,
+        self::TYPE_ENERGY,
+        self::TYPE_BATTERY,
+        self::TYPE_PRESENCE,
+    ];
 
     private const DIVISORS = [
-        'voltage' => 1000.0,
-        'power' => 100.0,
-        'temperature' => 1.0,
-        'energy' => 1.0,
+        self::TYPE_VOLTAGE => 1000.0,
+        self::TYPE_POWER => 100.0,
+        self::TYPE_TEMPERATURE => 1.0,
+        self::TYPE_ENERGY => 1.0,
+        self::TYPE_BATTERY => 1.0,
+        self::TYPE_PRESENCE => 1.0,
     ];
 
     private const UNITS = [
-        'temperature' => '°C',
-        'power' => 'W',
-        'voltage' => 'V',
-        'energy' => 'Wh',
+        self::TYPE_TEMPERATURE => '°C',
+        self::TYPE_POWER => 'W',
+        self::TYPE_VOLTAGE => 'V',
+        self::TYPE_ENERGY => 'Wh',
+        self::TYPE_BATTERY => '%',
+        // Presence is a 0/1 flag; a unit suffix would only add noise.
+        self::TYPE_PRESENCE => '',
     ];
 
     public static function isValidType(string $type): bool

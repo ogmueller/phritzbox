@@ -296,4 +296,88 @@ class AlertEvaluationServiceTest extends KernelTestCase
         $r = $this->service->evaluateAll();
         self::assertSame(0, $r['triggered'], 'A dip below threshold within the window must prevent a sustained trigger');
     }
+
+    /**
+     * Battery and presence are ordinary metric types, so the whole threshold /
+     * sustained / cooldown machinery applies to them without the evaluation
+     * service knowing they exist. These tests exist to pin that down.
+     */
+    public function testLowBatteryTriggersAThresholdRule(): void
+    {
+        $this->reading('hkr-batt', 'battery', 15.0);
+        $this->persistRule((new AlertRule())
+            ->setName('Battery low')->setSid('hkr-batt')->setType('battery')
+            ->setMode(AlertRule::MODE_THRESHOLD)->setOperator('lt')->setThreshold(20.0)
+            ->addChannel($this->channel));
+
+        $r = $this->service->evaluateAll();
+
+        self::assertSame(1, $r['triggered']);
+        self::assertSame(1, $r['notified']);
+        // Divisor is 1.0, so the stored percentage is also the displayed one.
+        self::assertSame(15.0, $this->spy->sent[0]['value']);
+        self::assertSame('%', $this->spy->sent[0]['unit']);
+    }
+
+    public function testHealthyBatteryDoesNotTrigger(): void
+    {
+        $this->reading('hkr-ok', 'battery', 80.0);
+        $this->persistRule((new AlertRule())
+            ->setName('Battery low')->setSid('hkr-ok')->setType('battery')
+            ->setMode(AlertRule::MODE_THRESHOLD)->setOperator('lt')->setThreshold(20.0)
+            ->addChannel($this->channel));
+
+        self::assertSame(0, $this->service->evaluateAll()['triggered']);
+    }
+
+    public function testSustainedAbsenceTriggersAnOfflineRule(): void
+    {
+        // Every sample in the window is 0 => the device was absent throughout.
+        $this->reading('gone', 'presence', 0.0, '-50 minutes');
+        $this->reading('gone', 'presence', 0.0, '-20 minutes');
+        $this->reading('gone', 'presence', 0.0, '-1 minute');
+        $this->persistRule((new AlertRule())
+            ->setName('Device offline')->setSid('gone')->setType('presence')
+            ->setMode(AlertRule::MODE_THRESHOLD)->setOperator('lt')->setThreshold(1.0)
+            ->setDurationMinutes(60)
+            ->addChannel($this->channel));
+
+        $r = $this->service->evaluateAll();
+
+        self::assertSame(1, $r['triggered']);
+        self::assertSame(1, $r['notified']);
+    }
+
+    public function testDeviceThatCameBackWithinTheWindowDoesNotTrigger(): void
+    {
+        $this->reading('flap', 'presence', 0.0, '-50 minutes');
+        $this->reading('flap', 'presence', 1.0, '-20 minutes');
+        $this->reading('flap', 'presence', 0.0, '-1 minute');
+        $this->persistRule((new AlertRule())
+            ->setName('Device offline')->setSid('flap')->setType('presence')
+            ->setMode(AlertRule::MODE_THRESHOLD)->setOperator('lt')->setThreshold(1.0)
+            ->setDurationMinutes(60)
+            ->addChannel($this->channel));
+
+        self::assertSame(0, $this->service->evaluateAll()['triggered'], 'a device that reappeared mid-window is not "offline for an hour"');
+    }
+
+    public function testCollectionOutageLeavesAnOfflineRuleUntouched(): void
+    {
+        // Readings exist, but all of them predate the rule's window: collection
+        // itself stopped. COUNT(*) = 0 must read as "no data, leave the state
+        // alone" rather than as "absent for the whole window".
+        $this->reading('stale', 'presence', 0.0, '-5 hours');
+        $rule = $this->persistRule((new AlertRule())
+            ->setName('Device offline')->setSid('stale')->setType('presence')
+            ->setMode(AlertRule::MODE_THRESHOLD)->setOperator('lt')->setThreshold(1.0)
+            ->setDurationMinutes(60)
+            ->addChannel($this->channel));
+
+        $r = $this->service->evaluateAll();
+
+        self::assertSame(0, $r['triggered']);
+        self::assertSame(AlertRule::STATE_OK, $rule->getLastState());
+        self::assertCount(0, $this->spy->sent);
+    }
 }
