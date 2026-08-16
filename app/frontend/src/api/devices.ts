@@ -24,9 +24,20 @@ export interface Device {
     lock: string
   }
   thermostat?: {
+    /** null when mode is 'off' or 'max' — the valve is not tracking a temperature. */
     setpoint: number | null
     comfort: number | null
     saving: number | null
+    mode: 'off' | 'max' | 'temperature'
+    /** Charge in percent. null on firmware that only reports batteryLow. */
+    battery: number | null
+    batteryLow: boolean | null
+    windowOpen: boolean | null
+    boostActive: boolean | null
+    holidayActive: boolean | null
+    summerActive: boolean | null
+    /** 0 = no error; 1-6 are AVM's mounting/valve diagnostics. */
+    errorCode: number | null
   }
   powerMeter?: {
     voltage: number

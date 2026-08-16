@@ -105,5 +105,37 @@ class DeviceParsingTest extends TestCase
                 'switchState' => true,
             ],
         ];
+
+        // FRITZ!DECT 301 — radiator thermostat + temperature sensor, no outlet.
+        // tsoll 43 exercises the half-degree step (21.5 °C) that whole-degree
+        // fixtures would let a /2-vs-/10 mix-up slip through.
+        yield 'fritz-dect-301' => [
+            'fritz-dect-301.xml',
+            [
+                'firmwareVersion' => '05.16',
+                'functionBitMask' => 320,
+                'id' => '21',
+                'identifier' => '09995 0123456',
+                'manufacturer' => 'AVM',
+                'name' => 'FRITZ!DECT 301 (Living room)',
+                'present' => true,
+                'productName' => 'FRITZ!DECT 301',
+                'temperatureCelsius' => 21.5,
+                'temperatureOffset' => -0.5,
+                'thermostatSetpoint' => 21.5,
+                'thermostatComfort' => 22.0,
+                'thermostatSaving' => 16.0,
+                'thermostatMode' => 'temperature',
+                'thermostatBattery' => 65,
+                'thermostatBatteryLow' => false,
+                'thermostatWindowOpen' => false,
+                'thermostatBoostActive' => false,
+                'thermostatHolidayActive' => false,
+                'thermostatSummerActive' => false,
+                'thermostatLock' => false,
+                'thermostatDeviceLock' => false,
+                'thermostatErrorCode' => 0,
+            ],
+        ];
     }
 }
