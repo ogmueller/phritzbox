@@ -93,6 +93,10 @@ export function ReportsPage() {
   const [to, setTo]                         = useState(initial.to)
   const [data, setData]                     = useState<StatPoint[]>([])
   const [data2, setData2]                   = useState<StatPoint[]>([])
+  // The window the shown data was actually fetched for. Kept in state rather
+  // than re-resolved during render: a rolling preset resolves against *now*, so
+  // rendering it would drift away from the data on every unrelated re-render.
+  const [loadedRange, setLoadedRange]       = useState<{ from: string; to: string } | null>(null)
   const [rawEvents, setRawEvents]           = useState<ReportAlertEvent[]>([])
   const [loading, setLoading]               = useState(false)
   const [error, setError]                   = useState<string | null>(null)
@@ -120,7 +124,7 @@ export function ReportsPage() {
     setSelectedAin(ain)
     setSelectedAin2(ain2)
     // No Load button: always run the initial query (saved filter, or defaults).
-    doLoad(ain, selectedType, resolveRange(presetKey, from, to), { restoreAvg: saved?.enabledPeriods, ain2, showEvents: saved?.showEvents ?? showEvents })
+    doLoad(ain, selectedType, resolveRange(presetKey, from, to), { keepAvg: saved?.enabledPeriods, ain2, showEvents: saved?.showEvents ?? showEvents })
   }, [devices])
 
   // Persist the current filter on any change.
@@ -137,7 +141,7 @@ export function ReportsPage() {
     ain: string,
     type: string,
     range: { from: string; to: string },
-    opts?: { restoreAvg?: Period[]; ain2?: string; showEvents?: boolean },
+    opts?: { keepAvg?: Period[]; ain2?: string; showEvents?: boolean },
   ) => {
     if (!ain) return
     const { from: fromDate, to: toDate } = range
@@ -154,14 +158,18 @@ export function ReportsPage() {
       if (thisRequest !== requestIdRef.current) return
       setData(primary.data)
       setData2(secondary.data)
+      setLoadedRange(range)
       setLoaded(true)
 
       const diffDays = (new Date(toDate).getTime() - new Date(fromDate).getTime()) / (24 * HOUR_MS)
       const periods = primary.data.length >= 2 ? selectAveragePeriods(diffDays) : []
       setAvailablePeriods(periods)
-      // On restore, honour the saved averages (intersected with what this range
-      // offers); a normal load enables all available periods.
-      setEnabledPeriods(opts?.restoreAvg ? periods.filter((p) => opts.restoreAvg!.includes(p)) : periods)
+      // Every caller that leaves the time range alone hands over the selection
+      // to preserve, intersected with what this range offers — an average the
+      // user switched off must not come back on the next load. Only a range
+      // change passes nothing, enabling everything the new range has (its
+      // periods can be entirely different ones).
+      setEnabledPeriods(opts?.keepAvg ? periods.filter((p) => opts.keepAvg!.includes(p)) : periods)
 
       // Alert events are best-effort: a failure must not blank the chart.
       if (wantEvents) {
@@ -189,22 +197,22 @@ export function ReportsPage() {
 
   const handleDeviceChange = (ain: string) => {
     setSelectedAin(ain)
-    doLoad(ain, selectedType, resolveRange(presetKey, from, to))
+    doLoad(ain, selectedType, resolveRange(presetKey, from, to), { keepAvg: enabledPeriods })
   }
 
   const handleMetricChange = (type: string) => {
     setSelectedType(type)
-    doLoad(selectedAin, type, resolveRange(presetKey, from, to))
+    doLoad(selectedAin, type, resolveRange(presetKey, from, to), { keepAvg: enabledPeriods })
   }
 
   const handleSecondDeviceChange = (ain2: string) => {
     setSelectedAin2(ain2)
-    if (loaded) doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to), { ain2 })
+    if (loaded) doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to), { ain2, keepAvg: enabledPeriods })
   }
 
   const handleShowEventsChange = (checked: boolean) => {
     setShowEvents(checked)
-    if (loaded) doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to), { showEvents: checked })
+    if (loaded) doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to), { showEvents: checked, keepAvg: enabledPeriods })
   }
 
   const handlePreset = (preset: { key: string; hours: number }) => {
@@ -239,7 +247,7 @@ export function ReportsPage() {
         setFrom(dates.from)
         setTo(dates.to)
       }
-      await doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to))
+      await doLoad(selectedAin, selectedType, resolveRange(presetKey, from, to), { keepAvg: enabledPeriods })
     } catch (e) {
       setError(e instanceof Error ? e.message : t('reports.refreshFailed'))
     } finally {
@@ -288,10 +296,22 @@ export function ReportsPage() {
   const fmtShort = (d: string) => localDate(d).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
   // ISO 'YYYY-MM-DD' → 'DD.MM.YYYY' (matches the native date inputs' display).
   const fmtDate = (d: string) => d.split('-').reverse().join('.')
+  // An instant → "9 Aug, 16:00". h23 so it reads like the chart's own time axis
+  // (and never renders midnight as "24:00", which hour12:false can).
+  const fmtInstant = (iso: string) => new Date(iso).toLocaleString(i18n.language, {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  })
+  const loadedWindow = loadedRange && `${fmtInstant(loadedRange.from)} – ${fmtInstant(loadedRange.to)}`
   const activePreset = PRESETS.find((p) => p.key === presetKey)
-  // A preset names itself ("Last 24 hours"); only a custom range spells out dates.
+  // The toolbar trigger names the preset ("Last 24 hours"); a custom range has
+  // no name and spells out its dates.
   const rangeLabel = activePreset ? t(activePreset.labelKey) : `${fmtShort(from)} – ${fmtShort(to)}`
-  const rangeLabelLong = activePreset ? t(activePreset.labelKey) : `${fmtDate(from)} – ${fmtDate(to)}`
+  // The chart title states the window itself, never the preset's name: the name
+  // reads the same before and after a pull slides the window forward, and a span
+  // of 3 days or less puts no date on the time axis either.
+  const rangeLabelLong = activePreset
+    ? (loadedWindow ?? t(activePreset.labelKey))
+    : `${fmtDate(from)} – ${fmtDate(to)}`
 
   const titleDevice = deviceName(selectedAin) + (selectedAin2 ? ` + ${deviceName(selectedAin2)}` : '')
 
