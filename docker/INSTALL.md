@@ -128,14 +128,43 @@ docker compose exec app php /application/app/bin/console cron:data:backup --dry-
 > ```
 
 Each snapshot is a gzipped copy of the **whole** database, so budget disk
-accordingly before raising `APP_BACKUP_KEEP`. Restoring is just gunzip and
-replace:
+accordingly before raising `APP_BACKUP_KEEP`.
+
+### Checking your backups
+
+An untested backup is a hypothesis. `data:backup:verify` decompresses a snapshot,
+runs SQLite's integrity check, confirms it really is a Phritzbox database, and
+reports what it holds:
 
 ```bash
-docker compose down
-gunzip -c phritzbox-YYYYmmdd-HHMMSS.sqlite.gz > database.sqlite   # into the data volume
+docker compose exec app php bin/console data:backup:list
+docker compose exec app php bin/console data:backup:verify           # newest
+docker compose exec app php bin/console data:backup:verify --all     # every one
+```
+
+It exits non-zero if any snapshot fails, so it can be wired into monitoring.
+
+### Restoring
+
+```bash
+docker compose exec app php bin/console data:restore --dry-run   # verify only
+
+docker compose stop app
+docker compose run --rm app php bin/console data:restore
 docker compose up -d
 ```
+
+The command verifies the snapshot, copies the database it is about to overwrite
+to `pre-restore-<timestamp>.sqlite` beside it, and only then swaps it in — so a
+restore made in a hurry can itself be undone, and a snapshot that fails
+verification never gets near your live data.
+
+> [!IMPORTANT]
+> **Stop the app first.** Replacing the database file underneath a running
+> process leaves that process holding the old file open, so it carries on
+> serving pre-restore data until it restarts — a restore that appears to have
+> done nothing. The command cannot detect this for you: SQLite only takes locks
+> during transactions, so an idle connection would not trip a lock check.
 
 Your readings, users, and alert rules live in named volumes, so recreating the container leaves
 them untouched.

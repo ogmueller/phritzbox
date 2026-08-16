@@ -118,6 +118,41 @@ class BackupService
     }
 
     /**
+     * Snapshot paths in this command's own naming, newest first.
+     *
+     * The names carry a sortable Ymd-His stamp, so lexical order is
+     * chronological — no stat() per file needed to sort them.
+     *
+     * @return list<string>
+     */
+    public function snapshotPaths(?string $dirOverride = null): array
+    {
+        $dir = $this->targetDir($dirOverride);
+        $found = glob(mb_rtrim($dir, '/').'/'.self::FILE_PREFIX.'*.sqlite{,.gz}', \GLOB_BRACE);
+        if ($found === false) {
+            return [];
+        }
+
+        rsort($found);
+
+        return $found;
+    }
+
+    /**
+     * Snapshots with their on-disk size and age, newest first.
+     *
+     * @return list<array{path: string, bytes: int, mtime: int}>
+     */
+    public function listSnapshots(?string $dirOverride = null): array
+    {
+        return array_map(static fn (string $p): array => [
+            'path' => $p,
+            'bytes' => (int) filesize($p),
+            'mtime' => (int) filemtime($p),
+        ], $this->snapshotPaths($dirOverride));
+    }
+
+    /**
      * Path of the live SQLite file.
      *
      * @throws \RuntimeException when the connection is not file-backed SQLite
@@ -211,13 +246,7 @@ class BackupService
             return [];
         }
 
-        $found = glob(mb_rtrim($dir, '/').'/'.self::FILE_PREFIX.'*.sqlite{,.gz}', \GLOB_BRACE);
-        if ($found === false) {
-            return [];
-        }
-
-        // Names carry a sortable Ymd-His stamp, so lexical order is chronological.
-        rsort($found);
+        $found = $this->snapshotPaths($dir);
         $pruned = [];
         foreach (\array_slice($found, $keep) as $old) {
             if (@unlink($old)) {
