@@ -159,6 +159,9 @@ php app/bin/console COMMAND
 | `cron:smart:savestats` | Collect and persist all device data |
 | `cron:smart:alerts` | Evaluate alert rules and send notifications |
 | `cron:data:backup` | Write a verified, compressed snapshot of the database |
+| `data:backup:list` | List available database snapshots |
+| `data:backup:verify` | Check that a snapshot is intact and restorable |
+| `data:restore` | Replace the live database with a verified snapshot |
 
 
 Data Collection
