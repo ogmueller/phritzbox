@@ -81,4 +81,33 @@ class AlertEventRepository extends ServiceEntityRepository
             'createdAt' => (string) $r['createdAt'],
         ], $rows);
     }
+
+    /**
+     * Drop audit entries older than the cutoff.
+     *
+     * Uses idx_alert_event_created, so this stays an index range scan rather
+     * than a table walk.
+     *
+     * @return int rows deleted
+     */
+    public function purgeOlderThan(\DateTimeImmutable $cutoff): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->delete()
+            ->where('e.createdAt < :cutoff')
+            ->setParameter('cutoff', $cutoff)
+            ->getQuery()
+            ->execute();
+    }
+
+    /** How many purgeOlderThan() would remove — for a dry run. */
+    public function countOlderThan(\DateTimeImmutable $cutoff): int
+    {
+        return (int) $this->createQueryBuilder('e')
+            ->select('COUNT(e.id)')
+            ->where('e.createdAt < :cutoff')
+            ->setParameter('cutoff', $cutoff)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

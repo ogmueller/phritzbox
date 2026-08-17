@@ -70,7 +70,7 @@ HELP)
         // Only complete buckets: the quarter-hour in progress would be rewritten
         // on the next run anyway, and writing it invites a half-empty bucket
         // being read as a real dip.
-        $through = self::floorTo($now, RollupService::GRID_QUARTER);
+        $through = RollupService::floorTo($now, RollupService::GRID_QUARTER);
 
         $watermark = $this->rollup->watermark(RollupService::GRID_QUARTER);
         $from = $watermark?->modify(\sprintf('-%d hours', $lateness));
@@ -125,10 +125,5 @@ HELP)
         ));
 
         return Command::SUCCESS;
-    }
-
-    public static function floorTo(\DateTimeImmutable $moment, int $grid): \DateTimeImmutable
-    {
-        return $moment->setTimestamp(intdiv($moment->getTimestamp(), $grid) * $grid);
     }
 }

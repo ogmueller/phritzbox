@@ -262,7 +262,15 @@ body {
 
 .page-title    { font-size: 24px; font-weight: 400; color: var(--color-text); }
 .page-subtitle { font-size: 14px; color: var(--color-text-muted); margin-top: 2px; }
-.page-header-actions { flex-shrink: 0; }
+/* A row, not a stack: headers may hold several controls (Reports has Export
+   next to Pull latest data). `.popover` is position:relative, so its panel still
+   anchors to its own trigger inside the flex row. */
+.page-header-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 /* ── Card ────────────────────────────────────────────────────── */
 .card {

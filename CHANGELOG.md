@@ -6,7 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- **Min/Max markers on aggregated charts now show the true extremes.** Previously a chart covering more than two days marked the highest and lowest *averaged* point; a brief spike inside an averaging window was invisible. The markers now read from the underlying bucket's real minimum and maximum, so the reported figures on long-range charts will be further apart than before — and correct. Short-range charts (up to two days) are unaffected, since they plot individual readings.
+
 ### Added
+- **Pre-aggregated report tiers.** Readings are summarised into quarter-hourly and daily buckets (`cron:smart:rollup`), so long reports read a few thousand summary rows instead of scanning millions of raw ones. Build them once from existing history with `smart:rollup:backfill` — resumable, interruptible, and safe to run against live data. Report figures are unchanged: a bucket-served point is identical to the raw-served one it replaces.
+- **CSV / JSON export** from Reports, covering exactly the window on screen (`GET /api/stats/{ain}/export`). Aggregated exports include per-bucket `min` and `max` columns; the CSV delimiter follows the interface language so German Excel opens it correctly.
+- `GET /api/stats/{ain}` now reports which tier answered the query (`resolution`: `raw`, `quarter` or `day`), and aggregated points carry `min`/`max`.
+- **Database backups** — `cron:data:backup` writes a verified, compressed snapshot using SQLite's `VACUUM INTO` (so the app keeps running), checks it with `PRAGMA quick_check`, and rotates older ones. `data:backup:list` and `data:backup:verify` inspect them; `data:restore` replaces the live database, taking a `pre-restore-*` copy first so the restore itself can be undone.
+- **Battery and availability are recorded as metrics**, which makes "thermostat battery below 20%" and "device offline for an hour" ordinary alert rules.
+- Thermostat details on the device page — setpoint, comfort and saving temperatures, battery, window-open, boost and error state (previously the API never sent them, so the card could not render).
+- `GET /api/health` also reports `lastRollupAt` and `lastBackupAt`, so a scheduled job that was never configured is visible rather than silent.
+
+### Fixed
+- Non-admin users could not change their own password: `/api/users/me/password` was covered by the admin-only rule for `/api/users`.
+- Notification channel secrets were returned in plaintext by the API. They are now write-only; the edit form leaves the field blank and keeps the stored token unless a new one is entered.
+- A fresh database could not be migrated from scratch — no migration ever created `smart_device_data`.
+- `smart:template:list` fetched the template list and printed nothing.
 - Rule-based alerting system. Define rules in the web UI (admin) that fire when a device metric crosses a threshold, stays past it for a sustained period, or relates to another device's metric (e.g. tempA > tempB + 2). Evaluated shortly after each data collection via the new `cron:smart:alerts` command, with a per-rule cooldown and a "send test" button.
 - Reusable notification channels, managed in their own admin module (Channels); each alert rule can notify one or more of them. Built-in channel types: e-mail, generic webhook, Pushover, Telegram, ntfy, Discord, Gotify, and Slack-compatible (Slack/Mattermost/Rocket.Chat).
 - Alert activity log — a "Recent activity" section on the Alerts page (and `GET /api/alerts/events`) records every firing, resolution, and manual re-arm with the readings and **per-channel delivery status** (sent / failed + error message), so a silently failing notification is now visible. Stored in the new `alert_event` table.

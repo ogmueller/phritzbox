@@ -4,17 +4,37 @@ export interface StatPoint {
   time: string
   value: number
   type: string
+  /** True extremes within the bucket. Present only on aggregated resolutions. */
+  min?: number
+  max?: number
 }
+
+/** Which tier answered the query: raw readings, or pre-aggregated buckets. */
+export type Resolution = 'raw' | 'quarter' | 'day'
 
 export interface StatsResponse {
   ain: string
   type: string
+  resolution?: Resolution
   data: StatPoint[]
 }
 
 export function getStats(ain: string, type: string, from: string, to: string): Promise<StatsResponse> {
   const params = new URLSearchParams({ type, from, to })
   return api.get<StatsResponse>(`/api/stats/${encodeURIComponent(ain)}?${params}`)
+}
+
+export function exportStats(
+  ain: string,
+  type: string,
+  from: string,
+  to: string,
+  format: 'csv' | 'json',
+  delimiter?: string,
+): Promise<Blob> {
+  const params = new URLSearchParams({ type, from, to, format })
+  if (delimiter) params.set('delimiter', delimiter)
+  return api.getBlob(`/api/stats/${encodeURIComponent(ain)}/export?${params}`)
 }
 
 export function getStatTypes(ain: string): Promise<{ ain: string; types: string[] }> {

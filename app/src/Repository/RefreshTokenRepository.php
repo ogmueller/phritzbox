@@ -46,4 +46,15 @@ class RefreshTokenRepository extends ServiceEntityRepository
             ->getQuery()
             ->execute();
     }
+
+    /** How many purgeExpired() would remove — for a dry run. */
+    public function countExpired(?\DateTimeImmutable $now = null): int
+    {
+        return (int) $this->createQueryBuilder('rt')
+            ->select('COUNT(rt.id)')
+            ->where('rt.expiresAt <= :now')
+            ->setParameter('now', $now ?? new \DateTimeImmutable())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

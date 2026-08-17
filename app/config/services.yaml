@@ -9,6 +9,16 @@ parameters:
     env(APP_BACKUP_DIR): '%kernel.project_dir%/../data/backups'
     env(APP_BACKUP_KEEP): '3'
 
+    # Retention per tier, in days. 0 means "keep forever" — nothing is ever
+    # deleted unless an operator opts in.
+    env(APP_RETENTION_RAW_DAYS): '0'
+    env(APP_RETENTION_QUARTER_DAYS): '0'
+    env(APP_RETENTION_DAILY_DAYS): '0'
+    # Per-metric overrides of the raw window, e.g. "voltage=14,power=90".
+    env(APP_RETENTION_RAW_OVERRIDES): ''
+    env(APP_RETENTION_ALERT_EVENT_DAYS): '0'
+    env(APP_RETENTION_LOG_DAYS): '14'
+
 services:
     _defaults:
         autowire: true

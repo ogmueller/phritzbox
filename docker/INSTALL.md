@@ -84,12 +84,12 @@ curl -L https://raw.githubusercontent.com/ogmueller/phritzbox/main/docker/compos
 docker compose up -d
 docker compose restart cronado
 
-# verify — all three label sets must be present
+# verify — every label set must be present
 docker inspect --format '{{json .Config.Labels}}' "$(docker compose ps -q app)" | tr ',' '\n' | grep cronado
 ```
 
-You should see `cronado.savestats.*`, `cronado.alerts.*`, `cronado.rollup.*` and
-`cronado.backup.*`. `GET /api/health` also reports `lastRollupAt` and
+You should see `cronado.savestats.*`, `cronado.alerts.*`, `cronado.rollup.*`,
+`cronado.prune.*` and `cronado.backup.*`. `GET /api/health` also reports `lastRollupAt` and
 `lastBackupAt`; either staying `null` means that job has never run.
 
 ## Rollups
@@ -109,6 +109,113 @@ docker compose exec app php bin/console smart:rollup:backfill
 It is safe to run against live data (it only writes to the rollup table),
 resumable, and interruptible — `--max-seconds=60` processes a slice at a time
 and saves progress. From then on the hourly cron job keeps the tiers current.
+
+## Retention (optional)
+
+Once the rollups exist, the original per-reading rows for old periods are
+redundant — the summaries cover them. `cron:data:prune` can remove them.
+
+> [!IMPORTANT]
+> **Deleting is opt-in and irreversible.** Every retention window defaults to
+> `0`, meaning keep forever, so the scheduled job reports and removes nothing
+> until you set one. Take a backup and verify it first.
+
+```bash
+# always start here — reports what each setting would remove, changes nothing
+docker compose exec app php bin/console cron:data:prune --dry-run
+```
+
+### The three tiers
+
+The same readings are stored at three resolutions, and **each tier is the
+fallback for the one above it**. That is what decides what a retention window
+actually costs you:
+
+| Variable | Holds | Rows¹ | If you prune it |
+|---|---|---:|---|
+| `APP_RETENTION_RAW_DAYS` | Every individual reading (~24 s apart for power and voltage, 15 min for temperature) | ~52,000,000 | Charts of that period drop to 15-minute detail |
+| `APP_RETENTION_QUARTER_DAYS` | One summary per 15 minutes — average, minimum, maximum | ~1,060,000 | Charts of that period drop to daily detail |
+| `APP_RETENTION_DAILY_DAYS` | One summary per day — average, minimum, maximum | ~22,000 | **That period disappears from charts entirely** — nothing coarser exists behind it |
+
+¹ Indicative, from a seven-year install with ten devices.
+
+So prune from the top down. In practice:
+
+- **`APP_RETENTION_RAW_DAYS` is the only one worth setting.** It is ~98% of the
+  database, and dropping it still leaves you 15-minute resolution.
+- **`APP_RETENTION_QUARTER_DAYS`** is worth setting only if the quarter-hour tier
+  itself grows inconvenient — at ~1 M rows for seven years, that is unlikely.
+- **Leave `APP_RETENTION_DAILY_DAYS` at `0`.** The daily tier is a rounding error
+  in size and is your permanent history; deleting it is the one setting here that
+  loses information outright rather than reducing its resolution.
+
+| Other windows | Default | Meaning |
+|---|---|---|
+| `APP_RETENTION_RAW_OVERRIDES` | – | Per-metric override of the raw window (see below) |
+| `APP_RETENTION_ALERT_EVENT_DAYS` | `0` | Keep the alert activity log for N days |
+| `APP_RETENTION_LOG_DAYS` | `14` | Sweep rotated log files after N days |
+
+### Per-metric raw windows
+
+`APP_RETENTION_RAW_OVERRIDES` takes comma-separated `metric=days` pairs and
+overrides `APP_RETENTION_RAW_DAYS` for just those metrics:
+
+```
+APP_RETENTION_RAW_OVERRIDES=voltage=14,power=90
+```
+
+All six metric names, and whether an override is worth setting:
+
+| Metric | Sampled | Share of the database | Worth overriding? |
+|---|---|---|---|
+| `power` | ~24 s | ~50% | **Yes** — one of the only two that matter |
+| `voltage` | ~24 s | ~50% | **Yes** — same volume as power, and mains voltage barely varies, so it tolerates the shortest window |
+| `temperature` | 15 min | ~0.8% | Rarely — it is small, and the 15-minute tier already stores it losslessly |
+| `energy` | once a day | negligible | No |
+| `battery` | once per collection | negligible | No |
+| `presence` | once per collection | negligible | No |
+
+Anything other than these six names is ignored, so a typo silently has no
+effect — `cron:data:prune` warns when it sees one. A value of `0` or less is
+also ignored, so a mistake cannot be read as "delete everything".
+
+> In practice, on a database dominated by old data, a single
+> `APP_RETENTION_RAW_DAYS` does nearly all the work and per-metric tuning is a
+> rounding error. Run `--dry-run` with and without an override and compare the
+> numbers before adding complexity.
+
+Raw readings are only ever deleted where a rollup bucket already covers them:
+the cutoff is the *earlier* of your retention window and how far the rollup has
+progressed. If the rollup job has never run, nothing is pruned no matter what
+these are set to.
+
+Recommended first run, once you have a verified backup:
+
+```bash
+docker compose exec app php bin/console cron:data:backup
+docker compose exec app php bin/console data:backup:verify
+# set APP_RETENTION_RAW_DAYS in compose.yaml, then:
+docker compose up -d
+docker compose exec app php bin/console cron:data:prune --dry-run
+docker compose exec app php bin/console cron:data:prune
+```
+
+### Why the file does not shrink
+
+Deleting rows does **not** reduce the size on disk. SQLite keeps the freed pages
+on an internal free list and reuses them for future writes, so the file stays at
+its high-water mark. The command reports the free-page total so you can see the
+space was released internally.
+
+To actually give the space back to the filesystem, rebuild the file:
+
+```bash
+docker compose exec app php bin/console cron:data:prune --vacuum
+```
+
+This needs roughly as much free disk as the database itself and holds an
+exclusive lock for minutes on a multi-gigabyte file — do it once, in a
+maintenance window, not from cron.
 
 ## Backups
 
