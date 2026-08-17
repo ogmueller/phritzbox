@@ -68,6 +68,12 @@ class RollupService
         return \sprintf("datetime((strftime('%%s', %s) / %d) * %d, 'unixepoch')", $column, $grid, $grid);
     }
 
+    /** The start of the bucket a moment falls in. */
+    public static function floorTo(\DateTimeImmutable $moment, int $grid): \DateTimeImmutable
+    {
+        return $moment->setTimestamp(intdiv($moment->getTimestamp(), $grid) * $grid);
+    }
+
     /**
      * (sid, type) pairs that actually hold readings.
      *

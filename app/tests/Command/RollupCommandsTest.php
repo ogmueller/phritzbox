@@ -164,7 +164,7 @@ class RollupCommandsTest extends KernelTestCase
         $tester->execute([]);
 
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
-        $currentBucket = CronSmartRollup::floorTo($now, RollupService::GRID_QUARTER)->format('Y-m-d H:i:s');
+        $currentBucket = RollupService::floorTo($now, RollupService::GRID_QUARTER)->format('Y-m-d H:i:s');
         self::assertFalse(
             $this->conn->fetchAssociative(
                 'SELECT 1 FROM smart_device_data_rollup WHERE sid = ? AND grid = ? AND bucket = ?',

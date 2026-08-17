@@ -45,7 +45,13 @@ function forceLogout(): void {
   window.location.href = '/login'
 }
 
-async function request<T>(path: string, init: RequestInit = {}, allowRetry = true): Promise<T> {
+/**
+ * Everything except reading the body: auth header, the shared silent-refresh
+ * retry on 401, the global toasts, and the non-OK throw. Split out so a file
+ * download gets exactly the same session handling as a JSON call — a plain
+ * <a href> cannot, because the token travels in a header, not a cookie.
+ */
+async function rawRequest(path: string, init: RequestInit = {}, allowRetry = true): Promise<Response> {
   const token = localStorage.getItem(TOKEN_KEY)
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -69,7 +75,7 @@ async function request<T>(path: string, init: RequestInit = {}, allowRetry = tru
     // The access token expired. Try to silently renew it once and replay the
     // request; only kick the user out to /login if the refresh itself fails.
     if (allowRetry && (await refreshSession())) {
-      return request<T>(path, init, false)
+      return rawRequest(path, init, false)
     }
     forceLogout()
     throw new Error('Unauthorized')
@@ -86,12 +92,20 @@ async function request<T>(path: string, init: RequestInit = {}, allowRetry = tru
     throw new Error(text || `HTTP ${res.status}`)
   }
 
+  return res
+}
+
+async function request<T>(path: string, init: RequestInit = {}, allowRetry = true): Promise<T> {
+  const res = await rawRequest(path, init, allowRetry)
+
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
+  /** For downloads: same auth and refresh handling, body left as a Blob. */
+  getBlob: async (path: string): Promise<Blob> => (await rawRequest(path)).blob(),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }),
   put: <T>(path: string, body?: unknown) =>

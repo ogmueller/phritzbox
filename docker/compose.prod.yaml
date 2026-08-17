@@ -21,6 +21,14 @@ services:
             # it survives image updates, but not the loss of the volume itself.
             APP_BACKUP_DIR: ${APP_BACKUP_DIR:-/application/data/backups}
             APP_BACKUP_KEEP: ${APP_BACKUP_KEEP:-3}
+            # Retention in days; 0 = keep forever. Deleting is opt-in: with these
+            # at 0, cron:data:prune reports and removes nothing.
+            APP_RETENTION_RAW_DAYS: ${APP_RETENTION_RAW_DAYS:-0}
+            APP_RETENTION_QUARTER_DAYS: ${APP_RETENTION_QUARTER_DAYS:-0}
+            APP_RETENTION_DAILY_DAYS: ${APP_RETENTION_DAILY_DAYS:-0}
+            APP_RETENTION_RAW_OVERRIDES: ${APP_RETENTION_RAW_OVERRIDES:-}
+            APP_RETENTION_ALERT_EVENT_DAYS: ${APP_RETENTION_ALERT_EVENT_DAYS:-0}
+            APP_RETENTION_LOG_DAYS: ${APP_RETENTION_LOG_DAYS:-14}
         volumes:
             - phritzbox-data:/application/data
             # Persist logs only — NOT the whole var/. The cache must stay ephemeral
@@ -42,6 +50,12 @@ services:
             cronado.rollup.enabled: "true"
             cronado.rollup.schedule: "12 * * * *"
             cronado.rollup.cmd: "php /application/app/bin/console cron:smart:rollup"
+            # Apply retention. Deletes nothing until APP_RETENTION_* is set, so
+            # it is safe to schedule before deciding on a policy. Runs before the
+            # backup so the snapshot is of the already-slimmed database.
+            cronado.prune.enabled: "true"
+            cronado.prune.schedule: "40 3 * * *"
+            cronado.prune.cmd: "php /application/app/bin/console cron:data:prune"
             # Nightly verified snapshot of the database, off-peak of collection.
             # Snapshots land in APP_BACKUP_DIR (the data volume by default) and
             # rotate at APP_BACKUP_KEEP.

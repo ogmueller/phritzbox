@@ -6,12 +6,14 @@ const getStats = vi.fn()
 const refreshStats = vi.fn()
 const getStatTypes = vi.fn()
 const getReportAlertEvents = vi.fn()
+const exportStats = vi.fn()
 
 vi.mock('../api/stats', () => ({
   getStats: (...a: unknown[]) => getStats(...a),
   refreshStats: (...a: unknown[]) => refreshStats(...a),
   getStatTypes: (...a: unknown[]) => getStatTypes(...a),
   getReportAlertEvents: (...a: unknown[]) => getReportAlertEvents(...a),
+  exportStats: (...a: unknown[]) => exportStats(...a),
 }))
 
 vi.mock('../contexts/DeviceContext', () => ({
@@ -147,6 +149,38 @@ describe('ReportsPage filter persistence', () => {
 
     // The reload offers 'day' again, but the user's choice survives it.
     expect(screen.getByRole('button', { name: 'avg' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('exports exactly the window that is on screen', async () => {
+    // Not a range re-resolved at click time: what you download must be what the
+    // chart is showing.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const t0 = new Date(2026, 7, 9, 14, 0, 0)
+    vi.setSystemTime(t0)
+    exportStats.mockReset().mockResolvedValue(new Blob(['time,type,value,unit\n']))
+    URL.createObjectURL = vi.fn(() => 'blob:stub')
+    URL.revokeObjectURL = vi.fn()
+    HTMLAnchorElement.prototype.click = vi.fn()
+    localStorage.setItem(KEY, JSON.stringify({ ain: 'a2', type: 'power', presetKey: 'last48h' }))
+    getStats.mockResolvedValue({ ain: 'a2', type: 'power', data: [{ time: t0.toISOString(), value: 1, type: 'power' }] })
+
+    render(<ReportsPage />)
+    await waitFor(() => expect(getStats).toHaveBeenCalled())
+    await screen.findByText(/reports\.chartTitle/)
+    const loadedFrom = getStats.mock.calls[0][2]
+    const loadedTo = getStats.mock.calls[0][3]
+
+    fireEvent.click(screen.getByText('reports.export ▾'))
+    fireEvent.click(screen.getByText('reports.exportCsv'))
+
+    await waitFor(() => expect(exportStats).toHaveBeenCalled())
+    const [ain, type, from, to, format] = exportStats.mock.calls[0]
+    expect(ain).toBe('a2')
+    expect(type).toBe('power')
+    expect(from).toBe(loadedFrom)
+    expect(to).toBe(loadedTo)
+    expect(format).toBe('csv')
+    vi.useRealTimers()
   })
 
   it('keeps an average switched off across every reload that leaves the range alone', async () => {

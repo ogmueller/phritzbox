@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStats, refreshStats, getReportAlertEvents, StatPoint, ReportAlertEvent } from '../api/stats'
+import { getStats, refreshStats, getReportAlertEvents, exportStats, StatPoint, ReportAlertEvent } from '../api/stats'
 import { useDeviceContext } from '../contexts/DeviceContext'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Card } from '../components/ui/Card'
@@ -12,6 +12,7 @@ import { ToggleChip } from '../components/ui/ToggleChip'
 import { TimeSeriesChart, Period, ChartEvent, getAvgStyle, selectAveragePeriods } from '../components/charts/TimeSeriesChart'
 import { HOUR_MS, PRESETS, DEFAULT_PRESET_KEY, localDate, normalisePresetKey, presetDates, resolveRange } from './timeRange'
 import { METRICS, DEFAULT_METRIC, metric as metricMeta } from '../metrics'
+import { pushNotification } from '../notifications/bus'
 
 const SECOND_COLOR = '#0E9AA7' // distinct from the metric colours and the avg lines
 
@@ -249,6 +250,30 @@ export function ReportsPage() {
     }
   }
 
+  const downloadExport = async (format: 'csv' | 'json') => {
+    if (!loadedRange) return
+    try {
+      // Exactly the window on screen, not one re-resolved at click time.
+      const blob = await exportStats(
+        selectedAin,
+        selectedType,
+        loadedRange.from,
+        loadedRange.to,
+        format,
+        // German Excel reads ';' as the column separator and ',' as the decimal mark.
+        i18n.language.startsWith('de') ? ';' : undefined,
+      )
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `phritzbox-${selectedAin.replace(/\s+/g, '')}-${selectedType}.${format}`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      pushNotification({ severity: 'error', message: e instanceof Error ? e.message : t('reports.exportFailed') })
+    }
+  }
+
   const togglePeriod = (key: string, checked: boolean) =>
     setEnabledPeriods((prev) => checked ? [...prev, key as Period] : prev.filter((x) => x !== key))
 
@@ -315,9 +340,25 @@ export function ReportsPage() {
         title={t('reports.title')}
         subtitle={t('reports.subtitle')}
         actions={
-          <Button variant="primary" size="sm" onClick={handleRefresh} loading={refreshing}>
-            {refreshing ? t('reports.refreshing') : t('reports.refresh')}
-          </Button>
+          <>
+            {loaded && data.length > 0 && (
+              <Popover triggerClassName="btn btn--secondary btn--sm" align="right" label={`${t('reports.export')} ▾`}>
+                {(close) => (
+                  <div className="daterange-panel">
+                    <button type="button" className="daterange-preset" onClick={() => { downloadExport('csv'); close() }}>
+                      {t('reports.exportCsv')}
+                    </button>
+                    <button type="button" className="daterange-preset" onClick={() => { downloadExport('json'); close() }}>
+                      {t('reports.exportJson')}
+                    </button>
+                  </div>
+                )}
+              </Popover>
+            )}
+            <Button variant="primary" size="sm" onClick={handleRefresh} loading={refreshing}>
+              {refreshing ? t('reports.refreshing') : t('reports.refresh')}
+            </Button>
+          </>
         }
       />
 

@@ -144,7 +144,7 @@ HELP)
 
             // Everything up to now is aggregated, so the incremental job can
             // start from here instead of re-reading history.
-            $this->rollup->setWatermark(RollupService::GRID_QUARTER, CronSmartRollup::floorTo($now, RollupService::GRID_QUARTER));
+            $this->rollup->setWatermark(RollupService::GRID_QUARTER, RollupService::floorTo($now, RollupService::GRID_QUARTER));
             $this->appState->set(AppState::ROLLUP_BACKFILL_CURSOR, '', $now);
         } finally {
             $this->appState->releaseLock(AppState::ROLLUP_LOCK);

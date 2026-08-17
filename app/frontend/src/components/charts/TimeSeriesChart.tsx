@@ -132,16 +132,30 @@ function yAxisBounds(values: number[]): { min: number; max: number } | null {
   return { min: Math.max(0, Math.floor(lo - margin)), max: Math.ceil(hi + margin) }
 }
 
-/** Highest and lowest reading of a series; ties resolve to the earliest point. */
-export function computeExtremes(data: StatPoint[]): { min: StatPoint; max: StatPoint } | null {
+/**
+ * Highest and lowest reading of a series; ties resolve to the earliest point.
+ *
+ * On an aggregated series each point carries the true extremes of its bucket,
+ * so `level` is the real high or low while `point` stays the plotted vertex.
+ * Without that distinction a 90-day chart would report the highest *hourly
+ * average* as the maximum and quietly understate a spike; with it, the dashed
+ * line sits at the real value while the dot stays on the line.
+ */
+export function computeExtremes(data: StatPoint[]): {
+  min: StatPoint; max: StatPoint; minLevel: number; maxLevel: number
+} | null {
   if (data.length === 0) return null
   let min = data[0]
   let max = data[0]
+  let minLevel = data[0].min ?? data[0].value
+  let maxLevel = data[0].max ?? data[0].value
   for (const p of data) {
     if (p.value < min.value) min = p
     if (p.value > max.value) max = p
+    minLevel = Math.min(minLevel, p.min ?? p.value)
+    maxLevel = Math.max(maxLevel, p.max ?? p.value)
   }
-  return { min, max }
+  return { min, max, minLevel, maxLevel }
 }
 
 // Min/max highlight: a dashed horizontal line at each extreme (so the level can be
@@ -150,9 +164,11 @@ export function computeExtremes(data: StatPoint[]): { min: StatPoint; max: StatP
 function buildMinMaxMarkers(data: StatPoint[], color: string, fmtValue: (v: number) => string) {
   const ext = computeExtremes(data)
   if (!ext) return {}
-  const marks = [{ point: ext.max, key: 'chart.max', position: 'insideEndTop' }]
-  if (ext.min.value !== ext.max.value) {
-    marks.push({ point: ext.min, key: 'chart.min', position: 'insideEndBottom' })
+  // level = the true extreme (drives the dashed line and its label);
+  // point = the plotted vertex the dot must sit on, so it stays on the line.
+  const marks = [{ point: ext.max, level: ext.maxLevel, key: 'chart.max', position: 'insideEndTop' }]
+  if (ext.minLevel !== ext.maxLevel) {
+    marks.push({ point: ext.min, level: ext.minLevel, key: 'chart.min', position: 'insideEndBottom' })
   }
   return {
     markLine: {
@@ -161,12 +177,12 @@ function buildMinMaxMarkers(data: StatPoint[], color: string, fmtValue: (v: numb
       animation: false,
       lineStyle: { color, width: 1, type: 'dashed' as const, opacity: 0.6 },
       data: marks.map((m) => ({
-        yAxis: m.point.value,
+        yAxis: m.level,
         label: {
           position: m.position,
           color,
           fontSize: 10,
-          formatter: () => `${i18n.t(m.key as never)} ${fmtValue(m.point.value)}`,
+          formatter: () => `${i18n.t(m.key as never)} ${fmtValue(m.level)}`,
         },
       })),
     },
@@ -216,7 +232,14 @@ export function TimeSeriesChart({
     // Unit (and kWh scaling) decided over both series so they stay comparable.
     const allValues = [...data.map((p) => p.value), ...(data2?.map((p) => p.value) ?? [])]
     const { displayUnit, scale } = resolveUnit(unit, allValues)
-    const rescale = (d: StatPoint[]) => (scale === 1 ? d : d.map((p) => ({ ...p, value: p.value * scale })))
+    // The bucket extremes are in the same unit as the value, so a Wh→kWh switch
+    // has to carry them along or the markers would sit 1000× off.
+    const rescale = (d: StatPoint[]) => (scale === 1 ? d : d.map((p) => ({
+      ...p,
+      value: p.value * scale,
+      min: p.min === undefined ? undefined : p.min * scale,
+      max: p.max === undefined ? undefined : p.max * scale,
+    })))
 
     const scaledData = rescale(data)
     const scaledData2 = data2 ? rescale(data2) : undefined
@@ -227,7 +250,15 @@ export function TimeSeriesChart({
     const minMax = (d: StatPoint[], c: string) => (showMinMax ? buildMinMaxMarkers(d, c, fmtValue) : {})
 
     const avgSeriesList = scaledData.length < 2 ? [] : activePeriods.map((p) => buildAvgSeries(scaledData, p))
-    const bounds = fitToData ? yAxisBounds(scaledValues) : null
+    // With min/max shown, the axis has to reach the true extremes as well —
+    // a bucket high above every plotted average would otherwise be drawn
+    // outside the visible area and simply vanish.
+    const markerValues = showMinMax
+      ? [...scaledData, ...(scaledData2 ?? [])]
+        .flatMap((p) => [p.min, p.max])
+        .filter((v): v is number => v !== undefined)
+      : []
+    const bounds = fitToData ? yAxisBounds([...scaledValues, ...markerValues]) : null
     const spanMs = timeSpan(data, data2)
 
     const legendData = [
