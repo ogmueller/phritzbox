@@ -115,7 +115,43 @@ class PruneServiceTest extends KernelTestCase
         $cutoff = $this->service(rawDays: 30)->rawCutoff('power', $now);
 
         self::assertNotNull($cutoff);
-        self::assertSame($now->modify('-90 days')->getTimestamp(), $cutoff->getTimestamp());
+        // The watermark wins over retention, then is floored to midnight so only
+        // whole days are removed.
+        self::assertSame(
+            $now->modify('-90 days')->setTime(0, 0)->getTimestamp(),
+            $cutoff->getTimestamp(),
+        );
+    }
+
+    public function testTheCutoffIsAlwaysADayBoundary(): void
+    {
+        // Retention is "now minus N days", which lands at the current time of
+        // day. The read path splits rollup-vs-raw on a day boundary, so a
+        // mid-day cutoff would leave a partial day of raw that then gets served
+        // instead of its complete rollup bucket — understating that day.
+        $now = new \DateTimeImmutable('2026-06-30 14:37:12');
+        $this->rollup->setWatermark(RollupService::GRID_QUARTER, $now);
+
+        $cutoff = $this->service(rawDays: 30)->rawCutoff('power', $now);
+
+        self::assertNotNull($cutoff);
+        self::assertSame('00:00:00', $cutoff->format('H:i:s'), 'the cutoff must be midnight');
+    }
+
+    public function testNeverLeavesADayPartiallyPruned(): void
+    {
+        $now = new \DateTimeImmutable('2026-06-30 14:37:12');
+        // Two readings on the same day, straddling the raw retention cutoff's
+        // time-of-day. Either both go or both stay — never one.
+        $boundaryDay = $now->modify('-30 days');
+        $this->reading('pr-partial', 'power', $boundaryDay->setTime(3, 0)->format('Y-m-d H:i:s'));
+        $this->reading('pr-partial', 'power', $boundaryDay->setTime(20, 0)->format('Y-m-d H:i:s'));
+        $this->rollup->setWatermark(RollupService::GRID_QUARTER, $now);
+
+        $this->service(rawDays: 30)->pruneRawPair('pr-partial', 'power', $now, 1000);
+
+        $survivors = $this->rawCount('pr-partial', 'power');
+        self::assertContains($survivors, [0, 2], "a day must not be half-pruned, found {$survivors} of 2");
     }
 
     public function testDeletesOnlyBeyondTheCutoff(): void

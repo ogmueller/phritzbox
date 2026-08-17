@@ -154,7 +154,7 @@ Defines the contract for all feature types: `setXml(SimpleXMLElement)` and `toAr
 | Concrete class | XML node | Properties |
 |---|---|---|
 | `Feature\Outlet` | `<switch>` | `switchState`, `switchMode`, `switchLock`, `switchDeviceLock` |
-| `Feature\PowerMeter` | `<powermeter>` | `powerMeterVoltage` (V), `powerMeterPower` (W), `powerMeterEnergy` (Wh) — all divided by 1000 from raw milli-values |
+| `Feature\PowerMeter` | `<powermeter>` | `powerMeterVoltage` (V) and `powerMeterPower` (W) — divided by 1000 from raw milli-values; `powerMeterEnergy` (Wh) — **not** divided, AHA reports it in Wh already. It is a lifetime counter and is never persisted; the stored `energy` metric is a separate per-day series from `getbasicdevicestats` |
 | `Feature\Temperature` | `<temperature>` | `temperatureCelsius`, `temperatureOffset` — divided by 10 from raw deci-degrees |
 
 ---

@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `GET /api/health` also reports `lastRollupAt` and `lastBackupAt`, so a scheduled job that was never configured is visible rather than silent.
 
 ### Fixed
+- **A device's lifetime energy counter was reported 1000× too small.** The Fritz!Box sends `<voltage>` in millivolts and `<power>` in milliwatts, but `<energy>` already in watt-hours; all three were being divided by 1000, so an outlet with 8 Wh of lifetime energy displayed as `0.008 Wh`. The figure shown on the device detail page and by `smart:device:list` is now correct — and 1000× larger than before. The stored `energy` metric used by charts and reports is a separate per-day series and was never affected.
+- **Charts covering more than 30 days showed a duplicated point for the current day.** The daily summary tier was split against the quarter-hour watermark, which is a 15-minute boundary and therefore mid-day, so the whole-day summary and that day's later readings were both emitted. Retention now also removes only whole days, for the same reason.
 - Non-admin users could not change their own password: `/api/users/me/password` was covered by the admin-only rule for `/api/users`.
 - Notification channel secrets were returned in plaintext by the API. They are now write-only; the edit form leaves the field blank and keeps the stored token unless a new one is entered.
 - A fresh database could not be migrated from scratch — no migration ever created `smart_device_data`.

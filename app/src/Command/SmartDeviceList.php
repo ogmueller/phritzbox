@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Client\Helper;
 use App\Device;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Helper\Table;
@@ -99,7 +100,10 @@ class SmartDeviceList extends Smart
                 /** @var Device\Feature\PowerMeter $feature */
                 $feature = $device->feature(Device::FEATURE_POWER_METER);
                 $row[] = \sprintf('%03.1f W', $feature->getPowerMeterPower());
-                $row[] = \sprintf('%03.1f Wh', $feature->getPowerMeterEnergy());
+                // A lifetime counter reaches megawatt-hours, so scale the prefix
+                // rather than printing seven digits. bestFactor takes a milli-value.
+                $energy = Helper::bestFactor((int) ($feature->getPowerMeterEnergy() * 1000), 'Wh');
+                $row[] = $energy['value'].' '.$energy['unit'];
                 $row[] = \sprintf('%03.1f V', $feature->getPowerMeterVoltage());
             } else {
                 $row[] = new TableCell('-', ['colspan' => 3]);
