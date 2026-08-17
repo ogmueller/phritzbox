@@ -88,7 +88,27 @@ docker compose restart cronado
 docker inspect --format '{{json .Config.Labels}}' "$(docker compose ps -q app)" | tr ',' '\n' | grep cronado
 ```
 
-You should see `cronado.savestats.*`, `cronado.alerts.*` and `cronado.backup.*`.
+You should see `cronado.savestats.*`, `cronado.alerts.*`, `cronado.rollup.*` and
+`cronado.backup.*`. `GET /api/health` also reports `lastRollupAt` and
+`lastBackupAt`; either staying `null` means that job has never run.
+
+## Rollups
+
+Readings arrive about every 24 seconds per outlet, which makes long reports
+expensive and the database large. `cron:smart:rollup` keeps two pre-aggregated
+tiers — quarter-hourly and daily — so a year-long chart reads a few thousand
+summary rows instead of scanning millions of raw ones.
+
+After upgrading to a release that adds rollups, build them once from your
+existing history:
+
+```bash
+docker compose exec app php bin/console smart:rollup:backfill
+```
+
+It is safe to run against live data (it only writes to the rollup table),
+resumable, and interruptible — `--max-seconds=60` processes a slice at a time
+and saves progress. From then on the hourly cron job keeps the tiers current.
 
 ## Backups
 
