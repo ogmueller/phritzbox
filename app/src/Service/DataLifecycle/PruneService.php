@@ -73,7 +73,12 @@ class PruneService
             return null;
         }
 
-        return min($byRetention, $watermark);
+        // Floored to midnight so only whole days are ever removed. Retention is
+        // "now minus N days", which lands at the current time of day, and the
+        // read path splits rollup-vs-raw on a day boundary — a half-pruned day
+        // would then be served from its surviving remainder instead of its
+        // complete rollup bucket, silently understating it.
+        return RollupService::floorTo(min($byRetention, $watermark), RollupService::GRID_DAY);
     }
 
     /**

@@ -32,8 +32,13 @@ class PowerMeter extends Feature
             if (isset($node->power)) {
                 $this->setPowerMeterPower((float) $node->power / 1000);
             }
+            // Not divided: AHA reports <voltage> in mV and <power> in mW, but
+            // <energy> already in Wh. Dividing it too made a device with 8 Wh of
+            // lifetime energy read as "0.008 Wh" — see the 546E fixture, whose
+            // <voltage>229075</voltage> in the same block is a real 229 V mains
+            // reading and does need the /1000.
             if (isset($node->energy)) {
-                $this->setPowerMeterEnergy((float) $node->energy / 1000);
+                $this->setPowerMeterEnergy((float) $node->energy);
             }
         }
     }

@@ -131,6 +131,34 @@ class StatsQueryServiceTest extends KernelTestCase
         self::assertStringStartsWith('2026-06-01T00:00:00', $actual[0]['time']);
     }
 
+    /**
+     * The daily tier is read with the *quarter* watermark, which is a 15-minute
+     * boundary and therefore almost always mid-day. If that boundary is used
+     * verbatim, the rollup half admits the whole day bucket while the raw half
+     * re-emits that day's later readings as a second daily row.
+     */
+    public function testDailyResolutionEmitsOnePointPerDayAcrossAMidDayWatermark(): void
+    {
+        $sid = 'sq-daily-boundary';
+        $this->seed($sid);
+        $from = new \DateTimeImmutable('2026-06-01 00:00:00');
+        $to = new \DateTimeImmutable('2026-06-03 23:59:59');
+
+        $this->rollup->rollUpPair($sid, 'power');
+        // Mid-day, exactly what CronSmartRollup leaves behind.
+        $this->rollup->setWatermark(RollupService::GRID_QUARTER, new \DateTimeImmutable('2026-06-02 14:30:00'));
+
+        $points = $this->stats->fetch($sid, 'power', $from, $to, StatsQueryService::RESOLUTION_DAY);
+
+        $days = array_map(static fn (array $p): string => mb_substr($p['time'], 0, 10), $points);
+        self::assertSame(
+            array_values(array_unique($days)),
+            $days,
+            'a day must not appear twice: '.implode(', ', $days),
+        );
+        self::assertCount(3, $points, 'three days requested, three points expected');
+    }
+
     public function testAggregatedPointsCarryTrueExtremes(): void
     {
         $sid = 'sq-extremes';

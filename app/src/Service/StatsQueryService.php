@@ -146,10 +146,18 @@ class StatsQueryService
         // branch already widens to midnight for the same reason.)
         $from = RollupService::floorTo($from, $grid);
 
-        // Clamped into the window so neither half of the union reaches outside
-        // it. A null watermark (the rollup has never run) collapses this to
-        // $from, leaving only the raw half — exactly the old behaviour.
-        $watermark = $this->rollup->watermark(RollupService::GRID_QUARTER) ?? $from;
+        // The split point must be a boundary of the grid being READ, not of the
+        // grid the watermark happens to be recorded on. The watermark tracks the
+        // quarter-hour tier, so it is a 15-minute boundary — mid-day for a daily
+        // read. Used verbatim, the rollup half would admit the whole day bucket
+        // (`bucket < 14:30` is true for `00:00`) while the raw half re-emitted
+        // that day's later readings as a second row for the same day.
+        // Flooring to $grid puts every bucket in exactly one half.
+        $watermark = $this->rollup->watermark(RollupService::GRID_QUARTER);
+        $watermark = $watermark === null ? $from : RollupService::floorTo($watermark, $grid);
+        // Clamped into the window so neither half reaches outside it. A null
+        // watermark (the rollup has never run) leaves only the raw half —
+        // exactly the pre-rollup behaviour.
         $watermark = max($from, min($watermark, $to));
 
         $params = [

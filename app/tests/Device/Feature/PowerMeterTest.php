@@ -27,11 +27,12 @@ class PowerMeterTest extends TestCase
     {
         $feature = new PowerMeter();
         $feature->setXml($this->xml(
-            '<powermeter><voltage>232000</voltage><power>110000</power><energy>87521000</energy></powermeter>'
+            '<powermeter><voltage>232000</voltage><power>110000</power><energy>87521</energy></powermeter>'
         ));
 
         self::assertSame(232.0, $feature->getPowerMeterVoltage());
         self::assertSame(110.0, $feature->getPowerMeterPower());
+        // Not divided: <energy> arrives in Wh already, unlike voltage/power.
         self::assertSame(87521.0, $feature->getPowerMeterEnergy());
     }
 
@@ -70,6 +71,6 @@ class PowerMeterTest extends TestCase
         self::assertArrayHasKey('powerMeterEnergy', $result);
         self::assertSame(230.0, $result['powerMeterVoltage']);
         self::assertSame(50.0, $result['powerMeterPower']);
-        self::assertSame(1.0, $result['powerMeterEnergy']);
+        self::assertSame(1000.0, $result['powerMeterEnergy']);
     }
 }
