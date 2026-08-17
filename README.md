@@ -158,6 +158,8 @@ php app/bin/console COMMAND
 | `smart:template:list` | List all available SmartHome templates |
 | `cron:smart:savestats` | Collect and persist all device data |
 | `cron:smart:alerts` | Evaluate alert rules and send notifications |
+| `cron:smart:rollup` | Aggregate new readings into the rollup tiers |
+| `smart:rollup:backfill` | Build the rollup tiers from existing history |
 | `cron:data:backup` | Write a verified, compressed snapshot of the database |
 | `data:backup:list` | List available database snapshots |
 | `data:backup:verify` | Check that a snapshot is intact and restorable |
@@ -231,7 +233,7 @@ docker compose exec app php /application/app/bin/console cron:smart:alerts
   docker inspect --format '{{json .Config.Labels}}' "$(docker compose ps -q app)" | tr ',' '\n' | grep cronado
   ```
 
-  You should see a `cronado.savestats.*`, a `cronado.alerts.*` and a `cronado.backup.*` set. If any are missing, refresh your `compose.yaml` (see [Updating](docker/INSTALL.md#updating)).
+  You should see a `cronado.savestats.*`, `cronado.alerts.*`, `cronado.rollup.*` and `cronado.backup.*` set. If any are missing, refresh your `compose.yaml` (see [Updating](docker/INSTALL.md#updating)). `GET /api/health` also reports `lastRollupAt` and `lastBackupAt`, which stay `null` while a job has never run.
 
 
 Development

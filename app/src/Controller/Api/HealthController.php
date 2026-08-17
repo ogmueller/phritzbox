@@ -40,6 +40,11 @@ class HealthController extends AbstractController
         return $this->json([
             'lastCollectedAt' => $iso,
             'ageMinutes' => $ageMinutes,
+            // Scheduled jobs come from cronado labels in the operator's compose
+            // file, not from the image, so an install that predates a job never
+            // runs it. Reporting these makes that visible instead of silent.
+            'lastRollupAt' => $this->appState->get(AppState::LAST_ROLLUP_AT),
+            'lastBackupAt' => $this->appState->get(AppState::LAST_BACKUP_AT),
         ]);
     }
 }

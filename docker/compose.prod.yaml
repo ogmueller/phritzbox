@@ -37,6 +37,11 @@ services:
             cronado.alerts.enabled: "true"
             cronado.alerts.schedule: "5,35 * * * *"
             cronado.alerts.cmd: "php /application/app/bin/console cron:smart:alerts"
+            # Aggregate new readings into the rollup tiers. Runs off the :00/:30
+            # collection and the :05/:35 alert evaluation.
+            cronado.rollup.enabled: "true"
+            cronado.rollup.schedule: "12 * * * *"
+            cronado.rollup.cmd: "php /application/app/bin/console cron:smart:rollup"
             # Nightly verified snapshot of the database, off-peak of collection.
             # Snapshots land in APP_BACKUP_DIR (the data volume by default) and
             # rotate at APP_BACKUP_KEEP.
