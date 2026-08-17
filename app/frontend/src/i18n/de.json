@@ -215,6 +215,7 @@
   "reports.device": "Ger\u00e4t",
   "reports.compareDevice": "Vergleichen mit",
   "reports.compareNone": "\u2014 keins \u2014",
+  "reports.comparePrevious": "Vorheriger Zeitraum",
   "reports.showEvents": "Alarm-Ereignisse anzeigen",
   "reports.eventsLegend": "Alarm-Ereignisse",
   "reports.quickRanges": "Schnellauswahl",

@@ -215,6 +215,7 @@
   "reports.device": "Device",
   "reports.compareDevice": "Compare with",
   "reports.compareNone": "— none —",
+  "reports.comparePrevious": "Previous period",
   "reports.showEvents": "Show alert events",
   "reports.eventsLegend": "Alert events",
   "reports.quickRanges": "Quick ranges",

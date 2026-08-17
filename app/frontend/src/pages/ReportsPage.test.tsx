@@ -151,6 +151,52 @@ describe('ReportsPage filter persistence', () => {
     expect(screen.getByRole('button', { name: 'avg' })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('compares against the preceding window of the same width, overlaid', async () => {
+    // "Previous period" lives in the compare-device select, so the two kinds of
+    // comparison cannot both be active. Selecting it fetches the same device
+    // over the window immediately before, shifted forward to overlay.
+    localStorage.setItem(KEY, JSON.stringify({ ain: 'a2', type: 'power', presetKey: 'last48h' }))
+    getStats.mockImplementation((_ain: string, _type: string, from: string) =>
+      Promise.resolve({ data: [{ time: from, value: 5, type: 'power' }] }))
+
+    render(<ReportsPage />)
+    await waitFor(() => expect(getStats).toHaveBeenCalled())
+    await screen.findByText(/reports\.chartTitle/)
+
+    const [, , currentFrom, currentTo] = getStats.mock.calls[0]
+    getStats.mockClear()
+
+    fireEvent.change(screen.getByLabelText('reports.compareDevice'), { target: { value: '__previous__' } })
+    await waitFor(() => expect(getStats.mock.calls.length).toBeGreaterThanOrEqual(2))
+
+    const spanMs = new Date(currentTo as string).getTime() - new Date(currentFrom as string).getTime()
+    const secondCall = getStats.mock.calls.find(
+      (c) => new Date(c[2] as string).getTime() < new Date(currentFrom as string).getTime(),
+    )
+    expect(secondCall, 'a request for the preceding window').toBeTruthy()
+    // Same device, same width, immediately before.
+    expect(secondCall![0]).toBe('a2')
+    expect(new Date(secondCall![2] as string).getTime())
+      .toBe(new Date(currentFrom as string).getTime() - spanMs)
+    expect(new Date(secondCall![3] as string).getTime())
+      .toBe(new Date(currentTo as string).getTime() - spanMs)
+  })
+
+  it('keeps the previous-period selection across a reload', async () => {
+    // The sentinel is not a device, so the restore path has to allow it
+    // explicitly or the setting silently reverts to "none".
+    localStorage.setItem(KEY, JSON.stringify({
+      ain: 'a2', ain2: '__previous__', type: 'power', presetKey: 'last48h',
+    }))
+    getStats.mockImplementation((_ain: string, _type: string, from: string) =>
+      Promise.resolve({ data: [{ time: from, value: 5, type: 'power' }] }))
+
+    render(<ReportsPage />)
+    await waitFor(() => expect(getStats.mock.calls.length).toBeGreaterThanOrEqual(2))
+
+    expect((screen.getByLabelText('reports.compareDevice') as HTMLSelectElement).value).toBe('__previous__')
+  })
+
   it('exports exactly the window that is on screen', async () => {
     // Not a range re-resolved at click time: what you download must be what the
     // chart is showing.

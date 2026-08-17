@@ -16,6 +16,55 @@ import { pushNotification } from '../notifications/bus'
 
 const SECOND_COLOR = '#0E9AA7' // distinct from the metric colours and the avg lines
 
+/**
+ * Sentinel for the "Compare with" select meaning *this device, one window
+ * earlier* rather than another device.
+ *
+ * It lives in the same select on purpose: both comparisons drive the second
+ * series, so putting them in one control makes them mutually exclusive by
+ * construction. A separate toggle could be switched on alongside a compared
+ * device and there would be no second line left to draw it with.
+ */
+const PREVIOUS_PERIOD = '__previous__'
+
+/**
+ * Move a series forward by the window's own width so it overlays the current
+ * one, keeping the real timestamp for the tooltip — a point labelled with the
+ * date it is drawn at rather than the date it happened would be a lie.
+ */
+function shiftForward(points: StatPoint[], spanMs: number): StatPoint[] {
+  return points.map((p) => ({
+    ...p,
+    time: new Date(new Date(p.time).getTime() + spanMs).toISOString(),
+    originalTime: p.time,
+  }))
+}
+
+/**
+ * The second line: another device over the same window, or this device over the
+ * preceding one. Empty when nothing is being compared.
+ */
+function secondSeries(
+  ain: string,
+  type: string,
+  from: string,
+  to: string,
+  ain2: string,
+): Promise<{ data: StatPoint[] }> {
+  if (ain2 === PREVIOUS_PERIOD) {
+    // The window immediately before this one, of identical width — so
+    // "last 7 days" compares against the 7 days before that.
+    const spanMs = new Date(to).getTime() - new Date(from).getTime()
+    const prevFrom = new Date(new Date(from).getTime() - spanMs).toISOString()
+    const prevTo = new Date(new Date(to).getTime() - spanMs).toISOString()
+
+    return getStats(ain, type, prevFrom, prevTo)
+      .then((r) => ({ data: shiftForward(r.data, spanMs) }))
+  }
+
+  return ain2 ? getStats(ain2, type, from, to) : Promise.resolve({ data: [] as StatPoint[] })
+}
+
 // Data point nearest a timestamp. Markers snap to it so each dot sits exactly on
 // the device's line vertex and shares an x with the line — which makes it appear
 // in the axis tooltip alongside the line values.
@@ -115,7 +164,9 @@ export function ReportsPage() {
     if (didRestore.current || devices.length === 0) return
     didRestore.current = true
     const ain = saved?.ain && devices.some((d) => d.ain === saved.ain) ? saved.ain : devices[0].ain
-    const ain2 = saved?.ain2 && devices.some((d) => d.ain === saved.ain2) ? saved.ain2 : ''
+    const ain2 = saved?.ain2 === PREVIOUS_PERIOD
+      ? PREVIOUS_PERIOD
+      : (saved?.ain2 && devices.some((d) => d.ain === saved.ain2) ? saved.ain2 : '')
     setSelectedAin(ain)
     setSelectedAin2(ain2)
     // No Load button: always run the initial query (saved filter, or defaults).
@@ -148,7 +199,7 @@ export function ReportsPage() {
     try {
       const [primary, secondary] = await Promise.all([
         getStats(ain, type, fromDate, toDate),
-        ain2 ? getStats(ain2, type, fromDate, toDate) : Promise.resolve({ data: [] as StatPoint[] }),
+        secondSeries(ain, type, fromDate, toDate, ain2),
       ])
       if (thisRequest !== requestIdRef.current) return
       setData(primary.data)
@@ -309,8 +360,15 @@ export function ReportsPage() {
 
   const secondOptions = [
     { value: '', label: t('reports.compareNone') },
+    { value: PREVIOUS_PERIOD, label: t('reports.comparePrevious') },
     ...devices.filter((d) => d.ain !== selectedAin).map((d) => ({ value: d.ain, label: d.name })),
   ]
+
+  // The compared series names itself rather than a device when it is this same
+  // device shifted back one window.
+  const secondLabel = selectedAin2 === PREVIOUS_PERIOD
+    ? t('reports.comparePrevious')
+    : deviceName(selectedAin2)
 
   const fmtShort = (d: string) => localDate(d).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
   // ISO 'YYYY-MM-DD' → 'DD.MM.YYYY' (matches the native date inputs' display).
@@ -332,7 +390,7 @@ export function ReportsPage() {
     ? (loadedWindow ?? t(activePreset.labelKey))
     : `${fmtDate(from)} – ${fmtDate(to)}`
 
-  const titleDevice = deviceName(selectedAin) + (selectedAin2 ? ` + ${deviceName(selectedAin2)}` : '')
+  const titleDevice = deviceName(selectedAin) + (selectedAin2 ? ` + ${secondLabel}` : '')
 
   return (
     <div className="page">
@@ -474,7 +532,7 @@ export function ReportsPage() {
               fitToData={fitToData}
               showMinMax={showMinMax}
               data2={selectedAin2 ? data2 : undefined}
-              label2={selectedAin2 ? deviceName(selectedAin2) : undefined}
+              label2={selectedAin2 ? secondLabel : undefined}
               color2={SECOND_COLOR}
               events={chartEvents}
               eventsLabel={t('reports.eventsLegend')}
