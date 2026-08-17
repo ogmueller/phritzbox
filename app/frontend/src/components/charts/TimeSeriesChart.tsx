@@ -38,7 +38,7 @@ interface TooltipParam {
   seriesName: string
   marker: string
   value: [string, number]
-  data?: { summary?: string }
+  data?: { summary?: string; originalTime?: string }
 }
 
 export type Period = 'day' | 'week' | 'month' | 'year'
@@ -283,7 +283,13 @@ export function TimeSeriesChart({
                 seen.add(p.data.summary)
                 return `${p.marker}🔔 ${p.data.summary}`
               }
-              return `${p.marker}${p.seriesName}: <b>${Number(p.value[1]).toFixed(2)} ${displayUnit}</b>`
+              const value = `${p.marker}${p.seriesName}: <b>${Number(p.value[1]).toFixed(2)} ${displayUnit}</b>`
+              // A time-shifted series is plotted at a borrowed timestamp so it
+              // overlays the current window. Naming the date it actually
+              // happened is the whole point of the comparison.
+              return p.data?.originalTime
+                ? `${value} <small>(${new Date(p.data.originalTime).toLocaleString()})</small>`
+                : value
             })
             .filter((l) => l !== '')
             .join('<br/>')
@@ -337,7 +343,9 @@ export function TimeSeriesChart({
           smooth: false,
           showSymbol: false,
           sampling: 'lttb' as const,
-          data: scaledData2.map((p) => [p.time, p.value]),
+          data: scaledData2.map((p) => (p.originalTime !== undefined
+            ? { value: [p.time, p.value], originalTime: p.originalTime }
+            : [p.time, p.value])),
           lineStyle: { color: color2, width: 1.5 },
           ...minMax(scaledData2, color2),
         }] : []),

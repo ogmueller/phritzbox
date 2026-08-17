@@ -7,6 +7,12 @@ export interface StatPoint {
   /** True extremes within the bucket. Present only on aggregated resolutions. */
   min?: number
   max?: number
+  /**
+   * When a series has been time-shifted to overlay another (period-over-period
+   * comparison), the timestamp it actually happened at. `time` is where it is
+   * drawn; this is what it means.
+   */
+  originalTime?: string
 }
 
 /** Which tier answered the query: raw readings, or pre-aggregated buckets. */
