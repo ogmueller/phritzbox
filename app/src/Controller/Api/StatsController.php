@@ -18,6 +18,7 @@ use App\Service\AlertEvaluationService;
 use App\Service\MetricUnits;
 use App\Service\SmartStatsCollectionService;
 use App\Service\StatsQueryService;
+use App\Service\StatsRange;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -135,6 +136,11 @@ class StatsController extends AbstractController
             return $this->json(['error' => 'from and to must be an ISO 8601 instant or a Y-m-d date'], Response::HTTP_BAD_REQUEST);
         }
 
+        // Same widening as show(), so an energy export covers exactly the days
+        // the chart shows. Without it a mid-day `from` clipped the first day
+        // here but not there.
+        $from = StatsRange::widenForEnergy($from, $type);
+
         $resolution = $this->statsQuery->resolutionFor($from, $to);
         $data = $this->statsQuery->fetch($ain, $type, $from, $to, $resolution);
 
@@ -214,14 +220,7 @@ class StatsController extends AbstractController
             return $this->json(['error' => 'from and to must be an ISO 8601 instant or a Y-m-d date'], Response::HTTP_BAD_REQUEST);
         }
 
-        // The box reports energy once per day (grid 86400) and stamps each value
-        // at midnight, so a window that starts mid-day can only ever clip a bar
-        // off the left edge — never refine one. Widen the start to that midnight.
-        // Only for an explicit energy request: on the all-types query ($type ===
-        // '') this would drag in extra temperature and power rows.
-        if ($type === 'energy') {
-            $from = $from->setTime(0, 0);
-        }
+        $from = StatsRange::widenForEnergy($from, $type);
 
         $now = new \DateTimeImmutable();
         $resolution = $this->statsQuery->resolutionFor($from, $to, $now);
@@ -258,34 +257,14 @@ class StatsController extends AbstractController
     }
 
     /**
-     * Parse a `from`/`to` query bound.
-     *
-     * Accepts an offset-bearing ISO 8601 instant — what the UI sends, so a
-     * rolling window means the same moment regardless of where browser and
-     * server sit — or a bare `Y-m-d`, kept for older clients and hand-made API
-     * calls. A bare date carries no time, so an end bound is widened to that
-     * day's last second (the long-standing behaviour, now applied only when the
-     * value really is a bare date).
-     *
-     * The result is converted to the server timezone because readings are
-     * stored formatted in it; without this an incoming +02:00 instant would
-     * format two hours off and silently shift the window.
+     * @see StatsRange::parseBound() — shared so every endpoint that answers
+     *      questions about a window resolves it identically
      *
      * @throws \Exception when the value cannot be parsed
      */
     private function parseBound(string $raw, string $fallback, bool $endOfDay): \DateTimeImmutable
     {
-        $tz = new \DateTimeZone(date_default_timezone_get());
-
-        if ($raw === '') {
-            return new \DateTimeImmutable($fallback, $tz);
-        }
-
-        if ($endOfDay && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1) {
-            $raw .= ' 23:59:59';
-        }
-
-        return (new \DateTimeImmutable($raw))->setTimezone($tz);
+        return StatsRange::parseBound($raw, $fallback, $endOfDay);
     }
 
     #[Route('/types/{ain}', methods: ['GET'])]
