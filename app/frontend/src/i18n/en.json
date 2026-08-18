@@ -398,6 +398,8 @@
   "energy.acrossDevices": "across {{count}} device(s)",
   "energy.today": "Today",
   "energy.estimated": "Estimated from power readings",
+  "energy.weekAverage": "{{amount}} a day over the last 7 days",
+  "energy.weekAveragePartial": "{{amount}} a day over {{days}} day(s) with data",
   "energy.monthToDate": "This month",
   "energy.standby": "Standby draw",
   "energy.standbyPerYear": "{{amount}} a year at this rate",

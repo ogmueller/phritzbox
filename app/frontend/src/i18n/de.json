@@ -398,6 +398,8 @@
   "energy.acrossDevices": "über {{count}} Gerät(e)",
   "energy.today": "Heute",
   "energy.estimated": "Aus Leistungswerten geschätzt",
+  "energy.weekAverage": "{{amount}} pro Tag in den letzten 7 Tagen",
+  "energy.weekAveragePartial": "{{amount}} pro Tag an {{days}} Tag(en) mit Daten",
   "energy.monthToDate": "Diesen Monat",
   "energy.standby": "Standby-Verbrauch",
   "energy.standbyPerYear": "{{amount}} pro Jahr bei diesem Wert",

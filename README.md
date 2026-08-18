@@ -16,7 +16,7 @@ Built with Symfony 8, React 19, and [FrankenPHP](https://frankenphp.dev). Ships 
 Screenshots
 -----------
 
-**Dashboard** — live overview of all devices with status, temperature, power consumption, and toggle switches:
+**Dashboard** — four headline figures (live draw, today's energy against the last seven days' daily average, month-to-date cost, and standby draw) over a live overview of all devices with status, temperature, power consumption, and toggle switches:
 
 ![Dashboard](app/files/screenshots/web-dashboard.png)
 

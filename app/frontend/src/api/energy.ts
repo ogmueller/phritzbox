@@ -70,6 +70,12 @@ export interface EnergySummary {
   currency: string
   configured: boolean
   today: { energyWh: number; cost: number | null; estimated: boolean }
+  /**
+   * The seven complete days before today — the baseline "Today" is read
+   * against. `averageWhPerDay` divides by `daysWithData`, not by seven, and is
+   * null when the window holds no readings at all.
+   */
+  week: { energyWh: number; daysWithData: number; averageWhPerDay: number | null }
   monthToDate: { energyWh: number; energyCost: number | null; standingCost: number | null; cost: number | null; gapDays: number }
   topConsumer: { ain: string; name: string; energyWh: number; cost: number | null } | null
   standby: { watts: number; annualKwh: number; annualCost: number | null; devices: number }

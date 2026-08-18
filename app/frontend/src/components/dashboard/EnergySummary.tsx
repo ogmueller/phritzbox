@@ -78,6 +78,30 @@ export function EnergySummary() {
       )
       : t('energy.noTariffShort')
 
+  /**
+   * What a normal day looks like, so the figure above means something.
+   *
+   * Daily household energy swings by more than 2x here, so "625 Wh" on its own
+   * says nothing about whether today is high or low. Deliberately not phrased as
+   * a comparison ("40% below average"): today is a partial day, so any such
+   * claim is unfair until midnight. State the baseline, let the reader judge.
+   */
+  const week = summary?.week
+  const weekAverage = week?.averageWhPerDay ?? null
+  const weekNote = week === undefined || weekAverage === null
+    ? null
+    : t(week.daysWithData === 7 ? 'energy.weekAverage' : 'energy.weekAveragePartial', {
+      amount: formatEnergy(weekAverage, i18n.language),
+      days: week.daysWithData,
+    })
+
+  // The estimate note qualifies the figure itself, so it stays closest to it;
+  // the baseline is context and follows.
+  const estimatedNote = summary?.today.estimated ? t('energy.estimated') : null
+  const todayHint = estimatedNote !== null || weekNote !== null
+    ? <>{estimatedNote}{weekNote !== null && <div>{weekNote}</div>}</>
+    : undefined
+
   // A missing day makes every total a lower bound, so the warn border gets a
   // reason next to it whether or not a tariff turned the figure into money.
   const gapNote = (month?.gapDays ?? 0) > 0
@@ -98,7 +122,7 @@ export function EnergySummary() {
         value={formatEnergy(summary?.today.energyWh, i18n.language)}
         // The box reports energy once a day, so today is integrated from power
         // until it does. Saying so keeps the figure honest.
-        hint={summary?.today.estimated ? t('energy.estimated') : undefined}
+        hint={todayHint}
       />
       <StatTile
         label={t('energy.monthToDate')}
