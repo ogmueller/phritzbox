@@ -33,6 +33,7 @@ const summary = (over: Record<string, unknown> = {}) => ({
   currency: 'EUR',
   configured: true,
   today: { energyWh: 1500, cost: 0.53, estimated: false },
+  week: { energyWh: 7210, daysWithData: 7, averageWhPerDay: 1030 },
   monthToDate: { energyWh: 18864, energyCost: 6.6, standingCost: 12, cost: 18.6, gapDays: 0 },
   topConsumer: { ain: 'a1', name: 'iMac', energyWh: 10772, cost: 3.77 },
   standby: { watts: 40.48, annualKwh: 354.6, annualCost: 124.11, devices: 1 },
@@ -176,6 +177,49 @@ describe('EnergySummary', () => {
 
     expect(await screen.findByText('energy.gapWarning 3')).toBeTruthy()
     expect(screen.getByText('energy.configureTariff')).toBeTruthy()
+  })
+
+  it('states the weekly baseline under today, so the figure can be judged', async () => {
+    // "625 Wh" alone says nothing: daily household energy swings by more than 2x.
+    getEnergySummary.mockResolvedValue(summary())
+
+    render(<EnergySummary />)
+
+    expect(await screen.findByText('energy.weekAverage 1.03 kWh 7')).toBeTruthy()
+  })
+
+  it('says how many days the baseline rests on when the week is incomplete', async () => {
+    // Dividing 3 days of data by 7 would read as "you used less", which is the
+    // one thing a missed collection day does not mean.
+    getEnergySummary.mockResolvedValue(summary({
+      week: { energyWh: 2700, daysWithData: 3, averageWhPerDay: 900 },
+    }))
+
+    render(<EnergySummary />)
+
+    expect(await screen.findByText('energy.weekAveragePartial 900 Wh 3')).toBeTruthy()
+  })
+
+  it('shows no baseline at all before there is any history', async () => {
+    getEnergySummary.mockResolvedValue(summary({
+      week: { energyWh: 0, daysWithData: 0, averageWhPerDay: null },
+    }))
+
+    render(<EnergySummary />)
+
+    await waitFor(() => expect(getEnergySummary).toHaveBeenCalled())
+    expect(screen.queryByText(/energy.weekAverage/)).toBeNull()
+  })
+
+  it('keeps both the estimate note and the baseline while today is still being integrated', async () => {
+    getEnergySummary.mockResolvedValue(summary({
+      today: { energyWh: 620, cost: 0.2, estimated: true },
+    }))
+
+    render(<EnergySummary />)
+
+    expect(await screen.findByText('energy.estimated')).toBeTruthy()
+    expect(screen.getByText('energy.weekAverage 1.03 kWh 7')).toBeTruthy()
   })
 
   it('marks today as estimated only while it is integrated from power', async () => {

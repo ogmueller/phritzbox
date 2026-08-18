@@ -156,16 +156,23 @@ class EnergyCostService
     }
 
     /**
-     * Today, month-to-date and the top consumer — the dashboard's single request.
+     * Today, the week's daily baseline, month-to-date and the top consumer — the
+     * dashboard's single request.
      *
      * @return array<string, mixed>
      */
     public function summary(?\DateTimeImmutable $now = null): array
     {
         $now ??= new \DateTimeImmutable();
+        $midnight = $now->setTime(0, 0);
 
-        $today = $this->costForRange($now->setTime(0, 0), $now, $now);
+        $today = $this->costForRange($midnight, $now, $now);
         $month = $this->costForRange($now->modify('first day of this month')->setTime(0, 0), $now, $now);
+
+        // The seven *complete* days before today. Today is deliberately outside
+        // the window: it is a partial figure, and averaging it into the baseline
+        // it is meant to be read against would drag that baseline down all day.
+        $week = $this->costForRange($midnight->modify('-7 days'), $midnight->modify('-1 second'), $now);
 
         $top = $month['devices'][0] ?? null;
 
@@ -178,6 +185,18 @@ class EnergyCostService
                 // The box reports energy once a day, so today is integrated from
                 // power readings until it does.
                 'estimated' => $today['household']['coverage']['estimatedTodayWh'] > 0.0,
+            ],
+            'week' => [
+                'energyWh' => $week['household']['energyWh'],
+                'daysWithData' => $week['household']['coverage']['daysWithData'],
+                // Divided by the days that actually carry data, not by seven: a
+                // day the collector missed would otherwise pull the average down
+                // and read as "you used less", which is the one thing it does not
+                // mean. Null rather than 0.0 when the window holds nothing at
+                // all — no baseline is not a baseline of zero.
+                'averageWhPerDay' => $week['household']['coverage']['daysWithData'] === 0
+                    ? null
+                    : round($week['household']['energyWh'] / $week['household']['coverage']['daysWithData'], 1),
             ],
             'monthToDate' => [
                 'energyWh' => $month['household']['energyWh'],

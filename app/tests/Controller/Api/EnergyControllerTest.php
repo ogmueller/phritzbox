@@ -160,6 +160,7 @@ class EnergyControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertArrayHasKey('today', $data);
         self::assertArrayHasKey('monthToDate', $data);
+        self::assertArrayHasKey('week', $data);
         self::assertArrayHasKey('topConsumer', $data);
         self::assertArrayHasKey('estimated', $data['today']);
         self::assertArrayHasKey('currency', $data);

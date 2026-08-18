@@ -411,6 +411,53 @@ class EnergyCostServiceTest extends KernelTestCase
         self::assertSame(18.0, $summary['monthToDate']['standingCost']);
     }
 
+    /**
+     * The dashboard's "Today" tile reads its baseline from this. A raw 7-day
+     * total would be meaningless next to a partial day, so it is an average —
+     * and the divisor is the days that carry data, never a flat seven.
+     */
+    public function testWeekAverageDividesByTheDaysThatCarryData(): void
+    {
+        $now = new \DateTimeImmutable('2026-06-18 09:00:00');
+        $this->device('ec-week');
+        // Three of the seven complete days before today, 900 Wh each.
+        foreach (['2026-06-12', '2026-06-14', '2026-06-16'] as $day) {
+            $this->energy('ec-week', $day, 900.0);
+        }
+
+        $summary = $this->cost->summary($now);
+
+        self::assertSame(3, $summary['week']['daysWithData']);
+        self::assertEqualsWithDelta(2700.0, $summary['week']['energyWh'], 0.1);
+        // 2700 / 3, not 2700 / 7 — which would have read as 386 Wh a day.
+        self::assertEqualsWithDelta(900.0, $summary['week']['averageWhPerDay'], 0.1);
+    }
+
+    public function testWeekAverageIgnoresTodaysPartialFigure(): void
+    {
+        // Today is the number the baseline is read *against*, so folding it in
+        // would drag the baseline down for as long as the day is incomplete.
+        $now = new \DateTimeImmutable('2026-06-18 09:00:00');
+        $this->device('ec-week-today');
+        $this->energy('ec-week-today', '2026-06-17', 1000.0);
+        $this->energy('ec-week-today', '2026-06-18', 50.0);
+
+        $summary = $this->cost->summary($now);
+
+        self::assertSame(1, $summary['week']['daysWithData'], 'only the 17th falls in the window');
+        self::assertEqualsWithDelta(1000.0, $summary['week']['averageWhPerDay'], 0.1);
+    }
+
+    public function testWeekAverageIsNullWithoutAnyHistory(): void
+    {
+        // Null, not 0.0: "no baseline yet" and "you used nothing" are different
+        // statements, and the tile must not print the second for the first.
+        $summary = $this->cost->summary(new \DateTimeImmutable('2026-03-05 09:00:00'));
+
+        self::assertSame(0, $summary['week']['daysWithData']);
+        self::assertNull($summary['week']['averageWhPerDay']);
+    }
+
     public function testSummaryReportsTodayMonthToDateAndTopConsumer(): void
     {
         $this->tariff->save(0.30, 30.0, 'EUR');
