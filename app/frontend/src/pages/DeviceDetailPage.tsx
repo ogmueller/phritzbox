@@ -19,10 +19,12 @@ import { TemperatureChart } from '../components/charts/TemperatureChart'
 import { PowerChart } from '../components/charts/PowerChart'
 import { EnergyChart } from '../components/charts/EnergyChart'
 import { VoltageChart } from '../components/charts/VoltageChart'
+import { getStandby, Standby } from '../api/energy'
 import { rollingRange } from './timeRange'
+import { formatEnergy, formatCurrency, formatWatts, formatNumber } from '../format'
 
 export function DeviceDetailPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { isAdmin } = useAuth()
   const { ain } = useParams<{ ain: string }>()
   const [device, setDevice] = useState<Device | null>(null)
@@ -42,6 +44,7 @@ export function DeviceDetailPage() {
   const [powerData, setPowerData] = useState<StatPoint[]>([])
   const [energyData, setEnergyData] = useState<StatPoint[]>([])
   const [voltageData, setVoltageData] = useState<StatPoint[]>([])
+  const [standby, setStandby] = useState<Standby | null>(null)
 
   const loadDevice = async () => {
     if (!ain) return
@@ -72,6 +75,9 @@ export function DeviceDetailPage() {
     getStats(ain, 'power', from, to).then((r) => setPowerData(r.data)).catch(() => {})
     getStats(ain, 'energy', from, to).then((r) => setEnergyData(r.data)).catch(() => {})
     getStats(ain, 'voltage', from, to).then((r) => setVoltageData(r.data)).catch(() => {})
+    // Null for a device with too little history to have a weekly floor — the row
+    // is then simply absent, rather than reading 0 W.
+    getStandby(ain).then(setStandby).catch(() => setStandby(null))
   }, [ain, from, to])
 
   const showXml = async () => {
@@ -108,6 +114,26 @@ export function DeviceDetailPage() {
 
   if (loading) return <div className="loading-state">{t('common.loading')}</div>
   if (error || !device) return <div className="alert alert--danger">{error ?? t('device.notFound')}</div>
+
+  /**
+   * How the week was spent, in one line.
+   *
+   * Four distinct states, because "0 W" alone is ambiguous: a device that was
+   * off all week and one that was on all week drawing nothing produce the same
+   * floor, and only the duty cycle separates them. Rounded to whole percent
+   * before comparing against 100, so 99.96% reads as "never switched off"
+   * rather than claiming an idle draw the percentile did not really isolate.
+   */
+  const dutyNote = (s: Standby) => {
+    const percent = formatNumber(s.dutyCyclePercent, i18n.language, 1)
+
+    if (s.dutyCyclePercent <= 0) return t('energy.dutyOff')
+    if (Math.round(s.dutyCyclePercent) >= 100) return t('energy.dutyAlways')
+
+    return s.idleWatts === null
+      ? t('energy.dutyPartialUnknown', { percent })
+      : t('energy.dutyPartial', { percent, watts: formatWatts(s.idleWatts, i18n.language) })
+  }
 
   // AVM's HKR diagnostics are codes 1-6. Anything else falls back to the bare
   // number rather than rendering a missing-translation key.
@@ -274,7 +300,30 @@ export function DeviceDetailPage() {
           <Card title={t('detail.powerMeter')}>
             <div className="detail-row"><span>{t('detail.voltage')}</span><span>{device.powerMeter.voltage} V</span></div>
             <div className="detail-row"><span>{t('detail.power')}</span><span>{device.powerMeter.power} W</span></div>
-            <div className="detail-row"><span>{t('detail.energy')}</span><span>{device.powerMeter.energy} Wh</span></div>
+            <div className="detail-row"><span>{t('detail.energy')}</span><span>{formatEnergy(device.powerMeter.energy, i18n.language)}</span></div>
+            {standby !== null && (
+              <>
+                <div className="detail-row">
+                  <span>{t('energy.standby')}</span>
+                  <span>{formatWatts(standby.watts, i18n.language)}</span>
+                </div>
+                {standby.annualCost !== null && (
+                  <div className="detail-row">
+                    <span>{t('energy.standbyAnnual')}</span>
+                    <span>{formatCurrency(standby.annualCost, standby.currency, i18n.language)}</span>
+                  </div>
+                )}
+                {/* The floor above is a round-the-clock figure, so it reads 0 W
+                    for anything switched off — which is true and tells you
+                    nothing about the appliance. This line separates the two
+                    questions: how much of the week it was on, and what it drew
+                    while it was. */}
+                <div className="stat-tile-hint">{dutyNote(standby)}</div>
+                <div className="stat-tile-hint">
+                  {t('energy.standbyBasis', { days: standby.windowDays, samples: standby.samples })}
+                </div>
+              </>
+            )}
           </Card>
         )}
 

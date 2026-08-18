@@ -13,6 +13,7 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ defaul
 const UsersPage = lazy(() => import('./pages/UsersPage').then(m => ({ default: m.UsersPage })))
 const AlertsPage = lazy(() => import('./pages/AlertsPage').then(m => ({ default: m.AlertsPage })))
 const ChannelsPage = lazy(() => import('./pages/ChannelsPage').then(m => ({ default: m.ChannelsPage })))
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const HelpPage = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -41,6 +42,7 @@ function AppRoutes() {
         <Route path="/alerts" element={<RequireAdmin><AlertsPage /></RequireAdmin>} />
         <Route path="/channels" element={<RequireAdmin><ChannelsPage /></RequireAdmin>} />
         <Route path="/help" element={<HelpPage />} />
+        <Route path="/settings" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

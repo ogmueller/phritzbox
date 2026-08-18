@@ -183,4 +183,74 @@ class EnergyControllerTest extends WebTestCase
         self::assertSame('en-top', $data['topConsumer']['ain']);
         self::assertSame('Big', $data['topConsumer']['name']);
     }
+
+    public function testStandbyRequiresAuth(): void
+    {
+        $this->client->request('GET', '/api/energy/standby/en-1');
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testStandbyReportsAFloorForADeviceWithAWeekOfReadings(): void
+    {
+        $now = new \DateTimeImmutable();
+        $this->device('sb-http');
+        // A week of 10-minute readings, stored in centiwatts.
+        $t = $now->modify('-7 days')->modify('+10 minutes');
+        while ($t < $now) {
+            $this->conn->insert('smart_device_data', [
+                'sid' => 'sb-http', 'type' => 'power',
+                'time' => $t->format('Y-m-d H:i:s'), 'value' => 700.0,
+            ]);
+            $t = $t->modify('+10 minutes');
+        }
+
+        $data = $this->get('/api/energy/standby/sb-http');
+
+        self::assertResponseIsSuccessful();
+        self::assertEquals(7.0, $data['watts']);
+        self::assertArrayHasKey('currency', $data);
+        self::assertArrayHasKey('samples', $data);
+        self::assertSame(7, $data['windowDays']);
+        // The idle-while-on pair travels with the floor, so a client never has
+        // to make a second request to tell "off" from "on and drawing nothing".
+        self::assertArrayHasKey('dutyCyclePercent', $data);
+        self::assertArrayHasKey('idleWatts', $data);
+    }
+
+    public function testStandbyAnswers204RatherThanAnInventedZero(): void
+    {
+        // A device with an hour of history has no meaningful weekly floor. 204,
+        // not 200 with watts=0 — the caller must be able to tell "we don't know"
+        // from "it draws nothing".
+        $now = new \DateTimeImmutable();
+        $this->device('sb-thin-http');
+        foreach (range(1, 5) as $i) {
+            $this->conn->insert('smart_device_data', [
+                'sid' => 'sb-thin-http', 'type' => 'power',
+                'time' => $now->modify(\sprintf('-%d minutes', $i * 10))->format('Y-m-d H:i:s'),
+                'value' => 500.0,
+            ]);
+        }
+
+        $this->client->request('GET', '/api/energy/standby/sb-thin-http', server: ['HTTP_AUTHORIZATION' => 'Bearer '.$this->token]);
+
+        self::assertResponseStatusCodeSame(204);
+    }
+
+    public function testStandbyAnswers204ForAnUnknownDevice(): void
+    {
+        $this->client->request('GET', '/api/energy/standby/nope', server: ['HTTP_AUTHORIZATION' => 'Bearer '.$this->token]);
+
+        self::assertResponseStatusCodeSame(204);
+    }
+
+    public function testStandbyAcceptsAnAinContainingASpace(): void
+    {
+        // Real AINs look like "08761 0372830"; the route must not stop at the space.
+        $this->device('08761 0372830');
+
+        $this->client->request('GET', '/api/energy/standby/'.rawurlencode('08761 0372830'), server: ['HTTP_AUTHORIZATION' => 'Bearer '.$this->token]);
+
+        self::assertResponseStatusCodeSame(204, 'no readings, but the route resolved');
+    }
 }

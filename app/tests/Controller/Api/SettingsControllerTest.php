@@ -121,6 +121,33 @@ class SettingsControllerTest extends WebTestCase
         self::assertNull($cleared['pricePerKwh']);
     }
 
+    public function testAnEmptyBodyDoesNotSilentlyDeleteTheTariff(): void
+    {
+        // The failure this guards: a caller that loses the payload — a request
+        // whose body was dropped, a form that submitted nothing — would otherwise
+        // wipe a configured price and be told it succeeded.
+        $this->request('PUT', $this->adminToken, ['pricePerKwh' => 0.32]);
+
+        $error = $this->request('PUT', $this->adminToken, []);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertStringContainsString('pricePerKwh', (string) $error['error']);
+
+        $read = $this->request('GET', $this->userToken);
+        self::assertSame(0.32, $read['pricePerKwh'], 'the stored tariff survived');
+        self::assertTrue($read['configured']);
+    }
+
+    public function testAMissingPriceKeyIsRejectedEvenWithOtherFieldsPresent(): void
+    {
+        $this->request('PUT', $this->adminToken, ['pricePerKwh' => 0.32]);
+
+        $this->request('PUT', $this->adminToken, ['standingChargeMonth' => 12, 'currency' => 'EUR']);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertSame(0.32, $this->request('GET', $this->userToken)['pricePerKwh']);
+    }
+
     public function testAZeroPriceIsAcceptedAndCountsAsConfigured(): void
     {
         $saved = $this->request('PUT', $this->adminToken, ['pricePerKwh' => 0]);
@@ -154,6 +181,65 @@ class SettingsControllerTest extends WebTestCase
         $this->request('PUT', $this->adminToken, ['pricePerKwh' => 'cheap']);
 
         self::assertResponseStatusCodeSame(400);
+    }
+
+    /**
+     * The failure this guards: a German operator follows the field's own hint
+     * ("z. B. 0,35 für 35 Cent"), the price is refused as non-numeric, and the
+     * tariff stays unset while the dashboard keeps asking for one.
+     */
+    public function testAcceptsADecimalComma(): void
+    {
+        $saved = $this->request('PUT', $this->adminToken, [
+            'pricePerKwh' => '0,35',
+            'standingChargeMonth' => '11,99',
+        ]);
+
+        self::assertResponseIsSuccessful();
+        self::assertTrue($saved['configured']);
+        self::assertSame(0.35, $saved['pricePerKwh']);
+        self::assertSame(11.99, $saved['standingChargeMonth']);
+    }
+
+    /**
+     * A standing charge is the one field big enough to be typed with a thousands
+     * separator. Whichever separator comes last is the decimal one.
+     */
+    public function testAcceptsEitherThousandsConvention(): void
+    {
+        $german = $this->request('PUT', $this->adminToken, [
+            'pricePerKwh' => '0,35',
+            'standingChargeMonth' => '1.000,00',
+        ]);
+        self::assertResponseIsSuccessful();
+        // JSON has no int/float distinction, so a round 1000.0 decodes as an int.
+        self::assertEquals(1000.0, $german['standingChargeMonth']);
+
+        $english = $this->request('PUT', $this->adminToken, [
+            'pricePerKwh' => '0.35',
+            'standingChargeMonth' => '1,000.00',
+        ]);
+        self::assertResponseIsSuccessful();
+        // JSON has no int/float distinction, so a round 1000.0 decodes as an int.
+        self::assertEquals(1000.0, $english['standingChargeMonth']);
+    }
+
+    public function testASurroundingSpaceDoesNotMakeAPriceNonNumeric(): void
+    {
+        $saved = $this->request('PUT', $this->adminToken, ['pricePerKwh' => ' 0,35 ']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(0.35, $saved['pricePerKwh']);
+    }
+
+    public function testAStringOfSpacesStillClearsTheTariffRatherThanErroring(): void
+    {
+        $this->request('PUT', $this->adminToken, ['pricePerKwh' => 0.32]);
+
+        $cleared = $this->request('PUT', $this->adminToken, ['pricePerKwh' => '   ']);
+
+        self::assertResponseIsSuccessful();
+        self::assertFalse($cleared['configured']);
     }
 
     public function testRejectsANegativeStandingCharge(): void

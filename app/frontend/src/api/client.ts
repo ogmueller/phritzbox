@@ -46,6 +46,28 @@ function forceLogout(): void {
 }
 
 /**
+ * The sentence a failed request should show the operator.
+ *
+ * Every API error answers `{"error": "..."}`; throwing the raw body instead put
+ * `{"error":"pricePerKwh must be a number"}`, braces and all, into the alert the
+ * user reads. Falls back to the body as-is, then to the status, so an error page
+ * or an empty 502 still says something.
+ */
+async function errorMessage(res: Response): Promise<string> {
+  const text = await res.text()
+  if (!text) return `HTTP ${res.status}`
+
+  try {
+    const body = JSON.parse(text)
+    if (typeof body?.error === 'string' && body.error !== '') return body.error
+  } catch {
+    // Not JSON — an HTML error page or a plain string. Use it as it came.
+  }
+
+  return text
+}
+
+/**
  * Everything except reading the body: auth header, the shared silent-refresh
  * retry on 401, the global toasts, and the non-OK throw. Split out so a file
  * download gets exactly the same session handling as a JSON call — a plain
@@ -88,8 +110,7 @@ async function rawRequest(path: string, init: RequestInit = {}, allowRetry = tru
   }
 
   if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text || `HTTP ${res.status}`)
+    throw new Error(await errorMessage(res))
   }
 
   return res

@@ -38,6 +38,12 @@
   /* ── Text (charcoal-gray scale) ──────────────────────────── */
   --color-text:       #3f464c;
   --color-text-muted: rgba(63, 70, 76, 0.73);
+  /* Lighter than muted on purpose. A placeholder that reads as strongly as real
+     text is indistinguishable from one — which is how an untouched price field
+     showing an example tariff got mistaken for a configured price. Deliberately
+     under the contrast floor that body text has to meet: nothing is *stated*
+     here that the field's own label and hint line do not also say. */
+  --color-placeholder: rgba(63, 70, 76, 0.5);
   --color-text-inv:   #ffffff;
 
   /* ── Login ───────────────────────────────────────────────── */

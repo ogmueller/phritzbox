@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../contexts/AuthContext'
-import { DashboardIcon, ReportsIcon, UsersIcon, HelpIcon, BellIcon, ChannelIcon } from '../ui/NavIcons'
+import { DashboardIcon, ReportsIcon, UsersIcon, HelpIcon, BellIcon, ChannelIcon, SettingsIcon } from '../ui/NavIcons'
 
 const NAV_ITEMS = [
   { to: '/dashboard', labelKey: 'nav.dashboard' as const, Icon: DashboardIcon },
@@ -12,6 +12,8 @@ const ADMIN_ITEMS = [
   { to: '/alerts',   labelKey: 'nav.alerts' as const,   Icon: BellIcon },
   { to: '/channels', labelKey: 'nav.channels' as const, Icon: ChannelIcon },
   { to: '/users',    labelKey: 'nav.users' as const,    Icon: UsersIcon },
+  // Last: the most "system" of the admin items.
+  { to: '/settings', labelKey: 'nav.settings' as const, Icon: SettingsIcon },
 ]
 
 const BOTTOM_ITEMS = [

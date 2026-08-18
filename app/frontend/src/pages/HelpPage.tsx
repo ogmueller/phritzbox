@@ -15,9 +15,11 @@ const SECTIONS = [
     tipKey: 'help.diagnosticsTip',
     admin: false,
   },
+  { titleKey: 'help.energyCostTitle', bodyKey: 'help.energyCostBody', bulletsKey: 'help.energyCostBullets', admin: false },
   { titleKey: 'help.alertsTitle', bodyKey: 'help.alertsBody', bulletsKey: 'help.alertsBullets', admin: true },
   { titleKey: 'help.channelsTitle', bodyKey: 'help.channelsBody', bulletsKey: 'help.channelsBullets', admin: true },
   { titleKey: 'help.usersTitle', bodyKey: 'help.usersBody', bulletsKey: 'help.usersBullets', admin: true },
+  { titleKey: 'help.settingsTitle', bodyKey: 'help.settingsBody', bulletsKey: 'help.settingsBullets', admin: true },
   { titleKey: 'help.freshnessTitle', bodyKey: 'help.freshnessBody', bulletsKey: 'help.freshnessBullets', admin: false },
 ] as const
 

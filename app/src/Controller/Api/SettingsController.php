@@ -65,10 +65,18 @@ class SettingsController extends AbstractController
      */
     private function applyPayload(array $body): ?string
     {
-        $rawPrice = $body['pricePerKwh'] ?? null;
+        // Clearing the tariff must be deliberate. A blank value says so; a
+        // missing key says nothing, and treating it as "clear" means any caller
+        // that drops the field silently deletes a configured price and is told
+        // it succeeded.
+        if (!\array_key_exists('pricePerKwh', $body)) {
+            return 'pricePerKwh is required — send an empty string to clear the tariff';
+        }
 
-        // Absent, null or blank clears the tariff back to "not configured" —
-        // which is a real state, not an error.
+        $rawPrice = self::normalizeDecimal($body['pricePerKwh']);
+
+        // Null or blank clears the tariff back to "not configured" — which is a
+        // real state, not an error.
         if ($rawPrice === null || $rawPrice === '') {
             $price = null;
         } elseif (!is_numeric($rawPrice)) {
@@ -88,7 +96,7 @@ class SettingsController extends AbstractController
 
         // ?? already covers both an absent key and an explicit null; a blank
         // string is what an emptied form field sends.
-        $rawStanding = $body['standingChargeMonth'] ?? 0;
+        $rawStanding = self::normalizeDecimal($body['standingChargeMonth'] ?? 0);
         if ($rawStanding === '') {
             $rawStanding = 0;
         }
@@ -114,5 +122,40 @@ class SettingsController extends AbstractController
         $this->tariff->save($price, $standing, $currency);
 
         return null;
+    }
+
+    /**
+     * A German-typed amount, turned into something is_numeric() accepts.
+     *
+     * "0,35" is what a German keyboard produces and what the price field's own
+     * hint asks for ("z. B. 0,35 für 35 Cent"), but is_numeric() rejects it — so
+     * the tariff was refused for a reason the operator could not see, and the
+     * field kept looking unset. Parsing belongs here rather than in the browser:
+     * the endpoint is the only thing that decides what a valid tariff is, and it
+     * has more than one client.
+     *
+     * The last separator in the string is the decimal one, which resolves
+     * "1.234,56" and "1,234.56" the same way a reader would. Anything that is
+     * not a string is passed through untouched for is_numeric() to judge.
+     */
+    private static function normalizeDecimal(mixed $raw): mixed
+    {
+        if (!\is_string($raw)) {
+            return $raw;
+        }
+
+        $value = mb_trim($raw);
+        $comma = mb_strrpos($value, ',');
+        if ($comma === false) {
+            return $value;
+        }
+
+        $dot = mb_strrpos($value, '.');
+
+        return $dot === false || $comma > $dot
+            // Comma decides; any dots left are thousands grouping.
+            ? str_replace(',', '.', str_replace('.', '', $value))
+            // Dot decides; the commas are thousands grouping.
+            : str_replace(',', '', $value);
     }
 }
