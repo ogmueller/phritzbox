@@ -357,8 +357,8 @@ cd app/frontend && npm test                                       # frontend (Vi
 ### Code Style
 
 ```bash
-./app/vendor/bin/php-cs-fixer fix --diff --dry-run -v --config app/.php-cs-fixer.dist.php   # check
-./app/vendor/bin/php-cs-fixer fix --config app/.php-cs-fixer.dist.php                       # fix
+(cd app && vendor/bin/php-cs-fixer fix --diff --dry-run -v --config .php-cs-fixer.dist.php)   # check
+(cd app && vendor/bin/php-cs-fixer fix --config .php-cs-fixer.dist.php)                       # fix
 ```
 
 ### Lint & Validate
