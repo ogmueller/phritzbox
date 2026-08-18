@@ -51,6 +51,14 @@ use Doctrine\DBAL\Connection;
  * and multiplying it by a duty cycle observed over one week would dress a
  * one-week usage pattern up as a yearly forecast.
  *
+ * The two figures may come from different tiers, which `idleSource` reports.
+ * Fifteen-minute bucketing is lossy in exactly the direction that hurts the
+ * idle figure: an appliance run for twenty minutes a day leaves hundreds of
+ * on-readings but only a handful of *fully* on buckets, too few to take a
+ * percentile over. So when the rollup answers the floor but cannot answer the
+ * idle draw, the raw tier is asked for that one number. It degrades on its own
+ * once retention prunes the raw rows — back to null, never to a wrong figure.
+ *
  * @author Oliver G. Mueller <oliver@teqneers.de>
  */
 class StandbyService
@@ -86,8 +94,8 @@ class StandbyService
     }
 
     /**
-     * @return array{watts: float, annualKwh: float, annualCost: float|null, currency: string, dutyCyclePercent: float, idleWatts: float|null, samples: int, windowDays: int, source: string}|null
-     *                                                                                                                                                                                             null when there is not enough data to quote a figure
+     * @return array{watts: float, annualKwh: float, annualCost: float|null, currency: string, dutyCyclePercent: float, idleWatts: float|null, idleSource: string|null, samples: int, windowDays: int, source: string}|null
+     *                                                                                                                                                                                                                      null when there is not enough data to quote a figure
      */
     public function forDevice(string $ain, ?\DateTimeImmutable $now = null, int $windowDays = self::DEFAULT_WINDOW_DAYS): ?array
     {
@@ -97,6 +105,17 @@ class StandbyService
         $estimate = $this->fromRollup($ain, $from) ?? $this->fromRaw($ain, $from);
         if ($estimate === null) {
             return null;
+        }
+
+        // Only when the summarised tier could not answer it itself, and only
+        // when it saw the device come on at all — for something that never drew
+        // anything all week there is nothing in the raw rows to find, and this
+        // runs per device on every dashboard poll.
+        $idle = $estimate['idle'];
+        $idleSource = $idle === null ? null : $estimate['source'];
+        if ($idle === null && $estimate['everOn'] > 0) {
+            $idle = $this->idleFromRaw($ain, $from);
+            $idleSource = $idle === null ? null : 'raw';
         }
 
         $watts = MetricUnits::toDisplay(MetricUnits::TYPE_POWER, $estimate['floor']);
@@ -118,9 +137,12 @@ class StandbyService
             // Null rather than 0.0: "it was never on long enough to say" is not
             // the same claim as "it idles at nothing", the same distinction the
             // whole cost feature makes between null and zero.
-            'idleWatts' => $estimate['idle'] === null
+            'idleWatts' => $idle === null
                 ? null
-                : round(MetricUnits::toDisplay(MetricUnits::TYPE_POWER, $estimate['idle']), 2),
+                : round(MetricUnits::toDisplay(MetricUnits::TYPE_POWER, $idle), 2),
+            // Which tier that second figure came from — not always the one that
+            // answered the floor. Diagnostic, like `source`.
+            'idleSource' => $idleSource,
             'samples' => $estimate['samples'],
             'windowDays' => $windowDays,
             'source' => $estimate['source'],
@@ -165,7 +187,12 @@ class StandbyService
      * slight underestimate — deliberately the same conservative direction as the
      * floor itself, and it keeps "on" meaning one thing across both figures.
      *
-     * @return array{floor: float, idle: float|null, on: int, samples: int, source: string}|null
+     * `ever_on` counts buckets whose *maximum* is above zero — the device drew
+     * something at some point in those fifteen minutes. It is the cheap way to
+     * ask "was this thing ever on at all this week", which decides whether the
+     * raw tier is worth consulting for an idle figure this tier cannot give.
+     *
+     * @return array{floor: float, idle: float|null, on: int, everOn: int, samples: int, source: string}|null
      */
     private function fromRollup(string $ain, string $from): ?array
     {
@@ -173,7 +200,8 @@ class StandbyService
         $where = ' WHERE sid = :ain AND type = :type AND grid = :grid AND bucket >= :from';
 
         $counts = $this->connection->fetchAssociative(
-            'SELECT COUNT(*) AS total, SUM(CASE WHEN min_value > 0 THEN 1 ELSE 0 END) AS on_count'
+            'SELECT COUNT(*) AS total, SUM(CASE WHEN min_value > 0 THEN 1 ELSE 0 END) AS on_count,'
+            .' SUM(CASE WHEN max_value > 0 THEN 1 ELSE 0 END) AS ever_on'
             .' FROM smart_device_data_rollup'.$where,
             $params,
         ) ?: [];
@@ -199,6 +227,7 @@ class StandbyService
                 self::offsetFor($on),
             ),
             'on' => $on,
+            'everOn' => (int) ($counts['ever_on'] ?? 0),
             'samples' => $count,
             'source' => 'rollup',
         ];
@@ -213,7 +242,7 @@ class StandbyService
      * rather than conservative: a reading is on or off, with no bucket to
      * straddle.
      *
-     * @return array{floor: float, idle: float|null, on: int, samples: int, source: string}|null
+     * @return array{floor: float, idle: float|null, on: int, everOn: int, samples: int, source: string}|null
      */
     private function fromRaw(string $ain, string $from): ?array
     {
@@ -247,9 +276,39 @@ class StandbyService
                 self::offsetFor($on),
             ),
             'on' => $on,
+            // This tier has no coarser view to have lost anything, so "was it
+            // ever on" and "how much of the window was it on" are the same
+            // count, and the fallback above can never fire from here.
+            'everOn' => $on,
             'samples' => $count,
             'source' => 'raw',
         ];
+    }
+
+    /**
+     * The idle-while-on percentile from raw readings alone.
+     *
+     * Asked only when the rollup answered the floor but saw too few *fully* on
+     * buckets to take a percentile — an appliance that runs twenty minutes at a
+     * time leaves plenty of on-readings and almost no whole-on buckets. Null
+     * when raw retention has already pruned the window, which is the correct
+     * answer rather than a degraded one.
+     */
+    private function idleFromRaw(string $ain, string $from): ?float
+    {
+        $params = ['ain' => $ain, 'type' => MetricUnits::TYPE_POWER, 'from' => $from];
+        $where = ' WHERE sid = :ain AND type = :type AND time >= :from AND value > 0';
+
+        $on = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM smart_device_data'.$where, $params);
+        if ($on < self::IDLE_MIN_SAMPLES) {
+            return null;
+        }
+
+        return $this->valueAtOffset(
+            'SELECT value FROM smart_device_data'.$where.' ORDER BY value ASC LIMIT 1 OFFSET :offset',
+            $params,
+            self::offsetFor($on),
+        );
     }
 
     /**

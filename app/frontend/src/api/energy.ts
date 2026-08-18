@@ -55,6 +55,12 @@ export interface Standby {
    * on, or was on too briefly for a percentile to mean anything.
    */
   idleWatts: number | null
+  /**
+   * Which tier produced `idleWatts` — not always the one that produced the
+   * floor, since a short-duty appliance leaves too few whole-on buckets for the
+   * summary tier to take a percentile over. null when no idle figure was quoted.
+   */
+  idleSource: 'rollup' | 'raw' | null
   samples: number
   windowDays: number
   source: 'rollup' | 'raw'

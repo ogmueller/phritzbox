@@ -294,6 +294,67 @@ class StandbyServiceTest extends KernelTestCase
         self::assertGreaterThan(0.0, $estimate['dutyCyclePercent'], 'the duty cycle is still reported');
     }
 
+    /**
+     * The case fifteen-minute bucketing loses: an appliance run in blocks leaves
+     * hundreds of on-readings but only a handful of buckets that are on for the
+     * *whole* quarter hour — too few for a percentile. The floor still comes
+     * from the summary tier; only the idle figure drops to raw.
+     */
+    public function testTheIdleDrawFallsBackToRawWhenTheRollupHasTooFewWholeOnBuckets(): void
+    {
+        $now = new \DateTimeImmutable();
+        $this->device('sb-hybrid');
+        // 10-minute readings: 25 consecutive on-readings is ~4 hours, which is
+        // plenty of raw samples but well under twenty whole-on buckets.
+        $this->power('sb-hybrid', $now, 7, static fn (int $i): float => $i < 25 ? 14.0 : 0.0);
+        $this->rollup->rollUpPair('sb-hybrid', 'power');
+        $this->rollup->setWatermark(RollupService::GRID_QUARTER, $now);
+
+        $estimate = $this->standby->forDevice('sb-hybrid', $now);
+
+        self::assertNotNull($estimate);
+        self::assertSame('rollup', $estimate['source'], 'the floor still comes from the summary tier');
+        self::assertSame('raw', $estimate['idleSource'], 'only the idle figure fell back');
+        self::assertEqualsWithDelta(14.0, $estimate['idleWatts'], 0.01);
+        self::assertSame(0.0, $estimate['watts']);
+    }
+
+    public function testADeviceThatWasNeverOnIsNotChasedIntoTheRawTier(): void
+    {
+        // Nothing to find, and this runs per device on every dashboard poll, so
+        // the rollup's own "was it ever on" count has to short-circuit it.
+        $now = new \DateTimeImmutable();
+        $this->device('sb-nofallback');
+        $this->power('sb-nofallback', $now, 7, static fn (): float => 0.0);
+        $this->rollup->rollUpPair('sb-nofallback', 'power');
+        $this->rollup->setWatermark(RollupService::GRID_QUARTER, $now);
+
+        $estimate = $this->standby->forDevice('sb-nofallback', $now);
+
+        self::assertNotNull($estimate);
+        self::assertNull($estimate['idleWatts']);
+        self::assertNull($estimate['idleSource']);
+    }
+
+    public function testTheFallbackDegradesToNullOnceRawReadingsArePruned(): void
+    {
+        // Retention removes raw rows long before summary buckets. The idle
+        // figure then simply stops being quoted; the floor is unaffected.
+        $now = new \DateTimeImmutable();
+        $this->device('sb-pruned');
+        $this->power('sb-pruned', $now, 7, static fn (int $i): float => $i < 25 ? 14.0 : 0.0);
+        $this->rollup->rollUpPair('sb-pruned', 'power');
+        $this->rollup->setWatermark(RollupService::GRID_QUARTER, $now);
+        $this->conn->delete('smart_device_data', ['sid' => 'sb-pruned', 'type' => 'power']);
+
+        $estimate = $this->standby->forDevice('sb-pruned', $now);
+
+        self::assertNotNull($estimate);
+        self::assertSame('rollup', $estimate['source']);
+        self::assertNull($estimate['idleWatts']);
+        self::assertNull($estimate['idleSource']);
+    }
+
     public function testTheRawFallbackAlsoReportsDutyCycleAndIdleDraw(): void
     {
         // No rollup at all, so the raw tier answers — it must carry the same

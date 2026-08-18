@@ -1056,6 +1056,16 @@ is arithmetic rather than statistics: `offsetFor()` skips `count × 5 / 100` row
 twenty, so the "5th percentile" would silently degrade into the very minimum the percentile was
 chosen to avoid.
 
+Those two rules interact badly for a short-duty appliance, so the tiers are chosen **per figure**. A
+printer run in twenty-minute blocks leaves hundreds of on-readings but only a handful of buckets that
+are on for the *whole* quarter hour — enough for a duty cycle, too few for a percentile. When the
+rollup answers the floor but cannot answer the idle draw, the raw tier is asked for that one number
+and `idleSource` says so (`'rollup'`, `'raw'`, or `null` when no idle figure was quoted). The
+fallback is gated on the rollup's own `SUM(max_value > 0)` — "was this device ever on at all this
+week" — because household standby runs it per device on every dashboard poll, and a device that drew
+nothing all week has nothing in the raw rows worth sorting for. Once retention prunes the raw window
+the figure simply stops being quoted, which is the correct answer rather than a degraded one.
+
 `idleWatts` is deliberately **not** annualised. `watts` may be projected over 8760 hours because it is
 a round-the-clock floor; an idle-while-on figure applies only while the device is on, and
 multiplying it by a duty cycle observed over a single week would dress one week's usage pattern up
