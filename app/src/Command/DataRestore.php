@@ -194,6 +194,7 @@ HELP)
         try {
             $pdo = new \PDO('sqlite:'.$live, null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
 
+            // @phpstan-ignore method.nonObject (ERRMODE_EXCEPTION: never false)
             return (int) $pdo->query('SELECT COUNT(*) FROM smart_device_data')->fetchColumn();
         } catch (\Throwable) {
             return 0;

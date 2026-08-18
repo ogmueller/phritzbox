@@ -19,6 +19,7 @@ use PHPUnit\Framework\TestCase;
 
 class HelperTest extends TestCase
 {
+    /** @return array<string, array{float, string, float, string, float|int}> */
     public static function bestFactorProvider(): array
     {
         // The function divides milliValue by 2 before choosing a prefix,

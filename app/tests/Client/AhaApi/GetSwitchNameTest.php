@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
  */
 class GetSwitchNameTest extends TestCase
 {
-    public function testSuccess()
+    public function testSuccess(): void
     {
         $response = "FRITZ!DECT 200\n";
         $aha = \App\Tests\Helper::mockClientHelper($this, $response);

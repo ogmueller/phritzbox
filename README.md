@@ -364,7 +364,7 @@ cd app/frontend && npm test                                       # frontend (Vi
 ### Lint & Validate
 
 ```bash
-cd app && composer phpstan                          # static analysis (PHPStan, level 6)
+cd app && composer phpstan                          # static analysis (PHPStan, level 8)
 php app/bin/console lint:yaml app/config --parse-tags
 php app/bin/console doctrine:schema:validate --skip-sync
 cd app && composer audit                            # backend dependency audit

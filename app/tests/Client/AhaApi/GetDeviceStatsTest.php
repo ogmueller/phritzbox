@@ -21,8 +21,9 @@ class GetDeviceStatsTest extends TestCase
 {
     private const FIXTURES_DIR = __DIR__.'/../../fixtures/stats/';
 
+    /** @param array<string, mixed> $expected */
     #[DataProvider('provideDevices')]
-    public function testDevices($xml, $expected)
+    public function testDevices(string $xml, array $expected): void
     {
         $aha = \App\Tests\Helper::mockClientHelper($this, $xml);
         $stats = $aha->getBasicDeviceStats('123');
@@ -30,14 +31,12 @@ class GetDeviceStatsTest extends TestCase
         self::assertEquals($expected, $stats);
     }
 
-    /**
-     * @return \Generator
-     */
-    public static function provideDevices()
+    /** @return iterable<array{string, array<string, mixed>}> */
+    public static function provideDevices(): iterable
     {
         // FRITZ!DECT 200
         yield [
-            file_get_contents(self::FIXTURES_DIR.'fritz-dect-200-stats.xml'),
+            (string) file_get_contents(self::FIXTURES_DIR.'fritz-dect-200-stats.xml'),
             [
                 'temperature' => [
                     [
@@ -951,7 +950,7 @@ class GetDeviceStatsTest extends TestCase
 
         // FRITZ!Powerline 546E
         yield [
-            file_get_contents(self::FIXTURES_DIR.'fritz-powerline-546e-stats.xml'),
+            (string) file_get_contents(self::FIXTURES_DIR.'fritz-powerline-546e-stats.xml'),
             [
                 'voltage' => [
                     [

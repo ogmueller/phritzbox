@@ -165,6 +165,10 @@ class RollupServiceTest extends KernelTestCase
         $this->rollup->rollUpPair($sid, 'power');
 
         $bucket = $this->bucketRow($sid, 'power', RollupService::GRID_QUARTER, '2026-08-01 10:00:00');
+        if ($bucket === false) {
+            self::fail('the quarter-hour bucket was not written');
+        }
+
         self::assertSame(20.0, (float) $bucket['avg_value']);
         self::assertSame(2, (int) $bucket['sample_count']);
         self::assertSame(40.0, (float) $bucket['sum_value']);

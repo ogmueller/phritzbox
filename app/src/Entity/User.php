@@ -80,6 +80,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getUserIdentifier(): string
     {
+        // Symfony narrows this to a non-empty string, and the security layer
+        // relies on it: an empty identifier would make the token unattributable.
+        // The column is NOT NULL and the API rejects a blank username, but
+        // nothing in the type system carries that, so state it here.
+        if ($this->username === '') {
+            throw new \LogicException('User has no username, so it cannot be identified');
+        }
+
         return $this->username;
     }
 

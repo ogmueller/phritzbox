@@ -43,6 +43,10 @@ class SlackAlertChannelTest extends TestCase
 
         (new SlackAlertChannel($client))->send($this->channel(), 'Subject', 'Body', []);
 
+        if ($captured === null) {
+            self::fail('the channel sent no request');
+        }
+
         self::assertSame('https://hooks.slack.com/services/X/Y/Z', $captured['url']);
         $payload = json_decode((string) $captured['body'], true);
         self::assertStringContainsString('Subject', $payload['text']);

@@ -73,7 +73,7 @@ class SmartDeviceStats extends Smart
             //
             // temperature
             //
-            if (isset($stats['temperature'][0]['values'])) {
+            if (isset($stats['temperature'][0]['values']) && $stats['temperature'][0]['values'] !== []) {
                 $data = $stats['temperature'][0];
                 $values = $data['values'];
 
@@ -101,7 +101,7 @@ class SmartDeviceStats extends Smart
             //
             // voltage
             //
-            if (isset($stats['voltage'][0]['values'])) {
+            if (isset($stats['voltage'][0]['values']) && $stats['voltage'][0]['values'] !== []) {
                 $data = $stats['voltage'][0];
                 $values = $data['values'];
                 $milli = 1000 / $data['factor'];
@@ -128,7 +128,7 @@ class SmartDeviceStats extends Smart
             //
             // power
             //
-            if (isset($stats['power'][0]['values'])) {
+            if (isset($stats['power'][0]['values']) && $stats['power'][0]['values'] !== []) {
                 $data = $stats['power'][0];
                 $values = $data['values'];
                 $milli = 1000 / $data['factor'];
@@ -155,7 +155,7 @@ class SmartDeviceStats extends Smart
             //
             // energy [year]
             //
-            if (isset($stats['energy'][0]['values'])) {
+            if (isset($stats['energy'][0]['values']) && $stats['energy'][0]['values'] !== []) {
                 $data = $stats['energy'][0];
                 $values = $data['values'];
                 $milli = 1000 / $data['factor'];
@@ -182,7 +182,7 @@ class SmartDeviceStats extends Smart
             //
             // energy [month]
             //
-            if (isset($stats['energy'][1]['values'])) {
+            if (isset($stats['energy'][1]['values']) && $stats['energy'][1]['values'] !== []) {
                 $data = $stats['energy'][1];
                 $values = $data['values'];
                 $milli = 1000 / $data['factor'];
@@ -268,7 +268,11 @@ class SmartDeviceStats extends Smart
      */
     protected function createChart(array $values, int|float $factor, Settings $settings): array
     {
-        $terminalWidth = getenv('COLUMNS');
+        // COLUMNS is a shell variable and is usually not exported, so getenv()
+        // returns false as often as not. `false - $offset - 6` is a *negative*
+        // width, which turned the array_slice() below from "limit to what fits"
+        // into "drop the last six readings". Fall back to a conventional 80.
+        $terminalWidth = (int) (getenv('COLUMNS') ?: 80);
         $chartWidth = $terminalWidth - $settings->getOffset() - 6;
         $maxXScaleHeight = 20;
 
@@ -288,7 +292,9 @@ class SmartDeviceStats extends Smart
         }
 
         $chart = new Linechart();
-        $height = ceil(max($values)) - floor(min($values));
+        // A device that reported nothing for this metric is an ordinary state,
+        // and max()/min() raise a ValueError on an empty array.
+        $height = $values === [] ? 1.0 : ceil(max($values)) - floor(min($values));
         $settings->setHeight((int) max(1, min($maxXScaleHeight, $height)));
         $chart->setSettings($settings);
 

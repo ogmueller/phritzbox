@@ -43,6 +43,10 @@ class DiscordAlertChannelTest extends TestCase
 
         (new DiscordAlertChannel($client))->send($this->channel(), 'Subject', 'Body', []);
 
+        if ($captured === null) {
+            self::fail('the channel sent no request');
+        }
+
         self::assertSame('https://discord.com/api/webhooks/1/abc', $captured['url']);
         $payload = json_decode((string) $captured['body'], true);
         self::assertStringContainsString('Subject', $payload['content']);

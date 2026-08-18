@@ -49,15 +49,11 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
             $name,
         ));
 
-        return Device::xmlFactory($xml);
-    }
+        if ($xml === false) {
+            self::fail('the inline device XML in this test does not parse');
+        }
 
-    private function rowCount(string $ain): int
-    {
-        return (int) $this->em->getConnection()->fetchOne(
-            'SELECT COUNT(*) FROM smart_device_data WHERE sid = ?',
-            [$ain],
-        );
+        return Device::xmlFactory($xml);
     }
 
     private function rowCountOfType(string $ain, string $type): int
@@ -68,7 +64,10 @@ class SmartStatsCollectionServiceTest extends KernelTestCase
         );
     }
 
-    /** @param array<string, mixed> $batch */
+    /**
+     * @param array<int, Device>   $devices
+     * @param array<string, mixed> $batch
+     */
     private function aha(array $devices, array $batch): AhaApi
     {
         $aha = $this->createStub(AhaApi::class);

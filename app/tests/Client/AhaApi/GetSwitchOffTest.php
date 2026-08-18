@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
  */
 class GetSwitchOffTest extends TestCase
 {
-    public function testSuccess()
+    public function testSuccess(): void
     {
         $response = "0\n";
         $aha = \App\Tests\Helper::mockClientHelper($this, $response);

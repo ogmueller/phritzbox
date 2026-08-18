@@ -181,6 +181,11 @@ class StatsQueryServiceTest extends KernelTestCase
         // Display units: power is stored in centiwatts, so /100.
         // (10 + 2000 + 10) / 3 = 673.33 cW = 6.73 W.
         self::assertEqualsWithDelta(6.73, $points[0]['value'], 0.01);
+        // min/max exist only on an aggregated point, which is what this asserts.
+        if (!isset($points[0]['min'], $points[0]['max'])) {
+            self::fail('the aggregated point carries no min/max');
+        }
+
         self::assertEqualsWithDelta(0.1, $points[0]['min'], 0.01);
         // The 2000 cW spike survives the averaging — that is what min/max are for.
         self::assertEqualsWithDelta(20.0, $points[0]['max'], 0.01);

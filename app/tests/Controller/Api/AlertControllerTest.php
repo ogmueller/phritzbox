@@ -49,22 +49,28 @@ class AlertControllerTest extends WebTestCase
         $channel = (new NotificationChannel())->setName('Admin mail')->setType('email')->setTarget('me@example.test');
         $this->em->persist($channel);
         $this->em->flush();
-        $this->channelId = $channel->getId();
+        // Freshly flushed, so the id is set — but the getter is nullable.
+        $this->channelId = (int) $channel->getId();
 
         $this->adminToken = $jwt->create($admin);
         $this->userToken = $jwt->create($user);
     }
 
-    /** @param array<string, mixed>|null $body */
+    /**
+     * @param array<string, mixed>|null $body
+     *
+     * @return array<int|string, mixed> decoded JSON: an object for one entity, a list for a collection
+     */
     private function request(string $method, string $uri, ?string $token, ?array $body = null): array
     {
         $server = $token ? ['HTTP_AUTHORIZATION' => 'Bearer '.$token, 'CONTENT_TYPE' => 'application/json'] : [];
-        $this->client->request($method, $uri, server: $server, content: $body !== null ? json_encode($body) : null);
+        $this->client->request($method, $uri, server: $server, content: $body !== null ? (string) json_encode($body) : null);
         $content = $this->client->getResponse()->getContent();
 
         return [$this->client->getResponse()->getStatusCode(), $content ? json_decode($content, true) : null];
     }
 
+    /** @return array<string, mixed> */
     private function validPayload(): array
     {
         return [
@@ -195,6 +201,10 @@ class AlertControllerTest extends WebTestCase
 
         // Latch the rule into the triggered state, as a real firing would.
         $rule = $this->em->getRepository(AlertRule::class)->find($created['id']);
+        if ($rule === null) {
+            self::fail('the rule that was just created cannot be read back');
+        }
+
         $rule->setLastState(AlertRule::STATE_TRIGGERED);
         $this->em->flush();
 

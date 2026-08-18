@@ -38,6 +38,10 @@ abstract class CommandTestCase extends TestCase
 
     abstract protected function createCommand(): Smart;
 
+    /**
+     * @param array<string, mixed> $input
+     * @param array<string, mixed> $options
+     */
     protected function runCommand(array $input = [], array $options = []): CommandTester
     {
         $command = $this->createCommand();

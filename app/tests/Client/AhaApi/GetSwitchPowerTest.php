@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
  */
 class GetSwitchPowerTest extends TestCase
 {
-    public function testSuccess()
+    public function testSuccess(): void
     {
         $response = "11800\n";
         $aha = \App\Tests\Helper::mockClientHelper($this, $response);

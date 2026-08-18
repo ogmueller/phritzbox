@@ -20,7 +20,12 @@ class PowerMeterTest extends TestCase
 {
     private function xml(string $inner): \SimpleXMLElement
     {
-        return simplexml_load_string('<device>'.$inner.'</device>');
+        $element = simplexml_load_string('<device>'.$inner.'</device>');
+        if ($element === false) {
+            self::fail('the fixture XML in this test does not parse');
+        }
+
+        return $element;
     }
 
     public function testSetXmlParsesValues(): void

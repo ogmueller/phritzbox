@@ -192,6 +192,7 @@ class BackupService
 
         $pdo = new \PDO('sqlite:'.$snapshot, null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
         // ERRMODE_EXCEPTION means query() throws rather than returning false.
+        // @phpstan-ignore method.nonObject
         $result = $pdo->query('PRAGMA quick_check')->fetchColumn();
 
         if ($result !== 'ok') {

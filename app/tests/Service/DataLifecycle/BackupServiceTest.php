@@ -46,8 +46,12 @@ class BackupServiceTest extends KernelTestCase
         $plain = mb_substr($path, 0, -3);
         $in = gzopen($path, 'rb');
         $out = fopen($plain, 'w');
+        if ($in === false || $out === false) {
+            self::fail(\sprintf('could not open "%s" for decompression', $path));
+        }
+
         while (!gzeof($in)) {
-            fwrite($out, gzread($in, 1024 * 1024));
+            fwrite($out, (string) gzread($in, 1024 * 1024));
         }
         gzclose($in);
         fclose($out);
@@ -104,7 +108,7 @@ class BackupServiceTest extends KernelTestCase
 
         $result = $this->service->run($this->dir, 3);
 
-        $remaining = glob($this->dir.'/phritzbox-*');
+        $remaining = (array) glob($this->dir.'/phritzbox-*');
         self::assertCount(3, $remaining, 'exactly `keep` snapshots survive');
         self::assertContains($result['path'], $remaining, 'the snapshot just written is never pruned');
         self::assertCount(7, $result['pruned']);

@@ -867,7 +867,7 @@ Three GitHub Actions workflows in `.github/workflows/`, plus Dependabot:
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `ci.yml` | Push to `main`, PRs | Parallel jobs: **Tests** (PHPUnit + coverage → Codecov), **Code Style** (php-cs-fixer), **Lint & Static Analysis** (PHPStan, YAML lint, Doctrine validation, PHPMD), and **Frontend** (`npm ci`, ESLint, Vitest, build, `npm audit`) |
+| `ci.yml` | Push to `main`, PRs | Parallel jobs: **Tests** (PHPUnit + coverage → Codecov), **Code Style** (php-cs-fixer), **Lint & Static Analysis** (PHPStan at level 8 over `src`, YAML lint, Doctrine validation, PHPMD), and **Frontend** (`npm ci`, ESLint, Vitest, build, `npm audit`) |
 | `security.yml` | Push, PRs, weekly | `composer audit`, dependency review |
 | `docker.yml` | Push to `main`, tag `v*` | Build and push Docker image to `ghcr.io/ogmueller/phritzbox` |
 

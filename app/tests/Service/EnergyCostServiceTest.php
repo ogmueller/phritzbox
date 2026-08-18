@@ -52,7 +52,11 @@ class EnergyCostServiceTest extends KernelTestCase
         ]);
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param array<string, mixed> $result
+     *
+     * @return array<string, mixed>
+     */
     private function deviceEntry(array $result, string $ain): array
     {
         foreach ($result['devices'] as $entry) {

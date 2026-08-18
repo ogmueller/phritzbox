@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
  */
 class GetSwitchPresentTest extends TestCase
 {
-    public function testSuccess()
+    public function testSuccess(): void
     {
         $response = "1\n";
         $aha = \App\Tests\Helper::mockClientHelper($this, $response);

@@ -114,6 +114,7 @@ class SnapshotInspector
         try {
             $pdo = new \PDO('sqlite:'.$plainPath, null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
 
+            // @phpstan-ignore method.nonObject (ERRMODE_EXCEPTION: never false)
             $check = $pdo->query('PRAGMA quick_check')->fetchColumn();
             if ($check !== 'ok') {
                 $result['error'] = \sprintf('integrity check failed: %s', (string) $check);
@@ -125,7 +126,7 @@ class SnapshotInspector
             // is just as useless as a corrupt one, so check the schema too.
             $hasTable = $pdo->query(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='smart_device_data'"
-            )->fetchColumn();
+            )->fetchColumn(); // @phpstan-ignore method.nonObject (ERRMODE_EXCEPTION: never false)
             if ((int) $hasTable === 0) {
                 $result['error'] = 'not a Phritzbox database (smart_device_data is missing)';
 
@@ -133,15 +134,17 @@ class SnapshotInspector
             }
 
             $row = $pdo->query('SELECT COUNT(*) AS c, MIN(time) AS mn, MAX(time) AS mx FROM smart_device_data')
-                ->fetch(\PDO::FETCH_ASSOC);
+                ->fetch(\PDO::FETCH_ASSOC); // @phpstan-ignore method.nonObject (ERRMODE_EXCEPTION: never false)
             $result['rows'] = (int) ($row['c'] ?? 0);
             $result['oldest'] = $row['mn'] !== null ? (string) $row['mn'] : null;
             $result['newest'] = $row['mx'] !== null ? (string) $row['mx'] : null;
 
+            // @phpstan-ignore foreach.nonIterable (ERRMODE_EXCEPTION: never false)
             foreach ($pdo->query('SELECT type, COUNT(*) AS c FROM smart_device_data GROUP BY type ORDER BY type') as $r) {
                 $result['types'][(string) $r['type']] = (int) $r['c'];
             }
 
+            // @phpstan-ignore method.nonObject (ERRMODE_EXCEPTION: never false)
             $result['devices'] = (int) $pdo->query('SELECT COUNT(*) FROM smart_device')->fetchColumn();
 
             // Which migration the snapshot was taken at. Restoring a snapshot
@@ -149,7 +152,7 @@ class SnapshotInspector
             // and this is what makes that visible.
             $result['migration'] = (string) $pdo->query(
                 'SELECT MAX(version) FROM doctrine_migration_versions'
-            )->fetchColumn() ?: null;
+            )->fetchColumn() ?: null; // @phpstan-ignore method.nonObject (ERRMODE_EXCEPTION: never false)
 
             $result['ok'] = true;
         } catch (\Throwable $e) {

@@ -246,6 +246,9 @@ class Helper
             $milliValue = round($milliValue / 1000 ** $base, 3);
         }
 
-        return ['value' => $milliValue * 2, 'unit' => $prefix[$base].$unit, 'factor' => 1000 ** $base];
+        // Cast only where it is indexed: floor() returns a float, and a float is
+        // not a valid array key. `factor` stays as it was — narrowing it to int
+        // here would change what every caller gets back.
+        return ['value' => $milliValue * 2, 'unit' => $prefix[(int) $base].$unit, 'factor' => 1000 ** $base];
     }
 }

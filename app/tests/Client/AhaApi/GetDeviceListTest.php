@@ -30,8 +30,9 @@ class GetDeviceListTest extends TestCase
             .'</devicelist>';
     }
 
+    /** @param array<string, mixed> $expected */
     #[DataProvider('provideDevices')]
-    public function testDevices($deviceXml, $expected)
+    public function testDevices(string $deviceXml, array $expected): void
     {
         $aha = \App\Tests\Helper::mockClientHelper($this, $deviceXml);
         $devices = $aha->getDeviceListInfos();
@@ -43,10 +44,8 @@ class GetDeviceListTest extends TestCase
         self::assertSame($expected, $device->toArray());
     }
 
-    /**
-     * @return \Generator
-     */
-    public static function provideDevices()
+    /** @return iterable<array{string, array<string, mixed>}> */
+    public static function provideDevices(): iterable
     {
         // FRITZ!DECT 200
         yield [
