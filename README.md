@@ -26,8 +26,8 @@ Screenshots
 
 **Reports** — query historical data for any device and time range, with selectable metric, configurable rolling averages, an optional second device *or the previous period* overlaid for comparison, a cost readout when the energy metric is selected, CSV/JSON export, and markers where alert rules fired (hover a marker to see the rule and reading):
 
-![Reports — 30-day comparison](app/files/screenshots/web-reports-temp-30-days.png)
-![Reports — alert event markers](app/files/screenshots/web-reports-temp-alerts.png)
+![Reports — two devices compared, with alert event markers](app/files/screenshots/web-reports-temp-alerts.png)
+![Reports — 30 days of energy with the cost readout](app/files/screenshots/web-reports-energy-cost.png)
 
 **Alerts** _(admin)_ — threshold, sustained, and device-to-device comparison rules with per-channel delivery, a manual re-arm, and an activity log of every firing and resolution:
 
@@ -41,7 +41,9 @@ Screenshots
 
 ![Users](app/files/screenshots/web-users.png)
 
-**Settings** _(admin)_ — the electricity tariff used to turn recorded energy into costs: price per kWh, monthly standing charge, and currency. See [Energy costs](#energy-costs).
+**Settings** _(admin)_ — the electricity tariff used to turn recorded energy into costs: price per kWh, monthly standing charge, and currency. See [Energy costs](#energy-costs):
+
+![Settings](app/files/screenshots/web-settings.png)
 
 
 Features
@@ -94,7 +96,7 @@ Visit `http://localhost` and log in with `admin` / `admin`.
 
 To use a specific version instead of `latest`, edit the image tag in `compose.yaml`:
 
-```yaml
+```
 image: ghcr.io/ogmueller/phritzbox:1.1.0   # tagged release
 image: ghcr.io/ogmueller/phritzbox:nightly  # latest from main branch
 ```
