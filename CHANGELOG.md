@@ -6,8 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Changed
-- **Min/Max markers on aggregated charts now show the true extremes.** Previously a chart covering more than two days marked the highest and lowest *averaged* point; a brief spike inside an averaging window was invisible. The markers now read from the underlying bucket's real minimum and maximum, so the reported figures on long-range charts will be further apart than before — and correct. Short-range charts (up to two days) are unaffected, since they plot individual readings.
+## [1.3.0] - 2026-08-18
 
 ### Added
 - **Pre-aggregated report tiers.** Readings are summarised into quarter-hourly and daily buckets (`cron:smart:rollup`), so long reports read a few thousand summary rows instead of scanning millions of raw ones. Build them once from existing history with `smart:rollup:backfill` — resumable, interruptible, and safe to run against live data. Report figures are unchanged: a bucket-served point is identical to the raw-served one it replaces.
@@ -23,16 +22,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Compare a period with itself.** Reports' "Compare with" select gained **Previous period**: it overlays the same metric from the immediately preceding window of equal length, shifted forward so the two lines sit on top of each other. Tooltips show each series' own original timestamp, so the comparison stays readable.
 - `GET /api/energy/cost` (per-device and household cost plus coverage for a window) and `GET /api/energy/summary` (today, month-to-date, top consumer, standby — one request for the whole dashboard). Both return plain numbers and an ISO 4217 code; formatting is the browser's job, so a German and an English reader each see their own conventions.
 - **Settings page** (admin) with `GET`/`PUT /api/settings/tariff`. Reading the tariff needs `ROLE_USER` — everyone needs the price to see costs — while changing it needs `ROLE_ADMIN`. Stored in a new typed `tariff` table rather than a key/value row, so a future "price valid from" column turns it into tariff history without a redesign. Amounts are accepted in either decimal convention — `0,35` and `0.35` are the same price — because the German UI asks for a comma and a refused price is indistinguishable from a tariff that was never set. No new environment variable: the tariff is configured in the UI, not in the compose file.
+- **Retention windows** — `cron:data:prune` deletes raw readings, summary buckets, alert events and log files older than their configured window (`APP_RETENTION_*`). Every window defaults to *keep forever*, so an image update never starts deleting data on its own. Raw pruning never runs ahead of the rollup watermark either: the summary tier that replaces a reading is always in place before the reading goes.
+- **Today's energy has a baseline.** The Dashboard's *Today* tile carries the average daily consumption of the seven complete days before today, so a bare `625 Wh` can be read as high or low. It divides by the days that actually hold data rather than by seven — a day the collector missed must not read as "you used less" — and today is deliberately outside the window, being the partial figure the baseline exists to be read against.
+- Alert rules refuse to compare a device with itself: the condition would be permanently true or permanently false, so the rule would fire once and never again. The form says so rather than saving it.
+
+### Changed
+- **Min/Max markers on aggregated charts now show the true extremes.** Previously a chart covering more than two days marked the highest and lowest *averaged* point; a brief spike inside an averaging window was invisible. The markers now read from the underlying bucket's real minimum and maximum, so the reported figures on long-range charts will be further apart than before — and correct. Short-range charts (up to two days) are unaffected, since they plot individual readings.
+- Reports quick ranges are now **rolling windows that always end at "now"** instead of calendar spans: "Today" and "Yesterday" are replaced by **Last 24 hours** and **Last 48 hours** (alongside Last 7/30 days). The old labels were misleading — "Yesterday" actually queried *yesterday 00:00 until the end of today*, roughly a 48-hour window, which the German label already admitted with "Seit gestern". Saved filters holding the old preset keys migrate automatically. The field is now labelled **Time range** and its heading **Quick ranges**.
 
 ### Fixed
 - **Console charts silently dropped the last six readings.** `smart:device:stats` and `cron:smart:savestats` sized their chart from `COLUMNS`, a shell variable that is usually not exported — `getenv()` then returned `false`, and `false - $offset - 6` gave a *negative* width, turning "limit the series to what fits" into "cut six readings off the end". A missing `COLUMNS` now means a conventional 80 columns.
 - **A device with no readings for a metric crashed the stats commands.** `max()` and `min()` raise a `ValueError` on an empty array, so charting a metric the device had never reported aborted the whole command instead of skipping that one chart.
 - **A device's lifetime energy counter was reported 1000× too small.** The Fritz!Box sends `<voltage>` in millivolts and `<power>` in milliwatts, but `<energy>` already in watt-hours; all three were being divided by 1000, so an outlet with 8 Wh of lifetime energy displayed as `0.008 Wh`. The figure shown on the device detail page and by `smart:device:list` is now correct — and 1000× larger than before. The stored `energy` metric used by charts and reports is a separate per-day series and was never affected.
 - **Charts covering more than 30 days showed a duplicated point for the current day.** The daily summary tier was split against the quarter-hour watermark, which is a 15-minute boundary and therefore mid-day, so the whole-day summary and that day's later readings were both emitted. Retention now also removes only whole days, for the same reason.
-- Non-admin users could not change their own password: `/api/users/me/password` was covered by the admin-only rule for `/api/users`.
-- Notification channel secrets were returned in plaintext by the API. They are now write-only; the edit form leaves the field blank and keeps the stored token unless a new one is entered.
-- A fresh database could not be migrated from scratch — no migration ever created `smart_device_data`.
-- `smart:template:list` fetched the template list and printed nothing.
+
+## [1.2.0] - 2026-07-17
+
+### Added
 - Rule-based alerting system. Define rules in the web UI (admin) that fire when a device metric crosses a threshold, stays past it for a sustained period, or relates to another device's metric (e.g. tempA > tempB + 2). Evaluated shortly after each data collection via the new `cron:smart:alerts` command, with a per-rule cooldown and a "send test" button.
 - Reusable notification channels, managed in their own admin module (Channels); each alert rule can notify one or more of them. Built-in channel types: e-mail, generic webhook, Pushover, Telegram, ntfy, Discord, Gotify, and Slack-compatible (Slack/Mattermost/Rocket.Chat).
 - Alert activity log — a "Recent activity" section on the Alerts page (and `GET /api/alerts/events`) records every firing, resolution, and manual re-arm with the readings and **per-channel delivery status** (sent / failed + error message), so a silently failing notification is now visible. Stored in the new `alert_event` table.
@@ -49,7 +55,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Continuous integration now also runs **PHPStan** (level 6) and a dedicated **frontend job** (ESLint, Vitest, build, `npm audit`); **Dependabot** opens dependency-update PRs.
 
 ### Changed
-- Reports quick ranges are now **rolling windows that always end at "now"** instead of calendar spans: "Today" and "Yesterday" are replaced by **Last 24 hours** and **Last 48 hours** (alongside Last 7/30 days). The old labels were misleading — "Yesterday" actually queried *yesterday 00:00 until the end of today*, roughly a 48-hour window, which the German label already admitted with "Seit gestern". Saved filters holding the old preset keys migrate automatically. The field is now labelled **Time range** and its heading **Quick ranges**.
 - `GET /api/stats/{ain}` and `GET /api/stats/alert-events` accept `from`/`to` as an offset-bearing ISO 8601 instant in addition to a bare `Y-m-d` (which still covers the whole day). This fixes a timezone bug: the UI sent a browser-local date that the server, running in UTC, read as UTC midnight — so every range was shifted by the viewer's UTC offset. A malformed bound now returns `400` instead of `500`.
 - Alerts notify only when a condition becomes true (the triggering edge). When a condition clears again, the resolution is recorded in the activity log but **no "resolved" message is sent**.
 - Upgraded core dependencies: Symfony 8.1, PHPUnit 13, React 19, echarts 6, Vite 8, TypeScript 6.
@@ -61,6 +66,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 - Report chart tooltips no longer show duplicated values on short date ranges. The root cause — duplicate `(sid, type, time)` rows created by overlapping collection runs (a manual pull racing the cron) — was removed, and prevented going forward with a UNIQUE index plus idempotent (`INSERT OR IGNORE`) data collection.
 - Production container no longer crash-loops when its persisted volume held cache files from an older image version: prod now persists only `var/log` (not the whole `var/`), keeping the Symfony cache ephemeral, and the startup cache wipe is best-effort so a stray permission error can't abort boot.
+- Non-admin users could not change their own password: `/api/users/me/password` was covered by the admin-only rule for `/api/users`.
+- Notification channel secrets were returned in plaintext by the API. They are now write-only; the edit form leaves the field blank and keeps the stored token unless a new one is entered.
+- A fresh database could not be migrated from scratch — no migration ever created `smart_device_data`.
+- `smart:template:list` fetched the template list and printed nothing.
 
 ## [1.1.0] - 2026-06-22
 
@@ -110,6 +119,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added backend protection against self-deletion of user accounts
 - Added login throttling (5 attempts per minute)
 
-[Unreleased]: https://github.com/ogmueller/phritzbox/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/ogmueller/phritzbox/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/ogmueller/phritzbox/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/ogmueller/phritzbox/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ogmueller/phritzbox/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ogmueller/phritzbox/releases/tag/v1.0.0
