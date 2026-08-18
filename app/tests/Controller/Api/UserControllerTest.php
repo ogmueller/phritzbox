@@ -61,7 +61,7 @@ class UserControllerTest extends WebTestCase
         ]);
         self::assertResponseIsSuccessful();
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertIsArray($data);
         self::assertNotEmpty($data);
     }
@@ -71,7 +71,7 @@ class UserControllerTest extends WebTestCase
         $this->client->request('POST', '/api/users', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->adminToken,
             'CONTENT_TYPE' => 'application/json',
-        ], content: json_encode([
+        ], content: (string) json_encode([
             'username' => 'newuser',
             'email' => 'new@test.com',
             'password' => 'secret123',
@@ -80,7 +80,7 @@ class UserControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(201);
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertSame('newuser', $data['username']);
         self::assertSame('new@test.com', $data['email']);
     }
@@ -90,7 +90,7 @@ class UserControllerTest extends WebTestCase
         $this->client->request('POST', '/api/users', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->adminToken,
             'CONTENT_TYPE' => 'application/json',
-        ], content: json_encode(['username' => 'incomplete']));
+        ], content: (string) json_encode(['username' => 'incomplete']));
 
         self::assertResponseStatusCodeSame(400);
     }
@@ -100,7 +100,7 @@ class UserControllerTest extends WebTestCase
         $this->client->request('POST', '/api/users', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->adminToken,
             'CONTENT_TYPE' => 'application/json',
-        ], content: json_encode([
+        ], content: (string) json_encode([
             'username' => 'hacker',
             'email' => 'hacker@test.com',
             'password' => 'pass',
@@ -124,11 +124,11 @@ class UserControllerTest extends WebTestCase
         $this->client->request('PUT', '/api/users/'.$user->getId(), server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->adminToken,
             'CONTENT_TYPE' => 'application/json',
-        ], content: json_encode(['email' => 'updated@test.com']));
+        ], content: (string) json_encode(['email' => 'updated@test.com']));
 
         self::assertResponseIsSuccessful();
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertSame('updated@test.com', $data['email']);
     }
 
@@ -146,7 +146,7 @@ class UserControllerTest extends WebTestCase
         $this->client->request('PUT', '/api/users/'.$user->getId(), server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->adminToken,
             'CONTENT_TYPE' => 'application/json',
-        ], content: json_encode(['roles' => ['ROLE_ROOT']]));
+        ], content: (string) json_encode(['roles' => ['ROLE_ROOT']]));
 
         self::assertResponseStatusCodeSame(400);
     }
@@ -192,7 +192,7 @@ class UserControllerTest extends WebTestCase
         $this->client->request('PUT', '/api/users/me/password', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->adminToken,
             'CONTENT_TYPE' => 'application/json',
-        ], content: json_encode([
+        ], content: (string) json_encode([
             'currentPassword' => 'password',
             'newPassword' => 'newpassword123',
         ]));
@@ -205,7 +205,7 @@ class UserControllerTest extends WebTestCase
         $this->client->request('PUT', '/api/users/me/password', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->adminToken,
             'CONTENT_TYPE' => 'application/json',
-        ], content: json_encode([
+        ], content: (string) json_encode([
             'currentPassword' => 'wrong',
             'newPassword' => 'newpass',
         ]));
@@ -233,7 +233,7 @@ class UserControllerTest extends WebTestCase
         $this->client->request('PUT', '/api/users/me/password', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$jwt->create($user),
             'CONTENT_TYPE' => 'application/json',
-        ], content: json_encode([
+        ], content: (string) json_encode([
             'currentPassword' => 'pass',
             'newPassword' => 'newpassword123',
         ]));

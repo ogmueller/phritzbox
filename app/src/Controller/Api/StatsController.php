@@ -185,6 +185,10 @@ class StatsController extends AbstractController
         }
 
         $buffer = fopen('php://temp', 'r+');
+        if ($buffer === false) {
+            throw new \RuntimeException('Could not open an in-memory buffer for the CSV export');
+        }
+
         fputcsv($buffer, $header, $delimiter, '"', '');
         foreach ($data as $point) {
             $row = [$point['time'], $point['type'], $point['value'], MetricUnits::unit($point['type'])];

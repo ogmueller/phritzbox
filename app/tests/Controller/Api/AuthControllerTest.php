@@ -40,6 +40,7 @@ class AuthControllerTest extends WebTestCase
         $this->em->flush();
     }
 
+    /** @return array<string, mixed> */
     private function login(): array
     {
         $this->client->jsonRequest('POST', '/api/auth/login', [
@@ -48,7 +49,7 @@ class AuthControllerTest extends WebTestCase
         ]);
         self::assertResponseIsSuccessful();
 
-        return json_decode($this->client->getResponse()->getContent(), true);
+        return json_decode((string) $this->client->getResponse()->getContent(), true);
     }
 
     public function testLoginReturnsTokenAndRefreshToken(): void
@@ -69,7 +70,7 @@ class AuthControllerTest extends WebTestCase
         $this->client->jsonRequest('POST', '/api/auth/refresh', ['refresh_token' => $original]);
         self::assertResponseIsSuccessful();
 
-        $refreshed = json_decode($this->client->getResponse()->getContent(), true);
+        $refreshed = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertArrayHasKey('token', $refreshed);
         self::assertNotEmpty($refreshed['token']);
         // Rotation: a brand-new refresh token is handed out...

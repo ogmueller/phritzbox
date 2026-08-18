@@ -43,6 +43,10 @@ class GotifyAlertChannelTest extends TestCase
 
         (new GotifyAlertChannel($client))->send($this->channel(), 'Subject', 'Body', []);
 
+        if ($captured === null) {
+            self::fail('the channel sent no request');
+        }
+
         self::assertSame('https://gotify.example.com/message', $captured['url']);
         self::assertStringContainsString('X-Gotify-Key: apptoken', $captured['headers']);
         $payload = json_decode((string) $captured['body'], true);

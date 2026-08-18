@@ -63,7 +63,7 @@ class SettingsControllerTest extends WebTestCase
             $server['HTTP_AUTHORIZATION'] = 'Bearer '.$token;
         }
 
-        $this->client->request($method, '/api/settings/tariff', server: $server, content: $body === null ? null : json_encode($body));
+        $this->client->request($method, '/api/settings/tariff', server: $server, content: $body === null ? null : (string) json_encode($body));
 
         return (array) json_decode((string) $this->client->getResponse()->getContent(), true);
     }

@@ -64,7 +64,7 @@ class HealthControllerTest extends WebTestCase
         $this->client->request('GET', '/api/health', server: ['HTTP_AUTHORIZATION' => 'Bearer '.$this->token]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertNotNull($data['lastCollectedAt']);
         self::assertGreaterThanOrEqual(9, $data['ageMinutes']);
         self::assertLessThanOrEqual(11, $data['ageMinutes']);
@@ -77,7 +77,7 @@ class HealthControllerTest extends WebTestCase
         $this->client->request('GET', '/api/health', server: ['HTTP_AUTHORIZATION' => 'Bearer '.$this->token]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertNull($data['lastCollectedAt']);
         self::assertNull($data['ageMinutes']);
     }

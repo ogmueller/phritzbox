@@ -45,6 +45,10 @@ class NtfyAlertChannelTest extends TestCase
 
         (new NtfyAlertChannel($client))->send($this->channel('tok'), 'My Title', 'Message body', []);
 
+        if ($captured === null) {
+            self::fail('the channel sent no request');
+        }
+
         self::assertSame('https://ntfy.sh/mytopic', $captured['url']);
         self::assertSame('Message body', (string) $captured['body']);
         self::assertStringContainsString('Title: My Title', $captured['headers']);
@@ -61,6 +65,10 @@ class NtfyAlertChannelTest extends TestCase
         });
 
         (new NtfyAlertChannel($client))->send($this->channel(null), 'T', 'B', []);
+        if ($captured === null) {
+            self::fail('the channel sent no request');
+        }
+
         self::assertStringNotContainsString('Authorization:', $captured);
     }
 }

@@ -125,6 +125,10 @@ class RestoreServiceTest extends KernelTestCase
         $this->makeDb($plain, 3.0);
         $gz = $plain.'.gz';
         $out = gzopen($gz, 'wb');
+        if ($out === false) {
+            self::fail(\sprintf('could not open "%s" for writing', $gz));
+        }
+
         gzwrite($out, (string) file_get_contents($plain));
         gzclose($out);
         @unlink($plain);

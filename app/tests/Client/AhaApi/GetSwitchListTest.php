@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
  */
 class GetSwitchListTest extends TestCase
 {
-    public function testSuccess()
+    public function testSuccess(): void
     {
         $response = "087610372823,grp1DA951-3A2C30F97,24:65:11:CA:3F:81\n";
         $aha = \App\Tests\Helper::mockClientHelper($this, $response);

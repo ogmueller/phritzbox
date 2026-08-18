@@ -5,6 +5,6 @@ includes:
     - vendor/phpstan/phpstan-doctrine/rules.neon
 
 parameters:
-    level: 6
+    level: 8
     paths:
         - src

@@ -49,6 +49,10 @@ class PushoverAlertChannelTest extends TestCase
         $channel = new PushoverAlertChannel($client);
         $channel->send($this->channel(), 'My Title', 'My message body', []);
 
+        if ($captured === null) {
+            self::fail('the channel sent no request');
+        }
+
         self::assertSame('POST', $captured['method']);
         self::assertStringContainsString('api.pushover.net/1/messages.json', $captured['url']);
         // Symfony serializes an array body to a urlencoded string.

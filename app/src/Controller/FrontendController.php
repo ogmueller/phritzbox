@@ -14,13 +14,23 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Response;
 
 class FrontendController extends AbstractController
 {
+    public function __construct(
+        // Injected rather than read back out of the container: getParameter()
+        // hands back a mixed the caller has to re-narrow, and the one thing this
+        // controller needs from the container is a string it can be given.
+        #[Autowire('%kernel.project_dir%')]
+        private readonly string $projectDir,
+    ) {
+    }
+
     public function index(): Response
     {
-        $indexPath = $this->getParameter('kernel.project_dir').'/public/frontend/index.html';
+        $indexPath = $this->projectDir.'/public/frontend/index.html';
 
         if (!file_exists($indexPath)) {
             return new Response(
@@ -30,8 +40,15 @@ class FrontendController extends AbstractController
             );
         }
 
+        $html = file_get_contents($indexPath);
+        if ($html === false) {
+            // The file is there — file_exists() just said so — so a failure here
+            // is a permission or I/O fault, not an unbuilt frontend.
+            throw new \RuntimeException(\sprintf('Could not read the built frontend at "%s"', $indexPath));
+        }
+
         return new Response(
-            file_get_contents($indexPath),
+            $html,
             Response::HTTP_OK,
             ['Content-Type' => 'text/html; charset=UTF-8'],
         );

@@ -48,6 +48,10 @@ class WebhookAlertChannelTest extends TestCase
         $channel = new WebhookAlertChannel($client);
         $channel->send($this->channel(), 'Subject', 'Body text', ['state' => 'triggered', 'value' => 25.0]);
 
+        if ($captured === null) {
+            self::fail('the channel sent no request');
+        }
+
         self::assertSame('POST', $captured['method']);
         self::assertSame('https://example.test/hook', $captured['url']);
         $payload = json_decode((string) $captured['body'], true);

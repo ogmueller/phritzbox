@@ -21,12 +21,16 @@ class DeviceParsingTest extends TestCase
 
     private static function parseFixture(string $filename): Device
     {
-        $xml = file_get_contents(self::FIXTURES_DIR.$filename);
+        $xml = (string) file_get_contents(self::FIXTURES_DIR.$filename);
         $element = simplexml_load_string('<devicelist version="1">'.$xml.'</devicelist>');
+        if ($element === false) {
+            self::fail(\sprintf('fixture "%s" does not parse as XML', $filename));
+        }
 
         return Device::xmlFactory($element->device[0]);
     }
 
+    /** @param array<string, mixed> $expected */
     #[DataProvider('provideFixtures')]
     public function testFixtureParsesCorrectly(string $fixture, array $expected): void
     {

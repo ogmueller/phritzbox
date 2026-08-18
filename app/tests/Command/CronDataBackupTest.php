@@ -53,7 +53,7 @@ class CronDataBackupTest extends KernelTestCase
 
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
         self::assertStringContainsString('Backed up', $tester->getDisplay());
-        self::assertCount(1, glob($this->dir.'/phritzbox-*.sqlite.gz'));
+        self::assertCount(1, (array) glob($this->dir.'/phritzbox-*.sqlite.gz'));
     }
 
     public function testDryRunWritesNothing(): void
@@ -79,7 +79,7 @@ class CronDataBackupTest extends KernelTestCase
 
         self::assertSame(Command::SUCCESS, $tester->getStatusCode());
         self::assertStringContainsString('older snapshot', $tester->getDisplay());
-        self::assertCount(2, glob($this->dir.'/phritzbox-*'));
+        self::assertCount(2, (array) glob($this->dir.'/phritzbox-*'));
     }
 
     public function testFailsWithAClearMessageRatherThanAStackTrace(): void

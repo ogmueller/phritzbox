@@ -45,6 +45,10 @@ class TelegramAlertChannelTest extends TestCase
 
         (new TelegramAlertChannel($client))->send($this->channel(), 'Subject', 'Body', []);
 
+        if ($captured === null) {
+            self::fail('the channel sent no request');
+        }
+
         self::assertSame('POST', $captured['method']);
         self::assertStringContainsString('api.telegram.org/botbottoken/sendMessage', $captured['url']);
         $payload = json_decode((string) $captured['body'], true);

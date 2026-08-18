@@ -70,7 +70,7 @@ class DeviceControllerTest extends WebTestCase
             $server['HTTP_AUTHORIZATION'] = 'Bearer '.$token;
         }
 
-        $this->client->request('PUT', '/api/devices/'.$ain.'/protection', server: $server, content: json_encode($body));
+        $this->client->request('PUT', '/api/devices/'.$ain.'/protection', server: $server, content: (string) json_encode($body));
     }
 
     public function testProtectionRequiresAuth(): void
@@ -91,13 +91,17 @@ class DeviceControllerTest extends WebTestCase
         $this->putProtection('test-dev-001', $this->adminToken, ['confirmOn' => false, 'confirmOff' => true]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertSame('test-dev-001', $data['ain']);
         self::assertFalse($data['confirmOn']);
         self::assertTrue($data['confirmOff']);
 
         $this->em->clear();
         $device = $this->em->getRepository(SmartDevice::class)->find('test-dev-001');
+        if ($device === null) {
+            self::fail('the fixture device is missing');
+        }
+
         self::assertFalse($device->isConfirmOn());
         self::assertTrue($device->isConfirmOff());
     }
@@ -108,7 +112,7 @@ class DeviceControllerTest extends WebTestCase
         $this->putProtection('test-dev-001', $this->adminToken, ['confirmOn' => false, 'confirmOff' => false]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertFalse($data['confirmOn']);
         self::assertFalse($data['confirmOff']);
     }
@@ -149,6 +153,10 @@ class DeviceControllerTest extends WebTestCase
             .'</device>'
         );
 
+        if ($xml === false) {
+            self::fail('the inline device XML in this test does not parse');
+        }
+
         $aha = $this->createStub(AhaApi::class);
         $aha->method('getDeviceListInfos')->willReturn([Device::xmlFactory($xml)]);
         static::getContainer()->set(AhaApi::class, $aha);
@@ -158,7 +166,7 @@ class DeviceControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         $device = null;
         foreach ($data as $row) {
             if ($row['ain'] === 'hkr-001') {
@@ -188,6 +196,10 @@ class DeviceControllerTest extends WebTestCase
             .'<present>1</present><name>Radiator</name><hkr><tsoll>253</tsoll></hkr></device>'
         );
 
+        if ($xml === false) {
+            self::fail('the inline device XML in this test does not parse');
+        }
+
         $aha = $this->createStub(AhaApi::class);
         $aha->method('getDeviceListInfos')->willReturn([Device::xmlFactory($xml)]);
         static::getContainer()->set(AhaApi::class, $aha);
@@ -197,7 +209,7 @@ class DeviceControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         $device = null;
         foreach ($data as $row) {
             if ($row['ain'] === 'hkr-off') {

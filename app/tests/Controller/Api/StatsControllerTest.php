@@ -63,7 +63,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertSame('nonexistent', $data['ain']);
         self::assertEmpty($data['data']);
     }
@@ -91,7 +91,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertSame('test-ain-001', $data['ain']);
         self::assertCount(2, $data['data']);
         self::assertSame('temperature', $data['data'][0]['type']);
@@ -119,7 +119,7 @@ class StatsControllerTest extends WebTestCase
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
         ]);
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertCount(1, $data);
         self::assertSame('A vs B', $data[0]['ruleName']);
         self::assertSame('dev-A', $data[0]['sid']);
@@ -130,13 +130,13 @@ class StatsControllerTest extends WebTestCase
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
         ]);
         self::assertResponseIsSuccessful();
-        self::assertSame([], json_decode($this->client->getResponse()->getContent(), true));
+        self::assertSame([], json_decode((string) $this->client->getResponse()->getContent(), true));
 
         // Outside the date range yields nothing.
         $this->client->request('GET', '/api/stats/alert-events?type=temperature&from=2026-07-01&to=2026-07-31&devices[]=dev-A', server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
         ]);
-        self::assertSame([], json_decode($this->client->getResponse()->getContent(), true));
+        self::assertSame([], json_decode((string) $this->client->getResponse()->getContent(), true));
     }
 
     public function testDuplicateReadingRejectedByUniqueIndex(): void
@@ -166,7 +166,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertCount(1, $data['data']);
         // power: cW → W (÷100) = 50
         self::assertEquals(50.0, $data['data'][0]['value']);
@@ -199,14 +199,14 @@ class StatsControllerTest extends WebTestCase
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
         ]);
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertCount(1, $data['data'], 'a reading inside the window is returned');
 
         $this->client->request('GET', '/api/stats/test-ain-instant?'.$query($time->modify('+1 hour'), $time->modify('+2 hours')), server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
         ]);
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertEmpty($data['data'], 'the same-day reading is excluded — `to` was not widened to 23:59:59');
     }
 
@@ -236,7 +236,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertCount(1, $data['data']);
         self::assertEquals(120.0, $data['data'][0]['value']);
     }
@@ -274,7 +274,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertCount(1, $data['data']);
         // voltage: mV → V (÷1000) = 230
         self::assertEquals(230.0, $data['data'][0]['value']);
@@ -299,7 +299,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertSame('ok', $data['status']);
         self::assertSame(3, $data['devices']);
         self::assertSame(42, $data['rows']);
@@ -327,7 +327,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertSame('ok', $data['status']);
         self::assertSame(1, $data['alerts']['triggered']);
     }
@@ -344,7 +344,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseStatusCodeSame(502);
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertArrayHasKey('error', $data);
     }
 
@@ -370,7 +370,7 @@ class StatsControllerTest extends WebTestCase
         ]);
 
         self::assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         self::assertSame('test-ain-004', $data['ain']);
         self::assertContains('temperature', $data['types']);
         self::assertContains('power', $data['types']);

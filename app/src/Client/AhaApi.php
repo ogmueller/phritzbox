@@ -237,24 +237,41 @@ class AhaApi
 
             foreach ($xml->device as $device) {
                 if ((string) $device['identifier'] === $ain) {
-                    $dom = new \DOMDocument('1.0', 'UTF-8');
-                    $dom->preserveWhiteSpace = false;
-                    $dom->formatOutput = true;
-                    $dom->loadXML($device->asXML());
+                    $node = $device->asXML();
+                    if ($node === false) {
+                        throw new InvalidResponseException(\sprintf('Device "%s" could not be re-serialised', $ain));
+                    }
 
-                    return $dom->saveXML($dom->documentElement);
+                    return self::prettyPrint($node);
                 }
             }
 
             throw new InvalidResponseException(\sprintf('Device "%s" not found', $ain));
         }
 
+        return self::prettyPrint($raw);
+    }
+
+    /**
+     * Re-indent an XML fragment.
+     *
+     * `saveXML()` reports failure by returning false rather than throwing, and
+     * it is the last step before the string reaches the caller — so the check
+     * lives here, once, instead of at each of the two call sites above.
+     */
+    private static function prettyPrint(string $xml): string
+    {
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
         $dom->formatOutput = true;
-        $dom->loadXML($raw);
+        $dom->loadXML($xml);
 
-        return $dom->saveXML($dom->documentElement);
+        $pretty = $dom->saveXML($dom->documentElement);
+        if ($pretty === false) {
+            throw new InvalidResponseException('Device XML could not be formatted');
+        }
+
+        return $pretty;
     }
 
     /**

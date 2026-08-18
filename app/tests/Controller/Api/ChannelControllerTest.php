@@ -41,13 +41,17 @@ class ChannelControllerTest extends WebTestCase
         $this->adminToken = $jwt->create($admin);
     }
 
-    /** @param array<string, mixed>|null $body */
+    /**
+     * @param array<string, mixed>|null $body
+     *
+     * @return array<int|string, mixed> decoded JSON: an object for one entity, a list for a collection
+     */
     private function request(string $method, string $uri, ?array $body = null): array
     {
         $this->client->request($method, $uri, server: [
             'HTTP_AUTHORIZATION' => 'Bearer '.$this->adminToken,
             'CONTENT_TYPE' => 'application/json',
-        ], content: $body !== null ? json_encode($body) : null);
+        ], content: $body !== null ? (string) json_encode($body) : null);
         $content = $this->client->getResponse()->getContent();
 
         return [$this->client->getResponse()->getStatusCode(), $content ? json_decode($content, true) : null];

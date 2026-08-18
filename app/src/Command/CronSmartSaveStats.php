@@ -89,7 +89,11 @@ class CronSmartSaveStats extends Smart
      */
     protected function createChart(array $values, int $factor, Settings $settings): array
     {
-        $terminalWidth = getenv('COLUMNS');
+        // COLUMNS is a shell variable and is usually not exported, so getenv()
+        // returns false as often as not. `false - $offset - 6` is a *negative*
+        // width, which turned the array_slice() below from "limit to what fits"
+        // into "drop the last six readings". Fall back to a conventional 80.
+        $terminalWidth = (int) (getenv('COLUMNS') ?: 80);
         $chartWidth = $terminalWidth - $settings->getOffset() - 6;
         $maxXScaleHeight = 20;
 
@@ -109,8 +113,10 @@ class CronSmartSaveStats extends Smart
         }
 
         $chart = new Linechart();
-        $height = ceil(max($values)) - floor(min($values));
-        $settings->setHeight(max(1, min($maxXScaleHeight, $height)));
+        // A device that reported nothing for this metric is an ordinary state,
+        // and max()/min() raise a ValueError on an empty array.
+        $height = $values === [] ? 1.0 : ceil(max($values)) - floor(min($values));
+        $settings->setHeight((int) max(1, min($maxXScaleHeight, $height)));
         $chart->setSettings($settings);
 
         return [$chart, $values];
