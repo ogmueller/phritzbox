@@ -31,12 +31,12 @@ The project uses [php-cs-fixer](https://cs.symfony.com/) with the `@Symfony` rul
 
 Check:
 ```bash
-./app/vendor/bin/php-cs-fixer fix --dry-run --diff --config app/.php-cs-fixer.dist.php
+(cd app && vendor/bin/php-cs-fixer fix --dry-run --diff --config .php-cs-fixer.dist.php)
 ```
 
 Auto-fix:
 ```bash
-./app/vendor/bin/php-cs-fixer fix --config app/.php-cs-fixer.dist.php
+(cd app && vendor/bin/php-cs-fixer fix --config .php-cs-fixer.dist.php)
 ```
 
 All pull requests must pass the code style check before being merged.
