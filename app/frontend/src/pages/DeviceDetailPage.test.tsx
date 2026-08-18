@@ -18,6 +18,12 @@ vi.mock('../api/stats', () => ({
   getStats: () => Promise.resolve({ data: [] }),
 }))
 
+const getStandby = vi.fn()
+
+vi.mock('../api/energy', () => ({
+  getStandby: (...a: unknown[]) => getStandby(...a),
+}))
+
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ isAdmin: false }),
 }))
@@ -63,9 +69,22 @@ function thermostatDevice(overrides: Partial<NonNullable<Device['thermostat']>> 
   } as Device
 }
 
+function powerMeterDevice(): Device {
+  return {
+    ain: 'a1',
+    name: 'iMac outlet',
+    present: true,
+    features: { outlet: true, thermostat: false, powerMeter: true, temperatureSensor: false },
+    powerMeter: { voltage: 232.1, power: 122.7, energy: 8 },
+    outlet: { state: 'on', mode: 'manual', lock: false, deviceLock: false },
+  } as Device
+}
+
 describe('DeviceDetailPage thermostat card', () => {
   beforeEach(() => {
     getDevice.mockReset()
+    getStandby.mockReset()
+    getStandby.mockResolvedValue(null)
   })
 
   it('renders the thermostat card when the API sends thermostat state', async () => {
@@ -158,5 +177,124 @@ describe('DeviceDetailPage thermostat card', () => {
     render(<DeviceDetailPage />)
 
     expect(await screen.findByText('detail.hkrErrorUnknown 9')).toBeTruthy()
+  })
+})
+
+describe('DeviceDetailPage standby', () => {
+  beforeEach(() => {
+    getDevice.mockReset()
+    getStandby.mockReset()
+    getDevice.mockResolvedValue(powerMeterDevice())
+  })
+
+  it('shows the idle floor and its annual cost inside the power meter card', async () => {
+    getStandby.mockResolvedValue({
+      watts: 40.48, annualKwh: 354.6, annualCost: 124.11,
+      currency: 'EUR', dutyCyclePercent: 100, idleWatts: 40.48,
+      samples: 111, windowDays: 7, source: 'rollup',
+    })
+
+    render(<DeviceDetailPage />)
+
+    expect(await screen.findByText('energy.standby')).toBeTruthy()
+    expect(screen.getByText('40.5 W')).toBeTruthy()
+    expect(screen.getByText('€124.11')).toBeTruthy()
+    // Always says what the figure is based on.
+    expect(screen.getByText('energy.standbyBasis 7 111')).toBeTruthy()
+  })
+
+  it('reports the duty cycle and the idle draw for a device that is mostly off', async () => {
+    // The case a round-the-clock floor cannot describe: a printer that draws
+    // nothing for 97% of the week, and a real 14 W whenever it is switched on.
+    // Without this line the card says "0 W" and leaves that 14 W invisible.
+    getStandby.mockResolvedValue({
+      watts: 0, annualKwh: 0, annualCost: 0,
+      currency: 'EUR', dutyCyclePercent: 3, idleWatts: 14.01,
+      samples: 672, windowDays: 7, source: 'rollup',
+    })
+
+    render(<DeviceDetailPage />)
+
+    // formatWatts drops to one decimal above 10 W, so 14.01 renders as "14 W".
+    expect(await screen.findByText('energy.dutyPartial 3 14 W')).toBeTruthy()
+  })
+
+  it('says a device was simply off rather than implying it draws nothing', async () => {
+    getStandby.mockResolvedValue({
+      watts: 0, annualKwh: 0, annualCost: 0,
+      currency: 'EUR', dutyCyclePercent: 0, idleWatts: null,
+      samples: 672, windowDays: 7, source: 'rollup',
+    })
+
+    render(<DeviceDetailPage />)
+
+    expect(await screen.findByText('energy.dutyOff')).toBeTruthy()
+  })
+
+  it('does not repeat the floor as an idle draw for an always-on device', async () => {
+    getStandby.mockResolvedValue({
+      watts: 40.48, annualKwh: 354.6, annualCost: 124.11,
+      currency: 'EUR', dutyCyclePercent: 100, idleWatts: 40.48,
+      samples: 672, windowDays: 7, source: 'rollup',
+    })
+
+    render(<DeviceDetailPage />)
+
+    expect(await screen.findByText('energy.dutyAlways')).toBeTruthy()
+    expect(screen.queryByText(/energy.dutyPartial/)).toBeNull()
+  })
+
+  it('reports the duty cycle even when the on-period was too short for an idle figure', async () => {
+    getStandby.mockResolvedValue({
+      watts: 0, annualKwh: 0, annualCost: 0,
+      currency: 'EUR', dutyCyclePercent: 1.5, idleWatts: null,
+      samples: 672, windowDays: 7, source: 'rollup',
+    })
+
+    render(<DeviceDetailPage />)
+
+    expect(await screen.findByText('energy.dutyPartialUnknown 1.5')).toBeTruthy()
+  })
+
+  it('omits the row entirely when there is too little data to quote a floor', async () => {
+    // The endpoint answers 204 → null. Showing "0 W" here would be a claim we
+    // cannot make.
+    getStandby.mockResolvedValue(null)
+
+    render(<DeviceDetailPage />)
+
+    expect(await screen.findByText('detail.powerMeter')).toBeTruthy()
+    expect(screen.queryByText('energy.standby')).toBeNull()
+    expect(screen.queryByText('0 W')).toBeNull()
+  })
+
+  it('shows the draw but no cost when no tariff is configured', async () => {
+    getStandby.mockResolvedValue({
+      watts: 40.48, annualKwh: 354.6, annualCost: null,
+      currency: 'EUR', dutyCyclePercent: 100, idleWatts: 40.48,
+      samples: 111, windowDays: 7, source: 'rollup',
+    })
+
+    render(<DeviceDetailPage />)
+
+    expect(await screen.findByText('40.5 W')).toBeTruthy()
+    expect(screen.queryByText('energy.standbyAnnual')).toBeNull()
+  })
+
+  it('still renders the card when the standby request fails', async () => {
+    getStandby.mockRejectedValue(new Error('boom'))
+
+    render(<DeviceDetailPage />)
+
+    expect(await screen.findByText('detail.powerMeter')).toBeTruthy()
+    expect(screen.queryByText('energy.standby')).toBeNull()
+  })
+
+  it('asks for the standby of the device on screen', async () => {
+    getStandby.mockResolvedValue(null)
+
+    render(<DeviceDetailPage />)
+
+    await waitFor(() => expect(getStandby).toHaveBeenCalledWith('a1'))
   })
 })

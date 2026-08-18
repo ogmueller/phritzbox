@@ -389,6 +389,24 @@ class EnergyCostServiceTest extends KernelTestCase
         self::assertSame(['ec-big', 'ec-small'], array_values(array_intersect($ains, ['ec-big', 'ec-small'])));
     }
 
+    /**
+     * What the dashboard's "This month" tile actually bills.
+     *
+     * The month-to-date window ends today, not on the last of the month, so the
+     * standing charge in that headline is a fraction that grows daily — the
+     * figure looks wrong to anyone expecting the whole monthly charge on the
+     * 1st, which is exactly why it is pinned here and documented in Help.
+     */
+    public function testMonthToDateChargesTheStandingChargeOnlyForTheDaysElapsed(): void
+    {
+        $this->tariff->save(0.30, 30.0, 'EUR');
+
+        // The 18th of a 30-day month: 18/30 of EUR 30.00.
+        $summary = $this->cost->summary(new \DateTimeImmutable('2026-06-18 09:00:00'));
+
+        self::assertSame(18.0, $summary['monthToDate']['standingCost']);
+    }
+
     public function testSummaryReportsTodayMonthToDateAndTopConsumer(): void
     {
         $this->tariff->save(0.30, 30.0, 'EUR');

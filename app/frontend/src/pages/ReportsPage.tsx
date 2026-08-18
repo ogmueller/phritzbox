@@ -13,6 +13,7 @@ import { TimeSeriesChart, Period, ChartEvent, getAvgStyle, selectAveragePeriods 
 import { HOUR_MS, PRESETS, DEFAULT_PRESET_KEY, localDate, normalisePresetKey, presetDates, resolveRange } from './timeRange'
 import { METRICS, DEFAULT_METRIC, metric as metricMeta } from '../metrics'
 import { pushNotification } from '../notifications/bus'
+import { EnergyCostReadout } from '../components/energy/EnergyCostReadout'
 
 const SECOND_COLOR = '#0E9AA7' // distinct from the metric colours and the avg lines
 
@@ -539,6 +540,12 @@ export function ReportsPage() {
             />
           </div>
         </Card>
+      )}
+
+      {/* Energy is the only metric with a money equivalent, so the readout is
+          conditional rather than part of the generic metric machinery. */}
+      {selectedType === 'energy' && loadedRange && data.length > 0 && (
+        <EnergyCostReadout ain={selectedAin} from={loadedRange.from} to={loadedRange.to} />
       )}
 
       {loaded && !loading && data.length === 0 && !error && (

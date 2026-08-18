@@ -24,7 +24,7 @@ Screenshots
 
 ![Device detail](app/files/screenshots/web-device-detail.png)
 
-**Reports** — query historical data for any device and time range, with selectable metric, configurable rolling averages, an optional second device overlaid for comparison, and markers where alert rules fired (hover a marker to see the rule and reading):
+**Reports** — query historical data for any device and time range, with selectable metric, configurable rolling averages, an optional second device *or the previous period* overlaid for comparison, a cost readout when the energy metric is selected, CSV/JSON export, and markers where alert rules fired (hover a marker to see the rule and reading):
 
 ![Reports — 30-day comparison](app/files/screenshots/web-reports-temp-30-days.png)
 ![Reports — alert event markers](app/files/screenshots/web-reports-temp-alerts.png)
@@ -41,16 +41,19 @@ Screenshots
 
 ![Users](app/files/screenshots/web-users.png)
 
+**Settings** _(admin)_ — the electricity tariff used to turn recorded energy into costs: price per kWh, monthly standing charge, and currency. See [Energy costs](#energy-costs).
+
 
 Features
 --------
 
 - Live device status with 30-second auto-refresh (and a fresh pull on every visit)
 - Interactive charts for temperature, power, energy, and voltage
-- Time-range reports with rolling quick ranges (last 24/48 hours, last 7/30 days — always ending *now*), rolling averages, a second device overlaid on the same chart for comparison, and alert events marked where rules fired — plus on-demand data refresh; your last selection is remembered and re-run when you come back
+- Time-range reports with rolling quick ranges (last 24/48 hours, last 7/30 days — always ending *now*), rolling averages, a second device **or the previous period** overlaid on the same chart for comparison, and alert events marked where rules fired — plus CSV/JSON export and on-demand data refresh; your last selection is remembered and re-run when you come back
+- Energy costs — enter your electricity price once and see what today, this month, and each individual device actually cost, plus your household's standby draw and what a year of it would come to
 - Rule-based alerting (threshold, sustained, or device-to-device comparison) via e-mail, webhook, Pushover, Telegram, ntfy, Discord, Gotify, or Slack/Mattermost — with an activity log that shows per-channel delivery status, current-rule state, and a manual re-arm
 - Sortable tables and global error notifications throughout the UI
-- 20 CLI commands for device control and monitoring
+- 27 CLI commands for device control, monitoring, and data maintenance (backup, restore, rollup, retention)
 - User management with role-based access (admin only)
 - German and English interface
 - Automated data collection every 30 minutes (via [cronado](https://github.com/teqneers/cronado))
@@ -181,6 +184,58 @@ For a bare-metal installation, set up a cron job:
 The Fritz!Box caches device data. Temperature readings are available for up to 24 hours — if not fetched in time they are lost. Running every 30 minutes is recommended.
 
 **Keep the host awake.** The scheduler ([cronado](https://github.com/teqneers/cronado)) does not catch up missed runs, so if the machine sleeps (e.g. a laptop closing its lid), collection and alert evaluation simply pause until it wakes. Run Phritzbox on always-on hardware, or disable system sleep on the host. If data does go stale, the web UI shows a "live data may be stale" banner with how long ago the last collection succeeded.
+
+
+Energy costs
+------------
+
+Phritzbox already records how much energy each outlet delivers. Enter your electricity price and it
+turns that into money.
+
+**Setup** — as an administrator, open **Settings** in the sidebar and fill in:
+
+| Field | Meaning |
+|---|---|
+| Price per kWh | What you pay per kilowatt-hour, in your currency (e.g. `0.35`) |
+| Standing charge per month | The fixed monthly fee on your bill (*Grundpreis*) — leave empty if you have none |
+| Currency | Used to format every amount shown in the UI |
+
+No environment variable, no restart — the tariff lives in the database and takes effect immediately.
+Leave the price empty and Phritzbox shows consumption without ever guessing at a cost.
+
+**Where costs appear:**
+
+- **Dashboard** — four tiles above the device table: what the household is drawing right now, energy
+  used today, month-to-date cost, and standby draw with what a year at that floor would cost.
+- **Reports** — pick the *energy* metric and a cost readout appears under the chart for exactly the
+  window on screen: that device's energy and cost, its share of the household, and the household total.
+- **Device detail** — the device's energy chart with figures in kWh, plus its own standby draw and
+  annual standby cost on the power-meter card.
+
+**Standby** is each device's idle floor: the 5th percentile of its quarter-hourly minimum draw over the
+last week. It answers "what does this appliance cost me while I'm not using it?" — a figure that is
+usually invisible and often surprising. Devices that are genuinely switched off most of the week
+correctly report `0 W`, while a device with less than a week of history shows no figure at all rather
+than a misleading zero.
+
+### What the figures do and don't claim
+
+These caveats are shown in the UI too, but they are worth understanding once:
+
+- **A range total is a lower bound.** The Fritz!Box reports energy once per day and Phritzbox never
+  backfills a day it missed, so if collection was down the total is short by those days. The readout
+  always says how many of the range's days actually carry data, and warns when days are missing. A
+  device you installed halfway through the range has fewer days but hasn't lost anything, so it stays
+  quiet.
+- **Costs use your current price for any range**, including multi-year ones — the readout says "at the
+  current tariff" rather than pretending to reproduce an old bill. Tariff history is a planned follow-up.
+- **The standing charge appears only in household totals**, never per device. It's billed per meter
+  connection, so splitting it across devices would make a device that consumed nothing appear to cost
+  money. It's prorated by calendar month, so a whole month comes out at exactly the figure on your bill.
+- **Day boundaries are UTC**, matching the container's timezone.
+- **Readings from before 16 July 2026** are attributed one day later than they are today, because the
+  collector's day labelling changed then. Period totals are unaffected; only per-day attribution across
+  that date shifts. Ranges that straddle it carry a footnote.
 
 
 Alerts

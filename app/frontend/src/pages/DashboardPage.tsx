@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../components/layout/PageHeader'
 import { DeviceTable } from '../components/device/DeviceTable'
+import { EnergySummary } from '../components/dashboard/EnergySummary'
 import { Button } from '../components/ui/Button'
 import { useDeviceContext } from '../contexts/DeviceContext'
 
@@ -37,6 +38,8 @@ export function DashboardPage() {
       />
 
       {error && <div className="alert alert--danger">{error}</div>}
+
+      <EnergySummary />
 
       {loading && devices.length === 0 ? (
         <div className="loading-state">{t('dashboard.loadingDevices')}</div>

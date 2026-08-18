@@ -54,3 +54,12 @@ export function HelpIcon({ size = 16 }: IconProps) {
     </svg>
   )
 }
+
+export function SettingsIcon({ size = 16 }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width={size} height={size} fill="currentColor">
+      <path d="M8 5.5A2.5 2.5 0 1 0 8 10.5 2.5 2.5 0 0 0 8 5.5zm0 4A1.5 1.5 0 1 1 8 6.5a1.5 1.5 0 0 1 0 3z"/>
+      <path d="M14.3 9.6l-1.2-.7a5.3 5.3 0 0 0 0-1.8l1.2-.7a.6.6 0 0 0 .2-.8l-1-1.7a.6.6 0 0 0-.8-.2l-1.2.7a5.2 5.2 0 0 0-1.5-.9V2.6a.6.6 0 0 0-.6-.6H7.6a.6.6 0 0 0-.6.6v1.2c-.6.2-1 .5-1.5.9l-1.2-.7a.6.6 0 0 0-.8.2l-1 1.7a.6.6 0 0 0 .2.8l1.2.7a5.3 5.3 0 0 0 0 1.8l-1.2.7a.6.6 0 0 0-.2.8l1 1.7a.6.6 0 0 0 .8.2l1.2-.7c.5.4.9.7 1.5.9v1.2a.6.6 0 0 0 .6.6h1.8a.6.6 0 0 0 .6-.6v-1.2c.6-.2 1-.5 1.5-.9l1.2.7a.6.6 0 0 0 .8-.2l1-1.7a.6.6 0 0 0-.2-.8z" fillOpacity=".35"/>
+    </svg>
+  )
+}

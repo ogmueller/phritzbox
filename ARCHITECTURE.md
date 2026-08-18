@@ -203,7 +203,21 @@ Backs the rotating refresh-token flow that keeps the short-lived JWT access toke
 
 **`app_state`** (table only — no entity)
 
-A tiny key/value table (`name`, `value`) for singleton runtime state. The only key today is `last_collection_at`, written by the collection service after a successful run and read back — via raw DBAL, not the ORM — by `HealthController` to compute data staleness (see §2.5). Kept entity-free because it's a single scalar, not a domain object.
+A tiny key/value table (`name`, `value`) for singleton runtime state, wrapped by `App\Service\DataLifecycle\AppState` (raw DBAL, not the ORM — these are scalars, not domain objects). Keys: `last_collection_at` (written after each successful collection, read by `HealthController` to compute data staleness — see §2.5), `last_backup_at`, `last_rollup_at`, `rollup_through_{grid}` (per-tier watermark: everything strictly before this instant is summarised), `rollup_backfill_cursor` (so `smart:rollup:backfill` resumes where it stopped), and `rollup_lock` (a lease, so a long backfill and the scheduled rollup can't run over each other).
+
+Lease expiries are stored **UTC-formatted**, so lexical string comparison is also chronological comparison — across a DST change, a local-time string would sort wrongly and hand out a lock that is still held.
+
+**`smart_device_data_rollup`** (table only — no entity)
+
+Pre-aggregated summaries of `smart_device_data`, the thing that makes a multi-million-row history readable in a chart. Columns: `sid`, `type`, `grid` (bucket width in seconds — `900` for quarter-hourly, `86400` for daily), `bucket` (bucket start; PK together with the three above), `time_min`, `avg_value`, `min_value`, `max_value`, `sum_value`, `sample_count`.
+
+Carrying all five aggregates is what lets one table serve different questions honestly: charts read `avg_value` with `min_value`/`max_value` for truthful extreme markers, energy totals read `sum_value` (an average would be meaningless), and standby detection reads `min_value`. Written by `RollupService` (see §2.6); read by `StatsQueryService`, which serves buckets before the watermark and raw rows after it.
+
+**`tariff`** (entity `app/src/Entity/Tariff.php`)
+
+Singleton row (fixed PK `1`, no `GeneratedValue`) holding the electricity tariff: `price_per_kwh` (nullable — `null` is "not configured", a real state distinct from a configured `0.00`), `standing_charge_month`, `currency`, `updated_at`.
+
+A typed table rather than `app_state` rows: `app_state` holds untyped `VARCHAR(255)` operational bookkeeping, and the moment tariff *history* is wanted (a price valid from 1 January, or day/night rates) a key/value store models it badly. This table takes a `valid_from` column later and becomes history without a redesign.
 
 #### Repositories
 
@@ -211,7 +225,9 @@ All extend `ServiceEntityRepository`. `SmartDeviceDataRepository` filters by AIN
 
 #### Migrations
 
-`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `(sid, type, time)` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place); the `alert_event` log table; a migration that de-duplicates `smart_device_data` and upgrades the index to **UNIQUE** `(sid, type, time)`; the `refresh_token` table; and the `app_state` key/value table (seeding `last_collection_at`).
+`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `(sid, type, time)` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place); the `alert_event` log table; a migration that de-duplicates `smart_device_data` and upgrades the index to **UNIQUE** `(sid, type, time)`; the `refresh_token` table; the `app_state` key/value table (seeding `last_collection_at`); the `smart_device_data_rollup` summary table; and the `tariff` table.
+
+The last two are created **empty**. A rollup table is filled by `smart:rollup:backfill`, not by a migration — summarising tens of millions of rows inside a migration transaction would lock the database for minutes. An empty `tariff` table is the correct initial state, because "no tariff configured" is a state the whole cost feature is built to represent.
 
 ---
 
@@ -238,14 +254,52 @@ Responses are hand-serialised into nested JSON mirroring the `Device` / `Feature
 | POST | `/api/stats/refresh` | ROLE_USER | On-demand collection from the Fritz!Box (`SmartStatsCollectionService::collectAll()`), then an immediate `AlertEvaluationService::evaluateAll()` so a manual pull also checks alert rules. Backs the Reports "Pull latest data" button |
 | GET | `/api/stats/alert-events` | ROLE_USER | Alert firings in a window, for the Reports chart markers; query params: `type`, `devices` (CSV of AINs), `from`/`to`. Available to any authenticated user, unlike the admin-only alert *config* |
 | GET | `/api/stats/{ain}` | ROLE_USER | Query time-series data; query params: `type`, `from` (default: `-24 hours`), `to` (default: `now`). Collapses duplicate timestamps defensively |
+| GET | `/api/stats/{ain}/export` | ROLE_USER | Same window as above, as CSV or JSON |
+| GET | `/api/stats/types/{ain}` | ROLE_USER | List available metric types for a device |
 
-Both endpoints accept `from`/`to` either as an **offset-bearing ISO 8601 instant**
+Bound parsing lives in `App\Service\StatsRange` so that every endpoint answering "this window"
+agrees on what the window is — the chart, the export and the cost readout are shown together, and a
+disagreement between them would be the most credibility-destroying bug available here.
+`from`/`to` are accepted either as an **offset-bearing ISO 8601 instant**
 (`2026-08-09T14:32:00+02:00` — what the UI sends, so a window means the same moment regardless of
 the server's timezone) or as a bare `Y-m-d`, in which case `to` is widened to that day's last
-second. A malformed bound yields `400`. For `type=energy` the start is floored to its day's midnight:
-the box reports energy once per day (grid 86400) stamped at midnight, so a sub-day boundary could
-only clip a value off the left edge.
-| GET | `/api/stats/types/{ain}` | ROLE_USER | List available metric types for a device |
+second. A malformed bound yields `400`. For `type=energy` the start is floored to its day's midnight
+(`StatsRange::widenForEnergy()`): the box reports energy once per day (grid 86400) stamped at
+midnight, so a sub-day boundary could only clip a value off the left edge.
+
+#### `EnergyController` — `/api/energy`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/energy/cost` | ROLE_USER | Cost of a window: per device, plus household totals and coverage. Same `from`/`to` parsing as `/api/stats` (via `StatsRange`) |
+| GET | `/api/energy/summary` | ROLE_USER | Dashboard figures in one request: today, month-to-date, top consumer, household standby |
+| GET | `/api/energy/standby/{ain}` | ROLE_USER | One device's idle floor, with `currency`, `samples`, `windowDays` and which tier answered. `204` when the window holds too few samples to claim a figure |
+
+Backed by `App\Service\EnergyCostService` and `App\Service\StandbyService`. Both read the summary
+tiers where they exist and raw readings past the rollup watermark, so they keep working after
+retention has pruned old raw data. Costs are plain numbers plus an ISO 4217 code — the backend never
+formats money, mirroring how `MetricUnits` returns a number plus a unit string.
+
+Every cost field is nullable and is `null` when no tariff is configured, never `0.0`. Energy figures
+are returned regardless, so an unconfigured instance still reports consumption.
+
+#### `SettingsController` — `/api/settings`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/settings/tariff` | ROLE_USER | Current electricity tariff (`pricePerKwh`, `standingChargeMonth`, `currency`, `configured`) |
+| PUT | `/api/settings/tariff` | ROLE_ADMIN | Replace it. An empty `pricePerKwh` clears back to unconfigured |
+
+The split is **by method, not by path** — `#[IsGranted('ROLE_ADMIN')]` on the write action, following
+`DeviceController::setProtection`. Reading needs only `ROLE_USER` because every user needs the price
+to see costs. Deliberately *no* `security.yaml` rule: a path rule would have to be ordered above
+`^/api`, which is exactly the first-match-wins trap that broke `/api/users/me/password`.
+
+Validation lives in `App\Service\TariffSettings`: price ≤ 10 (above that the operator typed cents or
+a per-MWh price), standing charge ≤ 1000, and currency from an ISO 4217 allowlist — the allowlist is
+what stops the browser's `Intl.NumberFormat` throwing `RangeError` on a bad code and blanking the
+page. `pricePerKwh()` returns `?float` where **`null` means not configured, distinct from a
+configured `0.0`**, which an operator with their own solar may legitimately set.
 
 #### `HealthController` — `/api/health`
 
@@ -295,8 +349,11 @@ Catch-all for non-API routes. Serves `app/public/frontend/index.html` so React R
 
 ### 2.6 Console Commands
 
-All commands live in `app/src/Command/` and extend the abstract `Smart` base class — except
-`cron:smart:alerts`, which talks only to the database and is a plain Symfony `Command`.
+All commands live in `app/src/Command/`. Those that talk to the Fritz!Box extend the abstract `Smart`
+base class (login, device lookup by AIN, cached device list). The data-lifecycle and alerting commands
+— `cron:smart:alerts`, `cron:smart:rollup`, `smart:rollup:backfill`, `cron:data:backup`,
+`cron:data:prune`, `data:backup:list`, `data:backup:verify`, `data:restore` — touch only the database
+and are plain Symfony `Command`s, so they keep working when the box is unreachable.
 
 #### `Smart` (base class)
 
@@ -321,6 +378,13 @@ Provides shared concerns so subclasses stay focused:
 | `smart:src:on/off/setpoint/comfort/saving` | `SmartSrc*` | Control smart radiator controller |
 | `smart:temperature` | `SmartTemperature` | Read temperature sensor |
 | `smart:template:list` | `SmartTemplateList` | List Fritz!Box automation templates |
+| `smart:device:xml` | `SmartDeviceXml` | Dump a device's raw AHA XML for diagnostics |
+| `cron:smart:rollup` | `CronSmartRollup` | Advance the summary tiers: aggregate everything new since each tier's watermark into `smart_device_data_rollup`. Idempotent (`INSERT OR IGNORE` against the composite PK), so a re-run after an interrupted one is safe. Schedule after `savestats`. |
+| `smart:rollup:backfill` | `SmartRollupBackfill` | One-off (but resumable) summarisation of pre-existing history, oldest first, with the cursor in `app_state`. Interruptible and safe against a live database — the point is that seven years of readings can be summarised without downtime. |
+| `cron:data:backup` | `CronDataBackup` | Verified compressed snapshot via SQLite `VACUUM INTO` on a **dedicated PDO connection** (`VACUUM` cannot run inside a transaction, and Doctrine's connection may hold one), checked with `PRAGMA quick_check`, streamed through gzip, then rotated. The app keeps serving throughout. |
+| `data:backup:list` / `data:backup:verify` | `DataBackupList`, `DataBackupVerify` | Inspect snapshots — size, age, contained row counts, integrity — so a restore is a decision, not a leap. |
+| `data:restore` | `DataRestore` | Replace the live database from a snapshot. Refuses to run while the database looks busy, takes a `pre-restore-*` safety copy first (so the restore itself is undoable), and removes stale `-wal`/`-shm` sidecars, which would otherwise be replayed over the restored file. |
+| `cron:data:prune` | `CronDataPrune` | Apply retention (opt-in; all windows default to "keep forever"). Deletes only whole days, and never past a tier's rollup watermark — pruning a day the summary tiers have not yet absorbed would destroy it outright. Reports freed pages; `--vacuum` reclaims them. |
 
 ---
 
@@ -435,7 +499,8 @@ ErrorBoundary
                     └── RequireAdmin
                         ├── /users          → UsersPage        (lazy)
                         ├── /alerts         → AlertsPage       (lazy)
-                        └── /channels       → ChannelsPage     (lazy)
+                        ├── /channels       → ChannelsPage     (lazy)
+                        └── /settings       → SettingsPage     (lazy)
 ```
 
 `RequireAuth` reads from `AuthContext`; if no token is present it redirects to `/login` preserving the intended destination. `RequireAdmin` additionally checks `isAdmin` and redirects non-admin users to `/dashboard`.
@@ -492,6 +557,12 @@ Full CRUD: `getUsers()`, `createUser(payload)`, `updateUser(id, payload)`, `dele
 
 CRUD for the alerting admin pages. `alerts.ts` exposes `getAlerts/createAlert/updateAlert/deleteAlert/toggleAlert/testAlert`, plus `rearmAlert(id)` and `getAlertEvents(limit?)` for the activity log (`Alert` carries `channelIds[]`/`channelNames[]` and `lastState`; `AlertEvent` carries `state`, the readings, and `deliveries[]`). `channels.ts` exposes `getChannels/createChannel/updateChannel/deleteChannel` (`Channel` with `type`, `target`, optional `secret`). Backing the `AlertsPage` (multi-channel `CheckboxGroup`, inline enabled `Switch`) and `ChannelsPage`.
 
+#### `settings.ts` / `energy.ts`
+
+`settings.ts` exposes `getTariff()` and `updateTariff(payload)`. `Tariff.pricePerKwh` is `number | null` all the way through the type — `null` is "not configured", and keeping it nullable rather than defaulting to `0` is what stops the UI ever showing a cost that nobody configured. `TariffPayload` sends the form's raw strings, so an empty price can mean "clear it".
+
+`energy.ts` exposes `getEnergyCost(from, to)`, `getEnergySummary()` and `getStandby(ain)`. Every cost field on these types is nullable for the same reason.
+
 ---
 
 ### 3.3 State Management
@@ -534,7 +605,7 @@ Blue horizontal header bar (AVM-style). Shows the diamond logo mark, app title, 
 
 #### `Sidebar` (`components/layout/Sidebar.tsx`)
 
-White left sidebar (200 px wide). Contains `<NavLink>` items for Dashboard and Reports; an admin-only group for Alerts, Channels, and Users; and a bottom group for Help. Active item is highlighted with a blue left border and light blue background, matching AVM's Fritz!Box UI style. No state of its own — purely presentational.
+White left sidebar (200 px wide). Contains `<NavLink>` items for Dashboard and Reports; an admin-only group for Alerts, Channels, Users, and Settings; and a bottom group for Help. Active item is highlighted with a blue left border and light blue background, matching AVM's Fritz!Box UI style. No state of its own — purely presentational.
 
 #### `PageHeader` (`components/layout/PageHeader.tsx`)
 
@@ -550,7 +621,9 @@ Renders a centred card with a blue banner header (AVM-inspired). Calls `loginReq
 
 #### `DashboardPage`
 
-Reads devices from `DeviceContext`. Refreshes on every visit (mount) and then polls every 30 s. Renders a `PageHeader` and a `DeviceTable`. Shows a loading state until the first fetch completes.
+Reads devices from `DeviceContext`. Refreshes on every visit (mount) and then polls every 30 s. Renders a `PageHeader`, an `EnergySummary` strip of four `StatTile`s, and a `DeviceTable`. Shows a loading state until the first fetch completes.
+
+`EnergySummary` sums **live wattage from the devices the page already holds**, so it costs no extra request; the other three tiles come from a single `GET /api/energy/summary`. That fetch is best-effort — a failure leaves the tiles empty rather than removing the device table, because a missing cost figure must not take the dashboard down with it.
 
 #### `DeviceDetailPage`
 
@@ -560,10 +633,20 @@ Reads `:ain` from URL params. Fetches the single device and 7-day history for al
 - A chart for each metric type where data exists
 - A back button to return to the dashboard
 
+The PowerMeter card also carries the device's **standby draw** and what a year at that floor would cost, from `GET /api/energy/standby/{ain}`. The endpoint answers `204` when the week holds too few samples to quote a floor, so those rows are simply absent rather than reading `0 W` — "we don't know" and "it draws nothing" must not look alike. The card states the window and sample count the figure came from.
+
+Beneath it, one sentence turns `dutyCyclePercent` + `idleWatts` into plain language, picked from four
+mutually exclusive cases: switched off for the whole window, never switched off (so the floor *is*
+the idle draw), on n % of the window drawing x while on, or on n % but too briefly to quote an idle
+figure. The four exist because `0 W` alone cannot distinguish a device that was off all week from one
+that was on all week drawing nothing — see §5.4. The duty cycle is rounded to whole percent before
+being compared against 100, so 99.96 % reads as "never switched off" rather than advertising an idle
+draw the percentile never really isolated.
+
 #### `ReportsPage`
 
 Historical data explorer with a **compact toolbar**: a device selector, a "compare with" selector that
-**overlays a second device** as a second series on the same chart, a metric selector, and a single
+**overlays a second device — or the previous period —** as a second series on the same chart, a metric selector, and a single
 **time-range control** — a field-styled `Popover` holding the quick ranges (Last 24 hours / Last 48
 hours / Last 7 days / Last 30 days) plus a custom from/to range. Below it, always-visible `ToggleChip`s
 control display options: each rolling-average period, "Fit to data", and "Show alert events" — the last
@@ -578,6 +661,17 @@ into the absolute instants sent to the API — a preset re-resolves against `now
 refresh, while a custom range covers whole local days. Preset keys written by earlier versions are
 migrated on read (`today` → `last24h`, `yesterday` → `last48h`); neither was ever a calendar day.
 
+**Period-over-period comparison** reuses that same "Compare with" select rather than adding a parallel
+toggle: a `__previous__` sentinel option fetches the same metric over `[from − span, to − span]` and
+shifts each point forward by `span` so the two lines overlay. Reusing the select makes device-comparison
+and period-comparison mutually exclusive *by construction* — they both drive the one second series, so a
+separate toggle could put them in conflict — and it inherits the existing second-series colour, label and
+persistence plumbing untouched. Each shifted point keeps its `originalTime`, and the tooltip shows that
+rather than the shifted timestamp; without it the comparison reads as nonsense.
+
+When the energy metric is selected, an `EnergyCostReadout` appears under the chart for exactly the window
+on screen (see §3.6).
+
 #### `UsersPage`
 
 Admin-only. Lists users in a table. "New User" button opens a modal form (create). Each row has Edit and Delete actions. All mutations call the `users.ts` API functions and refresh the list on success.
@@ -589,6 +683,12 @@ Admin-only. Lists alert rules with a compact condition column (e.g. `outdoor > i
 #### `ChannelsPage`
 
 Admin-only. CRUD for notification channels. The form adapts its `target`/`secret` fields to the chosen type (e.g. "Chat ID" + "Bot token" for Telegram). Deleting a channel still referenced by a rule surfaces the API's 409 message.
+
+#### `SettingsPage`
+
+Admin-only. Configures the electricity tariff: price per kWh, monthly standing charge, currency. Built from `ChannelsPage`'s vocabulary minus create and delete — `.breadcrumb` (admin pages don't use `PageHeader`), a `Card`, two `TextInput`s, a `SelectField`, and a `.table-footer` Save. No modal, because there is nothing to open.
+
+An unconfigured price renders as an **empty field, not `0`** — the two mean different things, and a `0` shown here would be read as a saved tariff. Saving an empty price clears back to unconfigured. A live formatted example (100 kWh at the entered price) shows the currency and locale taking effect before saving, and server-side validation messages are surfaced verbatim rather than replaced with a generic failure.
 
 #### `HelpPage`
 
@@ -609,6 +709,16 @@ Props: `ain`, `currentState ("on"|"off")`, `onToggled`. Shows "Turn On" (green) 
 #### `SetpointControl` (`components/device/SetpointControl.tsx`)
 
 Props: `ain`, `currentSetpoint`. Renders a range slider (8–28 °C) plus a text display. Debounces the `setSetpoint` API call so dragging the slider doesn't flood the Fritz!Box.
+
+#### `EnergySummary` (`components/dashboard/EnergySummary.tsx`)
+
+The Dashboard's four-tile strip — live draw, today, month-to-date cost, standby. Renders `—`, never `0`, when no tariff is set or no device reports power, and offers admins a "Set a tariff" link to `/settings` in place of the missing figure. See §3.5.
+
+#### `EnergyCostReadout` (`components/energy/EnergyCostReadout.tsx`)
+
+Cost of the energy window currently on the Reports chart: range energy, device cost, the device's share of the household, and the household total. Fetched from `GET /api/energy/cost` rather than summed from the chart's own points — the authoritative coverage figures are the whole point, and neither the household share nor the estimated-today flag can be derived in the browser.
+
+Coverage is always stated ("based on N of M days"), and a gap warning appears **only when `gapDays > 0`** — a device installed mid-range has fewer days of data but has lost nothing, so warning on the day count alone would fire on every newly added device. The one-day collector attribution shift is footnoted only for a window that actually straddles it, so the note retires itself.
 
 ---
 
@@ -654,6 +764,23 @@ Located in `components/ui/`. These are lightweight CSS-class-based components, n
 | `SelectField` / `DateField` / `TextInput` | label + value/onChange | Labelled form-field wrappers used across the forms and the Reports toolbar |
 | `CheckboxGroup` | `options[]`, `selected[]`, `onChange` | Multi-select used to attach channels to an alert rule |
 | `Switch` | `checked`, `onChange` | Inline on/off toggle (e.g. a rule's enabled state) |
+| `StatTile` | `label`, `value`, `hint?`, `tone?` | Single KPI in the Dashboard's `.stat-grid`. Deliberately dumb — it formats nothing and decides nothing, so every "show `—`, not `0`" judgement stays with the caller that knows why |
+
+Four `Card`s would have put four card chromes around four tiny right-aligned numbers — the wrong visual
+form for a KPI, hence `.stat-grid` / `.stat-tile` — the same `auto-fill` / `minmax` recipe as
+`.detail-grid`, at a 200 px minimum rather than 260 px, so four tiles stay on one row at typical widths.
+On Reports the readout genuinely *is* label/value pairs, so that one reuses `Card` + `.detail-row`.
+
+#### `format.ts`
+
+Number and money formatting for the cost feature: `formatCurrency`, `formatNumber`, `formatEnergy`
+(Wh → kWh above 1000), `formatWatts`, and the `EM_DASH` used for "unknown". `Intl.NumberFormat`
+instances are cached per `(locale, currency)`, and currency construction is wrapped in try/catch with a
+`"20.60 EUR"` fallback — an invalid code throws `RangeError`, which would otherwise white-screen the page.
+
+This exists because the house style `` `${Number(v.toFixed(2))} ${unit}` `` emits `20.6 €` for every
+locale: the wrong separator for English and the wrong precision for both. **Only money and the new kWh
+figures go through it**; existing metric readouts are unchanged.
 
 The decision to use plain CSS classes (tokens + global styles) rather than a library like shadcn/ui, MUI, or Tailwind was made to keep the bundle small and allow the AVM Fritz!Box visual style to be applied directly without fighting component defaults.
 
@@ -774,6 +901,25 @@ The Docker workflow uses `docker/metadata-action` for tag generation and `docker
 | `CORS_ALLOW_ORIGIN` | Nelmio CORS | `^http://localhost:5173$` (dev only) |
 | `MAILER_DSN` | Symfony Mailer (e-mail alerts) | `null://null` (default, discards) or `smtp://user:pass@host:587` |
 | `APP_ALERT_FROM` | Alert e-mail sender | `alerts@phritzbox.local` |
+| `APP_BACKUP_DIR` | `BackupService` | `%kernel.project_dir%/../data/backups` |
+| `APP_BACKUP_KEEP` | `BackupService` rotation | `3` |
+| `APP_RETENTION_RAW_DAYS` | `RetentionConfig` | `0` = keep forever |
+| `APP_RETENTION_QUARTER_DAYS` | `RetentionConfig` | `0` = keep forever |
+| `APP_RETENTION_DAILY_DAYS` | `RetentionConfig` | `0` = keep forever |
+| `APP_RETENTION_RAW_OVERRIDES` | `RetentionConfig` | `voltage=14,power=90` (per-metric raw window) |
+| `APP_RETENTION_ALERT_EVENT_DAYS` | `PruneService` | `0` = keep forever |
+| `APP_RETENTION_LOG_DAYS` | Log rotation | `14` |
+
+Every retention window defaults to **0 = keep forever**, so pruning is strictly opt-in: an operator who
+never reads this table never loses data. See `docker/INSTALL.md` for the operator-facing description of
+each window and the full set of override metric names.
+
+`APP_BACKUP_DIR` is injected as `#[Autowire('%env(resolve:APP_BACKUP_DIR)%')]` — without `resolve:`, the
+`%kernel.project_dir%` inside the value arrives as a literal string and the backup lands in a directory
+named after the placeholder.
+
+The energy-cost feature deliberately adds **no** environment variable: the tariff is configured in the UI
+and stored in the database, so changing a price does not mean editing a compose file and restarting.
 
 Sensitive values (passwords, key passphrase) go in `.env.local` which is gitignored. For Docker production, these are set in `docker/.env` (copied from `docker/.env.dist`).
 
@@ -828,6 +974,100 @@ getStats(ain, type, from, to) directly for each of its four metrics
   → TemperatureChart renders ECharts line series
 ```
 
+### 5.4 Cost & Standby Calculation
+
+Three different kinds of number end up in the same tile strip, and they are arrived at in three
+different ways. `App\Service\EnergyCostService` owns the first two, `App\Service\StandbyService`
+the third.
+
+**Energy → money.** Stored `energy` rows are **per-day Wh amounts**, one per device per day — not a
+cumulative counter — so a period total is a `SUM`, and cost is `SUM(value) / 1000 × pricePerKwh`.
+That is why the cost path reads `sum_value` from the rollup while the chart path reads `avg_value`:
+an average of daily totals is the right number for a bar chart and the wrong one for a bill. The
+contrast to watch for is `Device\Feature\PowerMeter`, whose `<energy>` *is* a lifetime counter — it
+is displayed live and never persisted, so it never reaches this calculation.
+
+**Standing charge → prorated, not measured.** The monthly charge is a figure the operator copies off
+their bill. The only question is how much of it a given window is owed:
+
+```
+for each calendar month the range touches:
+    total += perMonth × (days of the range in that month ÷ days in that month)
+```
+
+Each month is divided by **its own length**, not by a flat 30.44-day average, so a whole calendar
+month comes out at exactly the figure on the bill — the number people check first, and a 20.37 where
+they expect 20.00 reads as broken. A 21 June–10 July window at €30/month is
+`30 × 10/30 + 30 × 10/31 = €19.68`; June's ten days are worth more than July's because June is
+shorter.
+
+Days are counted **inclusively at midnight granularity** (`EnergyCostService::dayspan`, floor 1), so
+an hour-long window is charged a whole day rather than 1/24 of one. The visible consequence is on
+the dashboard: month-to-date on the 18th of a 30-day month bills 18/30 of the charge, so the figure
+grows daily through the month instead of landing whole on the 1st. The charge is billed per meter
+connection, so it is added to the **household total only** and never apportioned across devices —
+allocating it would need an invented rule and would make a device that consumed nothing cost money.
+
+**Standby → measured, as a percentile.** A device's idle floor is the **5th percentile of its power
+readings over the last 7 days**. Not the mean, which a few hours of real use drags upwards; not the
+minimum, which a single dropout to zero decides on its own. The percentile is read from the
+quarter-hour rollup's `min_value` — each bucket's minimum is already the floor of those 15 minutes,
+making a week 672 rows instead of ~25,000, and keeping the figure available after retention has
+pruned raw data. Below `MIN_SAMPLES` (96, roughly a day) the endpoint answers `204` rather than a
+figure that would swing with every new reading, and an installation whose rollup job never ran falls
+back to a percentile over raw readings — slightly higher for the same device, since raw readings are
+not pre-floored, but the right shape. SQLite has no percentile function, so it is an `ORDER BY … LIMIT
+1 OFFSET count × 5 / 100`: exact, and free on a few hundred rows.
+
+The annual figure is explicitly hypothetical — `watts × 8760 h`, "if it kept drawing this
+continuously for a year". A device switched off most of the week honestly reports a floor of `0 W`.
+
+**Why a percentile at all, and why the 5th.** A power trace is a mixture, not a value: an idle
+plateau plus bursts of use. Every estimator is a different guess at where the plateau sits, and on a
+real always-on outlet over a week they disagree wildly — minimum `39.3 W`, 5th percentile `41.5 W`,
+median `62.5 W`, mean `79.6 W`. The mean and median answer "typical draw", which is not the question.
+The minimum answers the right question with a breakdown point of exactly one sample: a single
+dropout or meter glitch decides it. A low percentile is "the minimum, but robust" — at 5% it takes
+34 of 672 buckets to be junk before the figure moves, in exchange for assuming the device is idle for
+at least 5% of the window (8.4 hours a week). It lands on the *bottom edge* of the idle plateau
+rather than its centre, which biases the figure low by 10–15% — the right direction for something
+presented as a floor.
+
+**Off is not idle.** The floor above answers "what does this cost me around the clock", and for a
+device that spends part of the week switched off that answer is `0 W` — true, and silent about what
+the appliance draws when it is on and doing nothing, which is what most people mean by standby. So
+`forDevice()` returns two more fields:
+
+| Field | Meaning |
+|---|---|
+| `dutyCyclePercent` | share of the window the device drew anything at all |
+| `idleWatts` | the same 5th percentile over the **on**-samples only — the floor it holds while switched on; `null` when it was never on, or was on too briefly |
+
+A printer that is off 97% of the week reports `watts: 0` and `idleWatts: 14.01` — the first is what
+it costs, the second is what it draws whenever you switch it on. The device page renders one of four
+sentences from the pair (off all window / never off / on n% drawing x / on n% but too briefly to
+say), because `0 W` on its own cannot distinguish "switched off" from "on and drawing nothing".
+
+Two rules worth knowing. On the rollup tier a bucket counts as **on only when its `min_value` is
+above zero** — the device drew power for the whole fifteen minutes — so a bucket it switched off
+halfway through counts as off and the duty cycle is a slight underestimate, conservative in the same
+direction as the floor. And `idleWatts` is withheld below `IDLE_MIN_SAMPLES` (20) on-samples, which
+is arithmetic rather than statistics: `offsetFor()` skips `count × 5 / 100` rows, which is zero under
+twenty, so the "5th percentile" would silently degrade into the very minimum the percentile was
+chosen to avoid.
+
+`idleWatts` is deliberately **not** annualised. `watts` may be projected over 8760 hours because it is
+a round-the-clock floor; an idle-while-on figure applies only while the device is on, and
+multiplying it by a duty cycle observed over a single week would dress one week's usage pattern up
+as a yearly forecast.
+
+**Null discipline.** Every money field is `?float` and is `null` — never `0.0` — when no tariff is
+configured, all the way from `TariffSettings::pricePerKwh()` through the JSON to `formatCurrency()`,
+which renders an em dash. Energy figures are returned regardless, so an unconfigured instance still
+reports consumption. Costs always use the *current* price, including for ranges predating it: the
+tariff table has no `valid_from`, so the readout says "at the current tariff" rather than claiming to
+reproduce a historical bill.
+
 ---
 
 ## 6. Testing
@@ -840,18 +1080,37 @@ The backend test suite lives in `app/tests/` and runs with PHPUnit 13. The front
 tests/
 ├── bootstrap.php                  # Load .env.test, boot kernel
 ├── Helper.php                     # Test utilities
+├── fixtures/                      # Real AHA XML responses (devices/) and stats payloads (stats/)
+├── Client/
+│   ├── HelperTest.php
+│   └── AhaApi/                    # One file per AHA command, against recorded XML
+│       ├── GetDeviceList{,Stats,StatsBatch}Test.php
+│       ├── GetSwitch{On,Off,Toggle,Power,Energy,Name,Present,List}Test.php
+│       ├── GetSrc{Setpoint,Comfort,Saving}Test.php, SetSrc{On,Off,Setpoint}Test.php
+│       └── GetTemperatureTest.php, GetTemplateListInfosTest.php
 ├── Command/
 │   ├── CommandTestCase.php        # Base: mocks AhaApi + EntityManager; ArrayAdapter cache
 │   ├── SmartSwitch{On,Off,Toggle,Power,Energy,Name,Present,List}Test.php
-│   ├── SmartDevice{List,Stats}Test.php
+│   ├── SmartDeviceListTest.php, SmartTemperatureTest.php, SmartTemplateListTest.php
 │   ├── SmartSrc{Setpoint,Comfort,Saving}Test.php
-│   └── SmartTemperatureTest.php
-├── Device/Feature/
-│   ├── TemperatureTest.php        # XML parsing, unit conversion
-│   ├── PowerMeterTest.php
-│   └── OutletTest.php
-└── Entity/
-    └── SmartDeviceDataTest.php    # Entity field assignment
+│   └── RollupCommandsTest.php, CronData{Backup,Prune}Test.php,
+│       DataBackupCommandsTest.php, DataRestoreTest.php
+├── Controller/Api/                # Functional, through the HTTP kernel with a real JWT
+│   ├── Auth, Device, Stats, StatsExport, Health, User, Alert, Channel
+│   └── SettingsControllerTest.php, EnergyControllerTest.php
+├── Device/
+│   ├── DeviceParsingTest.php      # Whole-device XML → feature objects
+│   └── Feature/{Temperature,PowerMeter,Outlet,Thermostat}Test.php
+├── Entity/
+│   └── SmartDeviceDataTest.php    # Entity field assignment
+├── Notification/                  # One file per channel type, with a mocked HTTP client
+│   └── {Discord,Gotify,Ntfy,Pushover,Slack,Telegram,Webhook}AlertChannelTest.php
+└── Service/
+    ├── AlertEvaluationServiceTest.php, SmartStatsCollectionServiceTest.php
+    ├── StatsQueryServiceTest.php, StatsRangeTest.php
+    ├── EnergyCostServiceTest.php, StandbyServiceTest.php, TariffSettingsTest.php
+    └── DataLifecycle/
+        └── {AppState,Backup,Prune,Restore,Rollup,SnapshotInspector}*Test.php
 ```
 
 ### Approach

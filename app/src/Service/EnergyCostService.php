@@ -280,9 +280,24 @@ class EnergyCostService
     /**
      * The fixed monthly charge, prorated across the months a range touches.
      *
-     * Per calendar month rather than a flat 30.44-day average, so a whole month
-     * comes out at exactly the figure printed on the bill — which is the number
-     * people check first.
+     * Nothing here is measured. The charge is a figure the operator typed off a
+     * bill; the only question is how much of a *monthly* number a given window
+     * is owed:
+     *
+     *     for each calendar month the range touches:
+     *         total += perMonth × (days of the range in that month ÷ days in that month)
+     *
+     * Divided by each month's own length rather than by a flat 30.44-day
+     * average, so a whole month comes out at exactly the figure printed on the
+     * bill — the number people check first. A 21 June–10 July window at €30 a
+     * month is 30 × 10/30 + 30 × 10/31 = €19.68: June's ten days are worth more
+     * than July's, because June is shorter.
+     *
+     * Days are counted inclusively at midnight granularity (see `dayspan`), so
+     * an hour-long window is charged a whole day rather than 1/24 of one, and
+     * month-to-date on the 18th of a 30-day month is charged 18/30. The
+     * dashboard's standing charge therefore grows daily through the month
+     * instead of landing whole on the 1st.
      */
     private function standingCharge(\DateTimeImmutable $from, \DateTimeImmutable $to): float
     {
