@@ -24,6 +24,10 @@ return (new PhpCsFixer\Config())
     ->setRules([
         '@Symfony' => true,
         '@Symfony:risky' => true,
+        // php-cs-fixer 3.95 changed @Symfony:risky to strip declare(strict_types=1),
+        // because Symfony core does not use it. This project does, in 172 of 186
+        // files, so opt out of the rule entirely and leave the declarations alone.
+        'declare_strict_types' => false,
         'header_comment' => ['header' => $fileHeaderComment, 'separate' => 'both'],
         'linebreak_after_opening_tag' => true,
         'mb_str_functions' => true,
