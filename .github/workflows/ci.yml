@@ -22,7 +22,7 @@ jobs:
           coverage: pcov
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: app/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('app/composer.lock') }}
@@ -76,14 +76,14 @@ jobs:
           coverage: none
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: app/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('app/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Cache php-cs-fixer
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: var/.php_cs.cache
           key: ${{ runner.os }}-php-cs-fixer-${{ hashFiles('app/src/**/*.php', 'app/tests/**/*.php') }}
@@ -116,7 +116,7 @@ jobs:
           coverage: none
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: app/vendor
           key: ${{ runner.os }}-composer-${{ hashFiles('app/composer.lock') }}
