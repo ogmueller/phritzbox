@@ -4,6 +4,11 @@ on:
     push:
         branches: [main]
         tags: ['v*']
+    # Auto-merged Dependabot commits are pushed with GITHUB_TOKEN, and GitHub
+    # does not start workflows for those, so main can move without a build.
+    # Rebuild daily so the nightly tag actually is nightly.
+    schedule:
+        - cron: '0 3 * * *'
 
 permissions:
     contents: write
