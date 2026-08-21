@@ -10,7 +10,13 @@ jobs:
   auto-merge:
     name: Auto-merge
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    # pull_request_target exposes secrets to the job, so restrict it to
+    # Dependabot's own branches in this repository. Never add a checkout of the
+    # pull request's code to this workflow: it runs in the base repository's
+    # context and would hand AUTOMERGE_TOKEN to whoever opened the PR.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.user.login == 'dependabot[bot]'
 
     steps:
       - name: Fetch Dependabot metadata
@@ -24,4 +30,9 @@ jobs:
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GitHub does not start workflows for pushes made with GITHUB_TOKEN,
+          # so merging with it leaves main without a CI or Docker run. A PAT
+          # attributes the merge to a real user and those runs happen. Falls
+          # back to GITHUB_TOKEN so auto-merge still works if the secret is
+          # missing or has expired -- main just goes unbuilt again.
+          GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN || secrets.GITHUB_TOKEN }}
