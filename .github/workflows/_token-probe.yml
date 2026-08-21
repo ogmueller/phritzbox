@@ -1,0 +1,35 @@
+name: Token probe
+
+on: workflow_dispatch
+
+jobs:
+  probe:
+    name: Probe
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check what AUTOMERGE_TOKEN can do
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -u
+          echo "identity:   $(gh api user --jq .login 2>&1 | tail -1)"
+          echo "repo perms: $(gh api "repos/$REPO" --jq '.permissions|tojson' 2>&1 | tail -1)"
+
+          BR="token-probe-$GITHUB_RUN_ID"
+          SHA=$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)
+          if ! gh api -X POST "repos/$REPO/git/refs" -f ref="refs/heads/$BR" -f sha="$SHA" >/dev/null 2>contents.err; then
+            echo "CONTENTS_WRITE: MISSING"; tail -3 contents.err; exit 1
+          fi
+          echo "CONTENTS_WRITE: OK"
+
+          BODY=$(printf 'name: probe\non: workflow_dispatch\njobs:\n  x:\n    runs-on: ubuntu-latest\n    steps:\n      - run: "true"\n' | base64 -w0)
+          if gh api -X PUT "repos/$REPO/contents/.github/workflows/_probe-target.yml" \
+                -f message="token probe" -f content="$BODY" -f branch="$BR" >/dev/null 2>wf.err; then
+            echo "WORKFLOWS_WRITE: OK"
+          else
+            echo "WORKFLOWS_WRITE: MISSING"; tail -3 wf.err
+          fi
+
+          gh api -X DELETE "repos/$REPO/git/refs/heads/$BR" >/dev/null 2>&1 || true
+          echo "scratch branch cleaned up"
