@@ -43,9 +43,12 @@ class DeviceController extends AbstractController
             $meta = $this->smartDeviceService->getAllCached();
             $data = array_map(fn (Device $d) => $this->serializeDevice($d, $meta[$d->getIdentifier()] ?? null), $devices);
         } catch (\Throwable) {
-            // Fritz!Box unreachable — fall back to cached device metadata
+            // Fritz!Box unreachable — fall back to cached device metadata.
+            // getAllCached() is keyed by AIN and array_map keeps those keys, so
+            // without array_values() the response encodes as a JSON *object*
+            // and every `devices.map(...)` in the frontend dies.
             $cached = $this->smartDeviceService->getAllCached();
-            $data = array_map(fn (SmartDevice $sd) => $this->serializeCachedDevice($sd), $cached);
+            $data = array_values(array_map(fn (SmartDevice $sd) => $this->serializeCachedDevice($sd), $cached));
         }
 
         return $this->json($data);

@@ -223,4 +223,31 @@ class DeviceControllerTest extends WebTestCase
         self::assertNull($device['thermostat']['setpoint']);
         self::assertSame('off', $device['thermostat']['mode']);
     }
+
+    /**
+     * Regression: the Fritz!Box-unreachable fallback array_map()s over the
+     * AIN-keyed cache, which keeps the string keys, so the list encoded as a
+     * JSON object. The frontend stores that straight into the device context
+     * and every consumer then blew up on `devices.filter is not a function`.
+     */
+    public function testCachedFallbackListEncodesAsAJsonArray(): void
+    {
+        $aha = $this->createStub(AhaApi::class);
+        $aha->method('getDeviceListInfos')->willThrowException(new \RuntimeException('fritz.box unreachable'));
+        static::getContainer()->set(AhaApi::class, $aha);
+
+        $this->client->request('GET', '/api/devices', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer '.$this->userToken,
+        ]);
+
+        self::assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        self::assertStringStartsWith('[', $body, 'the device list must be a JSON array, not an AIN-keyed object');
+
+        $data = json_decode($body, true);
+        self::assertIsArray($data);
+        self::assertSame(array_keys($data), range(0, \count($data) - 1), 'the device list must have sequential keys');
+        self::assertSame('test-dev-001', $data[0]['ain']);
+        self::assertSame('cached', $data[0]['source']);
+    }
 }

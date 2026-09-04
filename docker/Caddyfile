@@ -10,7 +10,10 @@
 		X-Frame-Options SAMEORIGIN
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://assets.avm.de;"
+		# fonts.googleapis.com/gstatic.com: index.html pulls Source Sans Pro from
+		# Google Fonts. Without them the stylesheet is refused and the UI falls
+		# back to the system font.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://assets.avm.de;"
 		# Only honoured by browsers over HTTPS; harmless on plain-HTTP LAN setups.
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		# Lock down powerful browser features this dashboard never uses.
