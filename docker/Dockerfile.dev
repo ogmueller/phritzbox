@@ -1,10 +1,5 @@
 FROM dunglas/frankenphp:1-php8.5-bookworm
 
-RUN apt-get update && apt-get install -y \
-        libsqlite3-dev \
-    && install-php-extensions pdo_sqlite \
-    && rm -rf /var/lib/apt/lists/*
-
 # FrankenPHP reads /etc/frankenphp/Caddyfile; older base images used /etc/caddy/Caddyfile.
 COPY Caddyfile /etc/frankenphp/Caddyfile
 COPY Caddyfile /etc/caddy/Caddyfile
