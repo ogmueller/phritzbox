@@ -123,13 +123,19 @@ function timeSpan(...series: (StatPoint[] | undefined)[]): number {
   return times.length === 0 ? 0 : Math.max(...times) - Math.min(...times)
 }
 
-function yAxisBounds(values: number[]): { min: number; max: number } | null {
+/**
+ * Y-axis range with a 10% margin. The margin never pushes the axis below 0 for
+ * non-negative data (power, energy), but negative readings (outdoor
+ * temperature) keep their real minimum.
+ */
+export function yAxisBounds(values: number[]): { min: number; max: number } | null {
   if (values.length === 0) return null
   const lo = Math.min(...values)
   const hi = Math.max(...values)
   const range = hi - lo || 1          // avoid zero-range edge case
   const margin = range * 0.1
-  return { min: Math.max(0, Math.floor(lo - margin)), max: Math.ceil(hi + margin) }
+  const min = Math.floor(lo - margin)
+  return { min: lo >= 0 ? Math.max(0, min) : min, max: Math.ceil(hi + margin) }
 }
 
 /**

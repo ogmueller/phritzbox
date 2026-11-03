@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeExtremes, formatAxisTime } from './TimeSeriesChart'
+import { computeExtremes, formatAxisTime, yAxisBounds } from './TimeSeriesChart'
 
 const DAY = 86_400_000
 const at = (iso: string) => new Date(iso).getTime()
@@ -92,5 +92,21 @@ describe('computeExtremes', () => {
     const ext = computeExtremes(data)
     expect(ext?.maxLevel).toBe(99)
     expect(ext?.minLevel).toBe(1)
+  })
+})
+
+describe('yAxisBounds', () => {
+  it('returns null for no values', () => {
+    expect(yAxisBounds([])).toBeNull()
+  })
+
+  it('does not let the margin push non-negative data below 0', () => {
+    expect(yAxisBounds([0, 100])).toEqual({ min: 0, max: 110 })
+    expect(yAxisBounds([2, 50])).toEqual({ min: 0, max: 55 })
+  })
+
+  it('keeps negative readings visible', () => {
+    expect(yAxisBounds([-5, 10])).toEqual({ min: -7, max: 12 })
+    expect(yAxisBounds([-8, -2])).toEqual({ min: -9, max: -1 })
   })
 })
