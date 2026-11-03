@@ -316,6 +316,7 @@
     "Wählen Sie einen fertigen Zeitraum (die letzten 24 oder 48 Stunden, die letzten 7 oder 30 Tage) – diese enden immer im Jetzt – oder legen Sie eigene Start- und Enddaten fest.",
     "Blenden Sie Trendlinien ein (nach Tag, Woche, Monat oder Jahr), um die Schwankungen zu glätten und das große Ganze zu sehen.",
     "„An Daten anpassen“ zoomt das Diagramm enger an die tatsächlichen Werte heran.",
+    "Temperaturdiagramme sind nach Wert eingefärbt – blau bei Kälte, rot bei Wärme – anhand des Wohlfühlbereichs aus den Einstellungen.",
     "Zeigen Sie ein zweites Gerät im selben Diagramm, um beide zu vergleichen – etwa Außen- gegen Innentemperatur.",
     "Markieren Sie, wann Ihre Alarme ausgelöst haben, um sie neben den Messwerten zu sehen.",
     "„Aktuelle Daten abrufen“ holt sofort die neuesten Messwerte und prüft Ihre Alarme erneut.",
@@ -394,6 +395,13 @@
   "settings.cleared": "Tarif entfernt — Kosten bleiben ausgeblendet, bis wieder ein Preis hinterlegt ist.",
   "settings.saveFailed": "Tarif konnte nicht gespeichert werden.",
   "settings.notConfigured": "Kein Tarif hinterlegt. Das Preisfeld unten ist leer — was grau darin steht, ist ein Beispiel und kein gespeicherter Wert — daher werden keine Kosten berechnet.",
+  "settings.comfortTitle": "Wohlfühlbereich",
+  "settings.comfortIntro": "Färbt Temperaturdiagramme: blau für kalt, rot für warm, dazwischen ein Übergang.",
+  "settings.comfortColdBelow": "Kalt unter (°C)",
+  "settings.comfortWarmFrom": "Warm ab (°C)",
+  "settings.comfortHint": "Gilt für alle Temperaturdiagramme, innen wie außen. Zweimal derselbe Wert ergibt einen harten Wechsel.",
+  "settings.comfortSaved": "Wohlfühlbereich gespeichert.",
+  "settings.comfortSaveFailed": "Der Wohlfühlbereich konnte nicht gespeichert werden.",
   "energy.liveNow": "Aktuelle Leistung",
   "energy.acrossDevices": "über {{count}} Gerät(e)",
   "energy.today": "Heute",
@@ -427,7 +435,7 @@
   "help.energyCostTitle": "Energiekosten",
   "help.energyCostBody": "Unter Einstellungen einen Preis pro kWh hinterlegen — Phritzbox rechnet die erfasste Energie dann in Kosten um: in der Übersicht und pro Gerät in den Berichten, wenn die Messgröße Energie gewählt ist.",
   "help.settingsTitle": "Einstellungen",
-  "help.settingsBody": "Administratoren hinterlegen hier den Stromtarif: Preis pro kWh, optional einen festen Monatsbetrag und die Währung.",
+  "help.settingsBody": "Administratoren hinterlegen hier den Stromtarif: Preis pro kWh, optional einen festen Monatsbetrag und die Währung. Außerdem legen sie den Wohlfühlbereich fest, der Temperaturdiagramme einfärbt.",
 
   "help.energyCostBullets": [
       "Die Kosten ergeben sich aus der täglichen Energie, die die Fritz!Box je Steckdose meldet, multipliziert mit dem Preis pro kWh.",
@@ -443,6 +451,7 @@
       "Den Preis in Euro angeben, nicht in Cent: 0,35 statt 35.",
       "Preis leer lassen, um keine Kosten anzuzeigen und nur die Energie zu sehen.",
       "Ein Preis von 0 ist gültig — sinnvoll bei eigener Stromerzeugung.",
-      "Der Grundpreis wird nach Kalendermonat anteilig berechnet, sodass ein voller Monat exakt dem Betrag auf der Rechnung entspricht."
+      "Der Grundpreis wird nach Kalendermonat anteilig berechnet, sodass ein voller Monat exakt dem Betrag auf der Rechnung entspricht.",
+      "Wohlfühlbereich: unter „kalt“ wird ein Temperaturdiagramm blau, ab „warm“ rot, dazwischen gibt es einen weichen Übergang (16 °C und 20 °C, sofern nicht geändert). Er gilt für alle Temperaturdiagramme, innen wie außen."
   ]
 }

@@ -41,7 +41,7 @@ Screenshots
 
 ![Users](app/files/screenshots/web-users.png)
 
-**Settings** _(admin)_ — the electricity tariff used to turn recorded energy into costs: price per kWh, monthly standing charge, and currency. See [Energy costs](#energy-costs):
+**Settings** _(admin)_ — the electricity tariff used to turn recorded energy into costs: price per kWh, monthly standing charge, and currency (see [Energy costs](#energy-costs)), and the household **comfort zone** that colours temperature charts — blue below "cold" (default 16 °C), red from "warm" (default 20 °C), a blend in between:
 
 ![Settings](app/files/screenshots/web-settings.png)
 

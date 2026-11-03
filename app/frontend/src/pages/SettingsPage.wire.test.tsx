@@ -11,6 +11,9 @@ import { SettingsPage } from './SettingsPage'
  * right payload but never that the payload survives the client. This one asserts
  * what actually goes on the wire — the gap where a blank body would hide.
  */
+// The comfort zone has its own card, save button and test.
+vi.mock('../components/settings/ComfortZoneCard', () => ({ ComfortZoneCard: () => null }))
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (k: string, vars?: Record<string, unknown>) => (vars ? `${k} ${Object.values(vars).join(' ')}` : k),

@@ -5,6 +5,7 @@ import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { TextInput } from '../components/ui/TextInput'
 import { SelectField } from '../components/ui/SelectField'
+import { ComfortZoneCard } from '../components/settings/ComfortZoneCard'
 import { formatCurrency, parseDecimal } from '../format'
 
 /** Mirrors TariffSettings::CURRENCIES — the server rejects anything else. */
@@ -154,6 +155,8 @@ export function SettingsPage() {
           {saving ? t('common.saving') : t('common.save')}
         </Button>
       </div>
+
+      <ComfortZoneCard />
     </div>
   )
 }

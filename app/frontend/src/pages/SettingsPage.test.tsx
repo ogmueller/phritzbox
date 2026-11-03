@@ -11,6 +11,9 @@ vi.mock('../api/settings', () => ({
   updateTariff: (p: unknown) => updateTariff(p),
 }))
 
+// The comfort zone has its own card, save button and test.
+vi.mock('../components/settings/ComfortZoneCard', () => ({ ComfortZoneCard: () => null }))
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (k: string, vars?: Record<string, unknown>) => (vars ? `${k} ${Object.values(vars).join(' ')}` : k),

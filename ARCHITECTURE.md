@@ -219,15 +219,19 @@ Singleton row (fixed PK `1`, no `GeneratedValue`) holding the electricity tariff
 
 A typed table rather than `app_state` rows: `app_state` holds untyped `VARCHAR(255)` operational bookkeeping, and the moment tariff *history* is wanted (a price valid from 1 January, or day/night rates) a key/value store models it badly. This table takes a `valid_from` column later and becomes history without a redesign.
 
+**`comfort_zone`** (entity `app/src/Entity/ComfortZone.php`)
+
+Singleton row (fixed PK `1`) holding the household comfort zone that colours temperature charts: `cold_below`, `warm_from` (°C), `updated_at`. Unlike the tariff there is no "not configured" state — without a row `ComfortZoneSettings` returns its defaults (16 / 20 °C), so the defaults live in exactly one place and nothing is seeded.
+
 #### Repositories
 
 All extend `ServiceEntityRepository`. `SmartDeviceDataRepository` filters by AIN/type/time range; `UserRepository` backs the security provider; `AlertRuleRepository` exposes `findEnabled()` and `countUsingChannel()` (used to block deleting an in-use channel); `AlertEventRepository` exposes `findRecent($limit)` for the activity log; `NotificationChannelRepository` is plain CRUD.
 
 #### Migrations
 
-`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `(sid, type, time)` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place); the `alert_event` log table; a migration that de-duplicates `smart_device_data` and upgrades the index to **UNIQUE** `(sid, type, time)`; the `refresh_token` table; the `app_state` key/value table (seeding `last_collection_at`); the `smart_device_data_rollup` summary table; and the `tariff` table.
+`Version20260411024338` creates the `user` table and seeds a default `admin` / `admin` account (bcrypt cost 12 — **change after first deployment**). Later migrations add: the `smart_device` cache table; the `(sid, type, time)` index on `smart_device_data` (critical — turns report queries from full scans into index seeks on multi-million-row datasets); the `notification_channel` + `alert_rule` tables; the `alert_rule_channel` join table (the rule→channel relation evolved from a single FK to many-to-many, migrating existing links in place); the `alert_event` log table; a migration that de-duplicates `smart_device_data` and upgrades the index to **UNIQUE** `(sid, type, time)`; the `refresh_token` table; the `app_state` key/value table (seeding `last_collection_at`); the `smart_device_data_rollup` summary table; the `tariff` table; and the `comfort_zone` table.
 
-The last two are created **empty**. A rollup table is filled by `smart:rollup:backfill`, not by a migration — summarising tens of millions of rows inside a migration transaction would lock the database for minutes. An empty `tariff` table is the correct initial state, because "no tariff configured" is a state the whole cost feature is built to represent.
+The last three are created **empty**. A rollup table is filled by `smart:rollup:backfill`, not by a migration — summarising tens of millions of rows inside a migration transaction would lock the database for minutes. An empty `tariff` table is the correct initial state, because "no tariff configured" is a state the whole cost feature is built to represent. An empty `comfort_zone` table simply means the defaults apply.
 
 ---
 
@@ -289,6 +293,8 @@ are returned regardless, so an unconfigured instance still reports consumption.
 |---|---|---|---|
 | GET | `/api/settings/tariff` | ROLE_USER | Current electricity tariff (`pricePerKwh`, `standingChargeMonth`, `currency`, `configured`) |
 | PUT | `/api/settings/tariff` | ROLE_ADMIN | Replace it. An empty `pricePerKwh` clears back to unconfigured |
+| GET | `/api/settings/comfort-zone` | ROLE_USER | Comfort zone for temperature charts (`coldBelow`, `warmFrom`, °C) — the defaults until one is saved |
+| PUT | `/api/settings/comfort-zone` | ROLE_ADMIN | Replace it. Both values required, −30…40 °C, `coldBelow` ≤ `warmFrom`; a decimal comma is accepted |
 
 The split is **by method, not by path** — `#[IsGranted('ROLE_ADMIN')]` on the write action, following
 `DeviceController::setProtection`. Reading needs only `ROLE_USER` because every user needs the price
@@ -561,6 +567,8 @@ CRUD for the alerting admin pages. `alerts.ts` exposes `getAlerts/createAlert/up
 
 `settings.ts` exposes `getTariff()` and `updateTariff(payload)`. `Tariff.pricePerKwh` is `number | null` all the way through the type — `null` is "not configured", and keeping it nullable rather than defaulting to `0` is what stops the UI ever showing a cost that nobody configured. `TariffPayload` sends the form's raw strings, so an empty price can mean "clear it".
 
+`comfortZone.ts` exposes `getComfortZone()`, `updateComfortZone(payload)` and the `useComfortZone()` hook. The zone is held in one module-level store: a page full of charts makes a single request, and a save on the Settings page recolours every mounted chart without a reload. Until the first load answers (or if it fails) the hook returns `DEFAULT_COMFORT_ZONE`.
+
 `energy.ts` exposes `getEnergyCost(from, to)`, `getEnergySummary()` and `getStandby(ain)`. Every cost field on these types is nullable for the same reason.
 
 ---
@@ -690,6 +698,8 @@ Admin-only. Configures the electricity tariff: price per kWh, monthly standing c
 
 An unconfigured price renders as an **empty field, not `0`** — the two mean different things, and a `0` shown here would be read as a saved tariff. Saving an empty price clears back to unconfigured. A live formatted example (100 kWh at the entered price) shows the currency and locale taking effect before saving, and server-side validation messages are surfaced verbatim rather than replaced with a generic failure.
 
+Below it, `ComfortZoneCard` (`components/settings/`) edits the comfort zone with its own Save button, so a mistake in one form can never take the other down with it. It uses the same late-load guard as the tariff form.
+
 #### `HelpPage`
 
 In-app user guide. A sectioned walkthrough (Dashboard, Controlling devices, Reports, Alerts, Channels, Users, Data collection & freshness) plus useful links and the app version. The three admin sections are gated behind `useAuth().isAdmin` so the guide stays relevant to the signed-in role. All copy is translated (en/de).
@@ -729,6 +739,8 @@ All charts are thin wrappers over `echarts-for-react`.
 #### `TimeSeriesChart` (`components/charts/TimeSeriesChart.tsx`)
 
 Generic base component. Props: `data: StatPoint[]`, `title`, `unit`, `color`. Builds an ECharts option object with a time-axis X axis, value Y axis, and a line series. Handles empty data gracefully. On the Reports page it also renders an **optional second series** (the compared device) and **alert-event markers** overlaid on the timeline.
+
+With "fit to data", the Y axis gets a 10 % margin; it is clamped at 0 only when every value is non-negative, so sub-zero temperatures stay visible. On a **°C** chart the first series is coloured by value through a piecewise `visualMap` (`comfortZonePieces`): blue below the comfort zone, red above it, and eight narrow pieces blending in between, because ECharts draws piece boundaries as hard stops. The fill follows the same colours from the line to 0. The zone comes from `useComfortZone()` unless a `comfortZone` prop overrides it; a compared second series keeps its own flat colour.
 
 #### Typed variants
 

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
+use App\Service\ComfortZoneSettings;
 use App\Service\TariffSettings;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,7 +23,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Application settings. Currently just the electricity tariff.
+ * Application settings: the electricity tariff and the comfort zone that
+ * colours temperature charts.
  *
  * Reading is open to any authenticated user because every cost figure in the UI
  * needs the price and currency to render; only writing is restricted. That split
@@ -34,8 +36,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/api/settings')]
 class SettingsController extends AbstractController
 {
-    public function __construct(private readonly TariffSettings $tariff)
-    {
+    public function __construct(
+        private readonly TariffSettings $tariff,
+        private readonly ComfortZoneSettings $comfortZone,
+    ) {
     }
 
     #[Route('/tariff', methods: ['GET'])]
@@ -56,6 +60,46 @@ class SettingsController extends AbstractController
         }
 
         return $this->json($this->tariff->toArray());
+    }
+
+    #[Route('/comfort-zone', methods: ['GET'])]
+    public function showComfortZone(): JsonResponse
+    {
+        return $this->json($this->comfortZone->toArray());
+    }
+
+    #[Route('/comfort-zone', methods: ['PUT'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function updateComfortZone(Request $request): JsonResponse
+    {
+        $body = (array) json_decode($request->getContent(), true);
+
+        $values = [];
+        foreach (['coldBelow', 'warmFrom'] as $key) {
+            // Both required: there is no sensible half of a zone to keep.
+            $raw = self::normalizeDecimal($body[$key] ?? null);
+            if ($raw === null || $raw === '' || !is_numeric($raw)) {
+                return $this->json(['error' => $key.' must be a number'], Response::HTTP_BAD_REQUEST);
+            }
+            $value = (float) $raw;
+            if ($value < ComfortZoneSettings::MIN_TEMPERATURE || $value > ComfortZoneSettings::MAX_TEMPERATURE) {
+                return $this->json(['error' => \sprintf(
+                    '%s must be between %s and %s °C',
+                    $key,
+                    ComfortZoneSettings::MIN_TEMPERATURE,
+                    ComfortZoneSettings::MAX_TEMPERATURE,
+                )], Response::HTTP_BAD_REQUEST);
+            }
+            $values[$key] = $value;
+        }
+
+        if ($values['coldBelow'] > $values['warmFrom']) {
+            return $this->json(['error' => 'coldBelow must not be above warmFrom'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $this->comfortZone->save($values['coldBelow'], $values['warmFrom']);
+
+        return $this->json($this->comfortZone->toArray());
     }
 
     /**

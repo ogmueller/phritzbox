@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
 import i18n from '../../i18n'
 import { StatPoint } from '../../api/stats'
+import { ComfortZone, useComfortZone } from '../../api/comfortZone'
 
 export interface ChartEvent {
   time: string
@@ -32,6 +33,8 @@ interface TimeSeriesChartProps {
   color2?: string
   events?: ChartEvent[]
   eventsLabel?: string
+  /** Colour a °C chart's first line by temperature. Defaults to the household setting. */
+  comfortZone?: ComfortZone
 }
 
 interface TooltipParam {
@@ -204,6 +207,34 @@ function buildMinMaxMarkers(data: StatPoint[], color: string, fmtValue: (v: numb
   }
 }
 
+const COLD_COLOR: [number, number, number] = [0x15, 0x77, 0xcf]
+const WARM_COLOR: [number, number, number] = [0xd9, 0x48, 0x0f]
+const BLEND_STEPS = 8
+
+function blend(t: number): string {
+  const [r, g, b] = COLD_COLOR.map((c, i) => Math.round(c + (WARM_COLOR[i] - c) * t))
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+/**
+ * Piecewise visualMap pieces colouring a temperature line (and its area) by value.
+ *
+ * ECharts draws piece boundaries as hard colour stops, so the cold→warm blend is
+ * approximated by BLEND_STEPS narrow pieces — at a few degrees wide that reads as
+ * a smooth gradient.
+ */
+export function comfortZonePieces({ cold, warm }: ComfortZone): { lt?: number; gte?: number; color: string }[] {
+  const width = (warm - cold) / BLEND_STEPS
+  const middle = width > 0
+    ? Array.from({ length: BLEND_STEPS }, (_, i) => ({
+      gte: cold + i * width,
+      lt: cold + (i + 1) * width,
+      color: blend((i + 0.5) / BLEND_STEPS),
+    }))
+    : []
+  return [{ lt: cold, color: blend(0) }, ...middle, { gte: warm, color: blend(1) }]
+}
+
 /** Decide whether to display Wh values as kWh and return the display unit + scaling factor. */
 function resolveUnit(unit: string, values: number[]): { displayUnit: string; scale: number } {
   if (unit === 'Wh' && values.length > 0 && Math.max(...values) >= 1000) {
@@ -226,7 +257,10 @@ export function TimeSeriesChart({
   color2 = '#9B59B6',
   events = [],
   eventsLabel = 'Alert events',
+  comfortZone: comfortZoneProp,
 }: TimeSeriesChartProps) {
+  const householdZone = useComfortZone()
+  const comfortZone = comfortZoneProp ?? householdZone
   const option = useMemo(() => {
     const activePeriods: Period[] = enabledAvgPeriods ?? (() => {
       if (data.length < 2) return []
@@ -274,8 +308,20 @@ export function TimeSeriesChart({
       ...(scaledEvents.length > 0 ? [eventsLabel] : []),
     ]
     const hasLegend = legendData.length > 1
+    // Explicit line/area colours would override the visualMap, so a
+    // temperature series leaves them unset.
+    const byTemperature = displayUnit === '°C'
 
     return {
+      ...(byTemperature ? {
+        visualMap: {
+          type: 'piecewise',
+          show: false,
+          seriesIndex: 0,
+          dimension: 1,
+          pieces: comfortZonePieces(comfortZone),
+        },
+      } : {}),
       tooltip: {
         trigger: 'axis',
         formatter: (params: TooltipParam[]) => {
@@ -339,8 +385,13 @@ export function TimeSeriesChart({
           showSymbol: false,
           sampling: 'lttb',
           data: scaledData.map((p) => [p.time, p.value]),
-          lineStyle: { color, width: 1.5 },
-          areaStyle: { color, opacity: 0.07 },
+          ...(byTemperature ? {
+            lineStyle: { width: 1.5 },
+            areaStyle: { opacity: 0.15 },
+          } : {
+            lineStyle: { color, width: 1.5 },
+            areaStyle: { color, opacity: 0.07 },
+          }),
           ...minMax(scaledData, color),
         },
         ...(scaledData2 ? [{
@@ -369,7 +420,7 @@ export function TimeSeriesChart({
         }] : []),
       ],
     }
-  }, [data, label, unit, color, enabledAvgPeriods, fitToData, showMinMax, data2, label2, color2, events, eventsLabel])
+  }, [data, label, unit, color, enabledAvgPeriods, fitToData, showMinMax, data2, label2, color2, events, eventsLabel, comfortZone])
 
   return <ReactECharts option={option} notMerge style={{ height }} />
 }

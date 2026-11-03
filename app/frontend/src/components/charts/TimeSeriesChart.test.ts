@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeExtremes, formatAxisTime, yAxisBounds } from './TimeSeriesChart'
+import { comfortZonePieces, computeExtremes, formatAxisTime, yAxisBounds } from './TimeSeriesChart'
 
 const DAY = 86_400_000
 const at = (iso: string) => new Date(iso).getTime()
@@ -108,5 +108,21 @@ describe('yAxisBounds', () => {
   it('keeps negative readings visible', () => {
     expect(yAxisBounds([-5, 10])).toEqual({ min: -7, max: 12 })
     expect(yAxisBounds([-8, -2])).toEqual({ min: -9, max: -1 })
+  })
+})
+
+describe('comfortZonePieces', () => {
+  it('is cold below the zone, warm above it, and blends in between', () => {
+    const pieces = comfortZonePieces({ cold: 16, warm: 20 })
+    expect(pieces[0]).toEqual({ lt: 16, color: 'rgb(21, 119, 207)' })
+    expect(pieces[pieces.length - 1]).toEqual({ gte: 20, color: 'rgb(217, 72, 15)' })
+    const middle = pieces.slice(1, -1)
+    expect(middle).toHaveLength(8)
+    expect(middle[0].gte).toBe(16)
+    expect(middle[middle.length - 1].lt).toBe(20)
+  })
+
+  it('switches straight from cold to warm when the zone has no width', () => {
+    expect(comfortZonePieces({ cold: 18, warm: 18 })).toHaveLength(2)
   })
 })

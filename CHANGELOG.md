@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- **Comfort zone for temperature charts.** Temperature lines and their fill are coloured by value: blue below "cold", red from "warm", a smooth blend in between — so frost and heat stand out at a glance. Administrators set both thresholds for the household on the **Settings** page (defaults 16 °C and 20 °C; the same value twice gives a hard switch). New endpoints `GET`/`PUT /api/settings/comfort-zone`.
+
+### Fixed
+- Charts with "Fit to data" now extend below 0 for negative readings. Sub-zero outdoor temperatures were cut off at 0, because the axis minimum was clamped for every chart instead of only for non-negative data.
+
+### Changed
+- The Docker images no longer install `pdo_sqlite` and `opcache` themselves: the FrankenPHP PHP 8.5 base image already ships both.
+- Removed the unused `app/frontend/yarn.lock`; `package-lock.json` is the only frontend lockfile.
+
 ## [1.3.0] - 2026-08-18
 
 ### Added

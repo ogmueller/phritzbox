@@ -316,6 +316,7 @@
     "Pick a ready-made window (the last 24 or 48 hours, or the last 7 or 30 days) — these always end right now — or set your own start and end dates.",
     "Add trend lines (by day, week, month, or year) to smooth out the ups and downs and see the bigger picture.",
     "\"Fit to data\" zooms the chart in around the actual values for a closer look.",
+    "Temperature charts are coloured by value — blue when it's cold, red when it's warm — using the comfort zone from Settings.",
     "Show a second device on the same chart to compare them — for example, outdoor against indoor temperature.",
     "Mark when your alerts went off, so you can see them against the readings.",
     "\"Pull latest data\" fetches the newest readings straight away and re-checks your alerts.",
@@ -394,6 +395,13 @@
   "settings.cleared": "Tariff cleared — costs stay hidden until a price is set again.",
   "settings.saveFailed": "Could not save the tariff.",
   "settings.notConfigured": "No tariff set. The price field below is empty — what it shows in grey is an example, not a stored value — so no costs are calculated.",
+  "settings.comfortTitle": "Comfort zone",
+  "settings.comfortIntro": "Colours temperature charts: blue for cold, red for warm, a blend in between.",
+  "settings.comfortColdBelow": "Cold below (°C)",
+  "settings.comfortWarmFrom": "Warm from (°C)",
+  "settings.comfortHint": "Applies to every temperature chart, indoors and outdoors. Use the same value twice for a hard switch.",
+  "settings.comfortSaved": "Comfort zone saved.",
+  "settings.comfortSaveFailed": "Could not save the comfort zone.",
   "energy.liveNow": "Drawing now",
   "energy.acrossDevices": "across {{count}} device(s)",
   "energy.today": "Today",
@@ -427,7 +435,7 @@
   "help.energyCostTitle": "Energy costs",
   "help.energyCostBody": "Set a price per kWh under Settings and Phritzbox turns recorded energy into money — on the dashboard, and per device in Reports when the Energy metric is selected.",
   "help.settingsTitle": "Settings",
-  "help.settingsBody": "Administrators set the electricity tariff here: the price per kWh, an optional fixed monthly charge, and the currency.",
+  "help.settingsBody": "Administrators set the electricity tariff here: the price per kWh, an optional fixed monthly charge, and the currency. They also set the comfort zone that colours temperature charts.",
 
   "help.energyCostBullets": [
       "Costs come from the daily energy the Fritz!Box reports per outlet, multiplied by your price per kWh.",
@@ -443,6 +451,7 @@
       "Enter the price in units rather than cents: 0.35, not 35.",
       "Leave the price empty to hide costs and show energy only.",
       "A price of zero is a valid setting — useful if you generate your own power.",
-      "The standing charge is prorated by calendar month, so a full month matches the figure on your bill exactly."
+      "The standing charge is prorated by calendar month, so a full month matches the figure on your bill exactly.",
+      "Comfort zone: below \"cold\" a temperature chart turns blue, from \"warm\" it turns red, with a smooth blend in between (16 °C and 20 °C unless changed). It applies to every temperature chart, indoors and outdoors."
   ]
 }
