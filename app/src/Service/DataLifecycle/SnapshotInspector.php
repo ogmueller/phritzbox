@@ -135,9 +135,12 @@ class SnapshotInspector
 
             $row = $pdo->query('SELECT COUNT(*) AS c, MIN(time) AS mn, MAX(time) AS mx FROM smart_device_data')
                 ->fetch(\PDO::FETCH_ASSOC); // @phpstan-ignore method.nonObject (ERRMODE_EXCEPTION: never false)
+            if ($row === false) {
+                $row = [];
+            }
             $result['rows'] = (int) ($row['c'] ?? 0);
-            $result['oldest'] = $row['mn'] !== null ? (string) $row['mn'] : null;
-            $result['newest'] = $row['mx'] !== null ? (string) $row['mx'] : null;
+            $result['oldest'] = isset($row['mn']) ? (string) $row['mn'] : null;
+            $result['newest'] = isset($row['mx']) ? (string) $row['mx'] : null;
 
             // @phpstan-ignore foreach.nonIterable (ERRMODE_EXCEPTION: never false)
             foreach ($pdo->query('SELECT type, COUNT(*) AS c FROM smart_device_data GROUP BY type ORDER BY type') as $r) {
