@@ -147,7 +147,7 @@ jobs:
           APP_ENV: test
 
       - name: Run PHP Mess Detector
-        run: vendor/bin/phpmd src xml phpmd.xml --reportfile phpmd-report.xml || true
+        run: vendor/bin/phpmd analyze src --ruleset phpmd.xml --format xml --reportfile-xml phpmd-report.xml --no-progress || true
         working-directory: app
 
       - name: Publish PHPMD report
