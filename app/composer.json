@@ -50,7 +50,7 @@
   },
   "config": {
     "platform": {
-      "php": "8.5.4"
+      "php": "8.5.12"
     },
     "preferred-install": {
       "*": "dist"
