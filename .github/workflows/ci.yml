@@ -104,6 +104,9 @@ jobs:
   lint:
     name: Lint & Static Analysis
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write # Publish PHPMD report creates a check run
 
     steps:
       - uses: actions/checkout@v4
